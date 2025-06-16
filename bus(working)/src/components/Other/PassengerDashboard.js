@@ -1,12 +1,15 @@
-import React from 'react';
-import  Button  from './Button' // one level up from SeatBooking
+import React, { useState } from 'react';
+import Button from './Button';
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import useBookings from "../../hooks/useBookings";
+import BookingQRCode from '../SeatBooking/BookingQRCode';
+import { RiQrCodeFill } from 'react-icons/ri';
 
 
 const PassengerDashboard = () => {
   const { user } = useContext(AuthContext);
+  const [qrModal, setQrModal] = useState({ open: false, details: null });
 
   const passengerName = user.name;
 
@@ -28,7 +31,7 @@ const PassengerDashboard = () => {
 
   const actionTooltip = "You can't make changes after 2.00pm";
 
-  const renderActions = (status) => {
+  const renderActions = (status, booking) => {
     const disabled = isAfter2PM();
     switch (String(status).toLowerCase()) {
       case 'confirmed':
@@ -48,7 +51,21 @@ const PassengerDashboard = () => {
                 </span>
               )}
             </div>
-            {/* <Button variant="secondary">Change</Button> */}
+            <button
+              className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
+              title="See QR & Download"
+              onClick={() => setQrModal({ open: true, details: {
+                busName: booking.bus_no || booking.busName,
+                seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no : String(booking.seat_no).split(',').map(s => s.trim()),
+                pickup: booking.pickup,
+                drop: booking.drop,
+                price: booking.price,
+                date: booking.booked_date || booking.date,
+              } })}
+              style={{ width: 36, height: 36 }}
+            >
+              <RiQrCodeFill size={20} />
+            </button>
           </div>
         );
       case 'cancelled':
@@ -92,54 +109,57 @@ const PassengerDashboard = () => {
   };
 
   return (
-    <div className="p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 flex-col h-full ">
-      <h2 className="text-3xl sm:text-5xl md:text-7xl p-2 sm:p-5 text-center font-bold">Welcome Back, {passengerName}</h2>
+    <div className="p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 flex-col h-full w-full max-w-full overflow-x-auto">
+      <h2 className="text-2xl sm:text-4xl md:text-6xl p-2 sm:p-5 text-center font-bold break-words">Welcome Back, {passengerName}</h2>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 pb-4 sm:pb-10">
-        <div className="bg-blue-200 p-3 sm:p-6 rounded-xl shadow">
-          <h3 className="text-lg sm:text-2xl font-medium">Total Booked</h3>
-          <p className="text-2xl sm:text-4xl font-bold text-blue-800">{stats.booked}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 pb-4 sm:pb-10 w-full">
+        <div className="bg-blue-200 p-3 sm:p-6 rounded-xl shadow w-full">
+          <h3 className="text-base sm:text-xl font-medium">Total Booked</h3>
+          <p className="text-xl sm:text-3xl font-bold text-blue-800">{stats.booked}</p>
         </div>
-        <div className="bg-yellow-100 p-2 sm:p-4 rounded-xl shadow">
-          <h3 className="text-lg sm:text-2xl font-medium">Pending</h3>
-          <p className="text-2xl sm:text-4xl font-bold text-yellow-800">{stats.pending}</p>
+        <div className="bg-yellow-100 p-2 sm:p-4 rounded-xl shadow w-full">
+          <h3 className="text-base sm:text-xl font-medium">Pending</h3>
+          <p className="text-xl sm:text-3xl font-bold text-yellow-800">{stats.pending}</p>
         </div>
-        <div className="bg-red-100 p-2 sm:p-4 rounded-xl shadow">
-          <h3 className="text-lg sm:text-2xl font-medium">Cancelled</h3>
-          <p className="text-2xl sm:text-4xl font-bold text-red-800">{stats.cancelled}</p>
+        <div className="bg-red-100 p-2 sm:p-4 rounded-xl shadow w-full">
+          <h3 className="text-base sm:text-xl font-medium">Cancelled</h3>
+          <p className="text-xl sm:text-3xl font-bold text-red-800">{stats.cancelled}</p>
         </div>
       </div>
 
       {/* Booking Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full table-auto border border-gray-200 text-xs sm:text-sm md:text-base">
-          <thead className="bg-gray-100 text-base sm:text-xl">
+      <div className="w-full overflow-x-auto">
+        <table className="w-full min-w-[700px] table-auto border border-gray-200 text-xs sm:text-sm md:text-base">
+          <thead className="bg-gray-100 text-xs sm:text-base md:text-lg">
             <tr>
-              <th className="px-2 sm:px-4 py-2 border">ID</th>
-              <th className="px-2 sm:px-4 py-2 border">Pickup</th>
-              <th className="px-2 sm:px-4 py-2 border">Drop</th>
-              <th className="px-2 sm:px-4 py-2 border">Journey Date</th>
-              <th className="px-2 sm:px-4 py-2 border">Seats</th>
-              <th className="px-2 sm:px-4 py-2 border">Status</th>
-              <th className="px-2 sm:px-4 py-2 border">Action</th>
+              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">ID</th>
+              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Pickup</th>
+              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Drop</th>
+              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Journey Date</th>
+              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Seats</th>
+              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Status</th>
+              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Action</th>
             </tr>
           </thead>
           <tbody>
             {bookings.map((booking) => (
               <tr key={booking.id} className="text-center">
-                <td className="px-2 sm:px-4 py-2 border">{booking.id}</td>
-                <td className="px-2 sm:px-4 py-2 border">{booking.pickup}</td>
-                <td className="px-2 sm:px-4 py-2 border">{booking.drop}</td>
-                <td className="px-2 sm:px-4 py-2 border">{booking.booked_date}</td>
-                <td className="px-2 sm:px-4 py-2 border">{booking.seat_no.join(', ')}</td>
-                <td className="px-2 sm:px-4 py-2 border capitalize">{booking.status}</td>
-                <td className="px-2 sm:px-4 py-2 border space-x-1">{renderActions(booking.status)}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.id}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.pickup}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.drop}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.booked_date}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border capitalize break-words">{booking.status}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border space-x-1">{renderActions(booking.status, booking)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {qrModal.open && (
+        <BookingQRCode bookingDetails={qrModal.details} onCancel={() => setQrModal({ open: false, details: null })} />
+      )}
     </div>
   );
 };
