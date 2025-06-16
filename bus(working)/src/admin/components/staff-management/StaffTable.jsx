@@ -1,0 +1,338 @@
+import React, { useState } from 'react';
+import { Search, Edit, Trash, Printer, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+
+const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+  const [selectedStaff, setSelectedStaff] = useState([]);
+  
+  // Sort staff based on the current sort configuration
+  const sortedStaff = React.useMemo(() => {
+    let sortableStaff = [...staff];
+    if (sortConfig.key) {
+      sortableStaff.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableStaff;
+  }, [staff, sortConfig]);
+
+  // Filter staff based on search term
+  const filteredStaff = React.useMemo(() => {
+    return sortedStaff.filter(person => 
+      person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.contact_number.includes(searchTerm)
+    );
+  }, [sortedStaff, searchTerm]);
+
+  // Request sort
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Handle checkboxes for selecting staff
+  const handleSelectAll = () => {
+    if (selectedStaff.length === filteredStaff.length) {
+      setSelectedStaff([]);
+    } else {
+      setSelectedStaff(filteredStaff.map(s => s.id));
+    }
+  };
+
+  const handleSelectStaff = (id) => {
+    if (selectedStaff.includes(id)) {
+      setSelectedStaff(selectedStaff.filter(staffId => staffId !== id));
+    } else {
+      setSelectedStaff([...selectedStaff, id]);
+    }
+  };
+
+  // Print selected staff or all if none selected
+  const handlePrint = () => {
+    // In a real application, you would implement printing functionality here
+    const staffToPrint = selectedStaff.length > 0
+      ? filteredStaff.filter(s => selectedStaff.includes(s.id))
+      : filteredStaff;
+    
+    console.log('Printing staff:', staffToPrint);
+    
+    // Create a print-friendly version and use window.print()
+    const printContent = document.createElement('div');
+    printContent.className = 'staff-print-content';
+    
+    // Add company header
+    const header = document.createElement('div');
+    header.innerHTML = `
+      <h1 style="text-align: center; font-size: 24px; color: #880000;">RS-EXPRESS BUS SERVICE</h1>
+      <h2 style="text-align: center; font-size: 18px; margin-bottom: 20px;">Staff List</h2>
+      <p style="text-align: center; font-size: 12px; margin-bottom: 30px;">Generated on ${new Date().toLocaleDateString()}</p>
+    `;
+    printContent.appendChild(header);
+    
+    // Create table
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    
+    // Add table header
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+      <tr>
+        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">Name</th>
+        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">Role</th>
+        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">Email</th>
+        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">Contact</th>
+        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">NIC</th>
+      </tr>
+    `;
+    table.appendChild(thead);
+    
+    // Add table body
+    const tbody = document.createElement('tbody');
+    staffToPrint.forEach(person => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td style="border: 1px solid #ddd; padding: 8px;">${person.name}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${person.role}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${person.email}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${person.contact_number}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${person.nic_no}</td>
+      `;
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    
+    printContent.appendChild(table);
+    
+    // Add to a hidden div, print it, then remove
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'absolute';
+    printFrame.style.top = '-9999px';
+    document.body.appendChild(printFrame);
+    
+    const frameDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+    frameDoc.write('<html><head><title>Staff List - RS-EXPRESS</title>');
+    frameDoc.write('<style>body { font-family: Arial, sans-serif; }</style>');
+    frameDoc.write('</head><body>');
+    frameDoc.write(printContent.innerHTML);
+    frameDoc.write('</body></html>');
+    frameDoc.close();
+    
+    setTimeout(() => {
+      printFrame.contentWindow.focus();
+      printFrame.contentWindow.print();
+      document.body.removeChild(printFrame);
+    }, 250);
+  };
+
+  return (
+    <div className="bg-white shadow-md rounded-lg overflow-hidden">
+      {/* Table toolbar */}
+      <div className="p-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
+        {/* Search input */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search staff..."
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-md"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <button 
+            onClick={handlePrint} 
+            className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+          >
+            <Printer size={18} className="mr-2" />
+            Print
+          </button>
+        </div>
+      </div>
+      
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedStaff.length === filteredStaff.length && filteredStaff.length > 0}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                  />
+                </div>
+              </th>
+              <th 
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => requestSort('name')}
+              >
+                <div className="flex items-center">
+                  Name
+                  {sortConfig.key === 'name' && (
+                    sortConfig.direction === 'ascending' 
+                      ? <ChevronUp size={16} className="ml-1" /> 
+                      : <ChevronDown size={16} className="ml-1" />
+                  )}
+                </div>
+              </th>
+              <th 
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => requestSort('role')}
+              >
+                <div className="flex items-center">
+                  Role
+                  {sortConfig.key === 'role' && (
+                    sortConfig.direction === 'ascending' 
+                      ? <ChevronUp size={16} className="ml-1" /> 
+                      : <ChevronDown size={16} className="ml-1" />
+                  )}
+                </div>
+              </th>
+              <th 
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => requestSort('email')}
+              >
+                <div className="flex items-center">
+                  Email
+                  {sortConfig.key === 'email' && (
+                    sortConfig.direction === 'ascending' 
+                      ? <ChevronUp size={16} className="ml-1" /> 
+                      : <ChevronDown size={16} className="ml-1" />
+                  )}
+                </div>
+              </th>
+              <th 
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => requestSort('contact_number')}
+              >
+                <div className="flex items-center">
+                  Contact
+                  {sortConfig.key === 'contact_number' && (
+                    sortConfig.direction === 'ascending' 
+                      ? <ChevronUp size={16} className="ml-1" /> 
+                      : <ChevronDown size={16} className="ml-1" />
+                  )}
+                </div>
+              </th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredStaff.length > 0 ? (
+              filteredStaff.map((person) => (
+                <tr key={person.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedStaff.includes(person.id)}
+                      onChange={() => handleSelectStaff(person.id)}
+                      className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 flex-shrink-0">
+                        {person.profile_image ? (
+                          <img 
+                            className="h-10 w-10 rounded-full object-cover" 
+                            src={`http://localhost:8000/storage/${person.profile_image}`} 
+                            alt={person.name} 
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <span className="text-gray-500 font-medium">
+                              {person.name.split(' ').map(part => part.charAt(0)).join('').toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{person.name}</div>
+                        <div className="text-sm text-gray-500">{person.nic_no}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {person.role ? (
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        person.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
+                        person.role === 'staff' ? 'bg-blue-100 text-blue-800' : 
+                        person.role === 'driver' ? 'bg-green-100 text-green-800' : 
+                        person.role === 'conductor' ? 'bg-yellow-100 text-yellow-800' : 
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {person.role.charAt(0).toUpperCase() + person.role.slice(1).replace('_', ' ')}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">Not specified</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {person.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {person.contact_number}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => onViewDetails(person)}
+                      className="text-gray-600 hover:text-gray-900 mr-3"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button
+                      onClick={() => onEdit(person)}
+                      className="text-blue-600 hover:text-blue-900 mr-3"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button
+                      onClick={() => onDelete(person.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <Trash size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                  {searchTerm ? 'No staff members found matching your search' : 'No staff members found'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default StaffTable;

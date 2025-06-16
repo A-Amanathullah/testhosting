@@ -1,0 +1,95 @@
+/* PRINT STYLES FOR LOYALTY REPORT */
+@media print {
+  /* Hide everything except what we want to print */
+  body * {
+    visibility: hidden;
+  }
+  
+  .loyalty-report-print, .loyalty-report-print * {
+    visibility: visible;
+  }
+  
+  .loyalty-report-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  
+  /* Hide any action buttons or elements we don't want to print */
+  .loyalty-report-print .no-print {
+    display: none !important;
+  }
+  
+  /* Add additional print styling here */
+  .loyalty-report-print {
+    font-size: 12pt;
+    border-collapse: collapse;
+  }
+  
+  .loyalty-report-print th, .loyalty-report-print td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  
+  .loyalty-report-print th {
+    background-color: #f2f2f2;
+  }
+  
+  /* Logo and header styling */
+  .loyalty-report-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #880000;
+  }
+  
+  .loyalty-report-header h1 {
+    font-size: 20pt;
+    color: #880000;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+  
+  .loyalty-report-header p {
+    font-size: 12pt;
+    color: #333;
+    margin: 4px 0;
+  }
+  
+  /* Table styling improvements */
+  .loyalty-report-print table {
+    width: 100%;
+    margin-bottom: 20px;
+    page-break-inside: auto;
+  }
+  
+  .loyalty-report-print tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  .loyalty-report-print th {
+    background-color: #f2f2f2 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Add footer */
+  @page {
+    margin-bottom: 2cm;
+  }
+  
+  .loyalty-report-print::after {
+    content: "RS-EXPRESS BUS SERVICE - Report Generated on " attr(data-date);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: 9pt;
+    text-align: center;
+    color: #666;
+    padding: 10px;
+  }
+}

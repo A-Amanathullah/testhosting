@@ -1,0 +1,125 @@
+@media print {
+    /* Reset and hide everything except what we want to print */
+    body * {
+      visibility: hidden;
+    }
+    
+    .print-table, .print-table *,
+    .print-content, .print-content * {
+      visibility: visible;
+    }
+    
+    .print-table, .print-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    
+    /* Hide any action buttons or elements we don't want to print */
+    .no-print, .print-table .no-print, button, .button {
+      display: none !important;
+    }
+    
+    /* More compact table styling */
+    .print-table {
+      font-size: 10pt;
+      border-collapse: collapse;
+      page-break-inside: auto;
+      table-layout: fixed;
+      width: 100%;
+    }
+    
+    .print-table th, .print-table td {
+      border: 1px solid #ddd;
+      padding: 4px 6px;
+      font-size: 9pt;
+      overflow: visible;
+      word-wrap: break-word;
+    }
+    
+    /* Agent report specific table styles */
+    table.print-agent-table {
+      font-size: 9pt;
+      table-layout: fixed;
+      width: 100%;
+    }
+    
+    table.print-agent-table th,
+    table.print-agent-table td {
+      padding: 3px 4px;
+      font-size: 8pt;
+      overflow: visible;
+      word-wrap: break-word;
+    }
+    
+    /* Add a header to the printed page */
+    .print-header {
+      display: block !important;
+      visibility: visible;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 14pt;
+      page-break-after: avoid;
+    }
+    
+    /* Summary data styling */
+    .print-summary {
+      display: flex !important;
+      visibility: visible;
+      margin: 10px 0;
+      font-size: 10pt;
+      page-break-inside: avoid;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    
+    .print-summary-item {
+      margin-right: 15px;
+      margin-bottom: 5px;
+    }
+    
+    /* Revenue report specific styles */
+    .print-metrics {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 9pt;
+    }
+    
+    .print-metrics-item {
+      border: 1px solid #ddd;
+      padding: 5px;
+    }
+    
+    /* Table row styles */
+    .print-table tr {
+      page-break-inside: avoid;
+    }
+    
+    /* Ensure all tables fit on a page */
+    @page {
+      size: landscape;
+      margin: 0.7cm;
+    }
+    
+    /* Additional utilities */
+    .print-break-after {
+      page-break-after: always;
+    }
+    
+    /* Reset background colors for better printing */
+    .print-table th, .print-table tr, .print-table td,
+    .print-content th, .print-content tr, .print-content td {
+      background-color: white !important;
+      color: black !important;
+    }
+    
+    /* Force whitespace handling */
+    .whitespace-normal {
+      white-space: normal !important;
+    }
+  }
