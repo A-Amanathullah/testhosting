@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { motion } from 'framer-motion';
+// import { motion } from 'framer-motion';
 import { LoyaltyCard, EditLoyaltyCardModal, CreateCardModal } from '../../components/loyalty-card';
 
 const CardPage = () => {
@@ -9,7 +9,7 @@ const CardPage = () => {
     {
       tier: 'Silver',
       icon: 'card', 
-      points: { min: 0, max: 250 },
+      points: 123,
       customers: 142,
       color: '#C0C0C0',
       pointsMethod: 'booking',
@@ -18,7 +18,7 @@ const CardPage = () => {
     {
       tier: 'Gold',
       icon: 'users',
-      points: { min: 251, max: 750 },
+      points: 251,
       customers: 68,
       color: '#FFD700',
       pointsMethod: 'booking',
@@ -27,7 +27,7 @@ const CardPage = () => {
     {
       tier: 'Platinum',
       icon: 'award',
-      points: { min: 751, max: 10000 },
+      points: 751,
       customers: 15,
       color: '#E5E4E2',
       pointsMethod: 'amount',

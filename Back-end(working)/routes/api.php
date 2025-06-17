@@ -10,6 +10,7 @@ use App\Http\Controllers\GoogleMapsController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\BusRouteController;
+use App\Http\Controllers\SmsTemplateController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -30,6 +31,7 @@ Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 Route::get('/store-route/batticaloa', [BusRouteController::class, 'storeRouteViaBatticaloa']);
 Route::post('/user-details', [AuthController::class, 'storeUserDetails'])->middleware('auth:sanctum');
+Route::apiResource('sms-templates', SmsTemplateController::class);
 
 
 

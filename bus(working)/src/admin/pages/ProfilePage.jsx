@@ -1,32 +1,71 @@
-import React, { useState } from "react";
-
-const dummyUser = {
-  name: "Admin User",
-  email: "admin@example.com",
-  role: "Administrator",
-  phone: "077-1234567",
-  joined: "2024-01-15",
-};
+import React, { useState, useEffect } from "react";
+import useProfile from '../../hooks/useProfile';
 
 const ProfilePage = () => {
-  const [profile, setProfile] = useState(dummyUser);
+  const { profile, setProfile, loading, error, updateProfile } = useProfile();
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
+  const [localProfile, setLocalProfile] = useState(null);
+
+  useEffect(() => {
+    if (profile) {
+      setLocalProfile({
+        name: profile.name || '',
+        email: profile.email || '',
+        role: profile.role || '',
+        phone: profile.phone_no || '',
+        joined: profile.created_at || profile.joined || '',
+        user_id: profile.id,
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        gender: profile.gender || '',
+      });
+    }
+  }, [profile]);
 
   const handleChange = (e) => {
-    setProfile({ ...profile, [e.target.name]: e.target.value });
+    setLocalProfile({ ...localProfile, [e.target.name]: e.target.value });
   };
 
   const handleEdit = () => setEditing(true);
   const handleCancel = () => {
-    setProfile(dummyUser);
+    setLocalProfile({
+      name: profile.name || '',
+      email: profile.email || '',
+      role: profile.role || '',
+      phone: profile.phone_no || '',
+      joined: profile.created_at || profile.joined || '',
+      user_id: profile.id,
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || '',
+      gender: profile.gender || '',
+    });
     setEditing(false);
     setMessage("");
   };
-  const handleSave = () => {
-    setEditing(false);
-    setMessage("Profile updated successfully!");
+
+  const handleSave = async () => {
+    const payload = {
+      user_id: localProfile.user_id,
+      first_name: localProfile.first_name,
+      last_name: localProfile.last_name,
+      phone_no: localProfile.phone,
+      gender: localProfile.gender,
+      email: localProfile.email,
+      role: localProfile.role,
+    };
+    const res = await updateProfile(payload);
+    if (res.success) {
+      setMessage("Profile updated successfully!");
+      setEditing(false);
+      setProfile({ ...profile, ...payload });
+    } else {
+      setMessage("Failed to update profile");
+    }
   };
+
+  if (loading || !localProfile) return <div className="p-6">Loading...</div>;
+  if (error) return <div className="p-6 text-red-600">Error loading profile</div>;
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
@@ -38,7 +77,7 @@ const ProfilePage = () => {
             <input
               type="text"
               name="name"
-              value={profile.name}
+              value={localProfile.name}
               onChange={handleChange}
               disabled={!editing}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 bg-gray-50"
@@ -49,7 +88,7 @@ const ProfilePage = () => {
             <input
               type="email"
               name="email"
-              value={profile.email}
+              value={localProfile.email}
               onChange={handleChange}
               disabled
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
@@ -60,7 +99,7 @@ const ProfilePage = () => {
             <input
               type="text"
               name="role"
-              value={profile.role}
+              value={localProfile.role}
               onChange={handleChange}
               disabled
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
@@ -71,18 +110,55 @@ const ProfilePage = () => {
             <input
               type="text"
               name="phone"
-              value={profile.phone}
+              value={localProfile.phone}
               onChange={handleChange}
               disabled={!editing}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 bg-gray-50"
             />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">First Name</label>
+            <input
+              type="text"
+              name="first_name"
+              value={localProfile.first_name}
+              onChange={handleChange}
+              disabled={!editing}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 bg-gray-50"
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">Last Name</label>
+            <input
+              type="text"
+              name="last_name"
+              value={localProfile.last_name}
+              onChange={handleChange}
+              disabled={!editing}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 bg-gray-50"
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">Gender</label>
+            <select
+              name="gender"
+              value={localProfile.gender}
+              onChange={handleChange}
+              disabled={!editing}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 bg-gray-50"
+            >
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
           </div>
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700">Joined</label>
             <input
               type="text"
               name="joined"
-              value={profile.joined}
+              value={localProfile.joined}
               onChange={handleChange}
               disabled
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"

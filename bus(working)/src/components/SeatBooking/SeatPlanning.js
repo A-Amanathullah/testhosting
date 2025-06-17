@@ -212,7 +212,8 @@ const SeatPlanning = ({ pickup, drop }) => {
                 price: totalPrice,
             };
 
-            if (user.role === "agent") {
+            if (user.role === "agent" || user.role === "admin") {
+                // For agents and admins, set payment_status to "Not Applicable" and status to "Confirmed"
                 bookingData.payment_status = "Not Applicable";
                 bookingData.status = "Confirmed";
                 await createBooking(bookingData, user.token);
@@ -231,6 +232,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                 setShowQRCode(true);
                 // navigate("/passengerdash"); // Optionally navigate after download
             } else {
+                // For non-agents, proceed with payment flow
                 bookingData.payment_status = "Pending";
                 bookingData.status = "Processing";
                 const response = await createBooking(bookingData, user.token);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Award, Users, CreditCard, Bus, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
+import logo from '../../../assets/Side.png'
 
 const LoyaltyCard = ({ 
   tier, 
@@ -64,40 +65,48 @@ const LoyaltyCard = ({
         background: `linear-gradient(135deg, ${customStyle.lightBg}, ${customStyle.bg})`,
         borderColor: customStyle.borderColor
       }}
-      className={`relative overflow-hidden border-2 rounded-lg shadow-lg`}
+      className={`relative overflow-hidden border-2 rounded-2xl shadow-lg`}
       whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {/* Card header */}
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="p-2.5 rounded-lg bg-white/30">
-            <IconComponent className="w-6 h-6 text-gray-800" />
+      <div className="p-2">
+        <div className="flex flex-col items-center mb-2">
+          <div className="flex items-center justify-center mb-1">
+            <img src={logo} alt="Logo" className="w-80 justify-self-center " />
+            {/* <div className="p-2.5 rounded-lg bg-white/30">
+              <IconComponent className="w-6 h-6 text-gray-800" />
+            </div> */}
+            
           </div>
-          <span className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-white/40">
-            {tier}
-          </span>
+          <span className="px-3 py-1 text-xs font-bold justify-self-start uppercase rounded-full z-20 absolute bg-white/40">
+              {tier}
+            </span>
+          <h3 className="text-lg font-bold text-gray-900" style={ { fontFamily: 'Zen Dots'}}>
+            1234 5432 7654 3210
+          </h3>
         </div>
         
-        <h3 className="text-2xl font-bold text-gray-900">
-          {points.min} - {points.max} Points
-        </h3>
+        <div className="font-bold text-gray-900 flex items-center justify-between m-1">
+          <div className="text-sm text-gray-600" style={ { fontFamily: 'Zen Dots'}}>User's name</div>
+          <div style={ { fontFamily: 'Zen Dots'}}>{points} Points</div>
+        </div>
         
-        <div className="flex items-center mt-3 mb-2 text-sm text-gray-800">
+        {/* <div className="flex items-center mt-3 mb-2 text-sm text-gray-800">
           <PointsMethodIcon className="w-4 h-4 mr-1" />
           <span>
             {pointsMethod === 'booking' ? 
               `${pointsPerBooking} points per booking` : 
               `${pointsPerAmount} points per Rs.${amount}`}
           </span>
-        </div>
+        </div> */}
         
-        <div className="flex items-center mt-4 text-sm text-gray-700 opacity-80">
+        {/* <div className="flex items-center mt-4 text-sm text-gray-700 opacity-80">
           <Users className="w-4 h-4 mr-1" />
           <span>{customers} customers enrolled</span>
-        </div>
+        </div> */}
       </div>
       
       {/* Edit button */}
