@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { storeUserDetails } from '../../../services/authService';
 
 const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = false }) => {  // Form state
   const [formData, setFormData] = useState({
@@ -6,12 +7,14 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
     contact_number: '',
     email: '',
     address: '',
-    role: '', // Role is optional, no default value
+    role: '',
     nic_no: '',
     password: '',
     confirmPassword: '',
     profile_image: null,
-    // Removed: permissions: [],
+    first_name: '',
+    last_name: '',
+    gender: '',
   });
 
   // Validation errors
@@ -85,6 +88,9 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
     if (!formData.address.trim()) newErrors.address = "Address is required";
     if (!formData.nic_no.trim()) newErrors.nic_no = "NIC number is required";
     if (!formData.role) newErrors.role = "Role is required";
+    if (!formData.first_name.trim()) newErrors.first_name = "First name is required";
+    if (!formData.last_name.trim()) newErrors.last_name = "Last name is required";
+    if (!formData.gender) newErrors.gender = "Gender is required";
     
     // Password validation (not required in edit mode if left empty)
     if (!isEdit || (formData.password || formData.confirmPassword)) {
@@ -100,19 +106,28 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
   };
 
   // Form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (validateForm()) {
-      // Remove confirmPassword from the data being sent to the server
       const { confirmPassword, ...dataToSubmit } = formData;
-      // Removed: Ensure permissions is always an array
-      // If no password is provided in edit mode, remove it from the submission
       if (isEdit && !dataToSubmit.password) {
         const { password, ...dataWithoutPassword } = dataToSubmit;
-        onSubmit(dataWithoutPassword);
+        await onSubmit(dataWithoutPassword);
       } else {
-        onSubmit(dataToSubmit);
+        await onSubmit(dataToSubmit);
+      }
+      // After user/staff creation, send user_details
+      if (formData.user_id) {
+        // Call user-details API (assume storeUserDetails is imported)
+        await storeUserDetails({
+          user_id: formData.user_id,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone_no: formData.contact_number,
+          gender: formData.gender,
+          email: formData.email,
+          role: formData.role,
+        });
       }
     }
   };
@@ -145,19 +160,30 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
             Upload Photo
           </label>
         </div>
-
-        {/* Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Name *</label>
+          <label className="block text-sm font-medium text-gray-700">First Name *</label>
           <input
             type="text"
-            name="name"
-            value={formData.name}
+            name="first_name"
+            value={formData.first_name}
             onChange={handleChange}
-            className={`mt-1 block w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-red-500 focus:border-red-500`}
+            className={`mt-1 block w-full border ${errors.first_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-red-500 focus:border-red-500`}
           />
-          {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+          {errors.first_name && <p className="mt-1 text-sm text-red-600">{errors.first_name}</p>}
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Last Name *</label>
+          <input
+            type="text"
+            name="last_name"
+            value={formData.last_name}
+            onChange={handleChange}
+            className={`mt-1 block w-full border ${errors.last_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-red-500 focus:border-red-500`}
+          />
+          {errors.last_name && <p className="mt-1 text-sm text-red-600">{errors.last_name}</p>}
+        </div>
+
+        
 
         {/* Contact Number */}
         <div>
@@ -214,7 +240,24 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
           {errors.role && <p className="mt-1 text-sm text-red-600">{errors.role}</p>}
         </div>
 
-        {/* Removed Permissions section */}
+        {/* New fields for user_details */}
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Gender *</label>
+          <select
+            name="gender"
+            value={formData.gender}
+            onChange={handleChange}
+            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+          >
+            <option value="">Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          {errors.gender && <p className="mt-1 text-sm text-red-600">{errors.gender}</p>}
+        </div>
+      </div>
 
         {/* Address */}
         <div className="col-span-1 md:col-span-2">
@@ -228,6 +271,19 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
           />
           {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
         </div>
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">User Name *</label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className={`mt-1 block w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-red-500 focus:border-red-500`}
+          />
+          {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+        </div>
+        
 
         {/* Password */}
         <div>
@@ -258,7 +314,8 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
           />
           {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
         </div>
-      </div>
+
+        
 
       {/* Submit Button */}
       <div className="flex justify-end mt-6">

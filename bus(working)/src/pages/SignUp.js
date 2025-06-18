@@ -3,6 +3,7 @@ import { useContext, useState } from "react";
 import { signupUser, storeUserDetails, fetchUser } from "../services/authService";
 import { AuthContext } from "../context/AuthContext";
 import GoogleAuthButton from "../components/Auth/GoogleAuthButton";
+import { FaEye, FaEyeSlash } from '../admin/components/Icons';
 
 const SignUp = () => {
   const [name, setName] = useState("");
@@ -19,6 +20,8 @@ const SignUp = () => {
 
   const [formErrors, setFormErrors] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const from = location.state?.from?.pathname || "/";
 
@@ -175,23 +178,43 @@ const SignUp = () => {
               </div>
               <div className="py-2">
                 <span className="mb-2 text-md">Password</span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500 text-sm sm:text-base"
-                  name="password"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500 text-sm sm:text-base pr-10"
+                    name="password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword(v => !v)}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
               </div>
               <div className="py-2">
                 <span className="mb-2 text-md">Confirm Password</span>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500 text-sm sm:text-base"
-                  name="confirm_password"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500 text-sm sm:text-base pr-10"
+                    name="confirm_password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    tabIndex={-1}
+                    onClick={() => setShowConfirmPassword(v => !v)}
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
               </div>
               <button
                 type="submit"

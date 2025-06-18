@@ -32,6 +32,8 @@ Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 Route::get('/store-route/batticaloa', [BusRouteController::class, 'storeRouteViaBatticaloa']);
 Route::post('/user-details', [AuthController::class, 'storeUserDetails'])->middleware('auth:sanctum');
 Route::apiResource('sms-templates', SmsTemplateController::class);
+Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
+Route::delete('/user/{id}', [AuthController::class, 'destroyUser'])->middleware('auth:sanctum');
 
 
 

@@ -161,12 +161,21 @@ class AuthController extends Controller
             [
                 'first_name' => $validatedData['first_name'],
                 'last_name' => $validatedData['last_name'],
-                'phone_no' => $validatedData['phone_no'],
+                'phone_no' => $validatedData['phone_no'] ?? $validatedData['contact_number'],
                 'gender' => $validatedData['gender'],
                 'email' => $validatedData['email'],
                 'role' => $validatedData['role'],
             ]
         );
+
+        // Update staff table if user is a staff
+        $staff = \App\Models\Staff::where('user_id', $validatedData['user_id'])->first();
+        if ($staff) {
+            $staff->email = $validatedData['email'];
+            $staff->role = $validatedData['role'];
+            $staff->contact_number = $validatedData['phone_no'];
+            $staff->save();
+        }
 
         return response()->json([
             'message' => 'User details saved successfully',
@@ -195,5 +204,37 @@ class AuthController extends Controller
     });
 
     return response()->json($users);
+}
+
+// Change Password
+public function changePassword(Request $request)
+{
+    $request->validate([
+        'current_password' => 'required',
+        'new_password' => 'required|min:6|confirmed',
+    ]);
+
+    $user = $request->user();
+    if (!\Hash::check($request->current_password, $user->password)) {
+        return response()->json(['message' => 'Current password is incorrect'], 400);
+    }
+    $user->password = bcrypt($request->new_password);
+    $user->save();
+    return response()->json(['message' => 'Password changed successfully']);
+}
+
+// Delete user and related user_details
+public function destroyUser($id)
+{
+    $user = User::find($id);
+    if (!$user) {
+        return response()->json(['message' => 'User not found'], 404);
+    }
+    // Delete user details
+    UserDetail::where('user_id', $id)->delete();
+    // Optionally, delete from staff table if exists
+    \App\Models\Staff::where('user_id', $id)->delete();
+    $user->delete();
+    return response()->json(['message' => 'User and related details deleted successfully']);
 }
 }

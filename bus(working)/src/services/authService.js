@@ -61,3 +61,20 @@ export const checkProfileCompletion = async () => {
   const user = await fetchUser();
   return !user.phone_no || !user.gender;
 };
+
+export const changePassword = async (currentPassword, newPassword, confirmPassword) => {
+  const response = await axios.post(
+    `${API_URL}/change-password`,
+    {
+      current_password: currentPassword,
+      new_password: newPassword,
+      new_password_confirmation: confirmPassword,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    }
+  );
+  return response.data;
+};

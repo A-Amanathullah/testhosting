@@ -3,11 +3,13 @@ import { useContext, useState, useEffect } from "react";
 import { loginUser, fetchUser, checkProfileCompletion } from "../services/authService";
 import { AuthContext } from "../context/AuthContext";
 import GoogleAuthButton from "../components/Auth/GoogleAuthButton";
+import { FaEye, FaEyeSlash } from '../admin/components/Icons';
 
 const Login = () => {
   const { setUser, setToken } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [errorMessage, setErrorMessage] = useState("");
@@ -133,14 +135,24 @@ const Login = () => {
             </div>
             <div className="py-4">
               <span className="mb-2 text-md">Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                name="password"
-                className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  name="password"
+                  className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword(v => !v)}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
             </div>
             <div className="w-full py-4">
               <Link to="/forgot">

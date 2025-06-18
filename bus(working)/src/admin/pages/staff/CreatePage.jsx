@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { StaffForm } from '../../components/staff-management';
 import { createStaffWithUser } from '../../../services/staffService';
+import { storeUserDetails } from '../../../services/authService';
 
 const CreatePage = () => {
   const navigate = useNavigate();
@@ -14,7 +15,17 @@ const CreatePage = () => {
     setLoading(true);
     setError(null);
     try {
-      await createStaffWithUser(staffData);
+      const { user } = await createStaffWithUser(staffData);
+      // Send user details after user is created
+      await storeUserDetails({
+        user_id: user.id,
+        first_name: staffData.first_name,
+        last_name: staffData.last_name,
+        phone_no: staffData.phone_no || staffData.contact_number,
+        gender: staffData.gender,
+        email: staffData.email,
+        role: staffData.role,
+      });
       setShowSuccess(true);
       setTimeout(() => {
         navigate('/admin/staff/list');

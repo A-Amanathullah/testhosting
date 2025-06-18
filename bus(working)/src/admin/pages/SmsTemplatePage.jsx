@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getToken } from '../../utils/auth';
+import { FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 
 const API_URL = 'http://localhost:8000/api/sms-templates';
 
@@ -8,6 +9,7 @@ const SmsTemplatePage = () => {
   const [templates, setTemplates] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
   const [form, setForm] = useState({ name: '', content: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -127,9 +129,16 @@ const SmsTemplatePage = () => {
                   <tr key={tpl.id} className="border-b">
                     <td className="px-4 py-2 font-medium">{tpl.name}</td>
                     <td className="px-4 py-2 text-sm text-gray-700">{tpl.content}</td>
-                    <td className="px-4 py-2">
-                      <button onClick={() => openEdit(tpl)} className="mr-2 px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">Edit</button>
-                      <button onClick={() => handleDelete(tpl.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+                    <td className="px-4 py-2 flex items-center">
+                      <button onClick={() => setViewing(tpl)} className="mr-2 px-3 py-1 rounded  flex items-center" title="View">
+                        <FaEye className='text-blue-500'/>
+                      </button>
+                      <button onClick={() => openEdit(tpl)} className="mr-2 px-3 py-1 rounded  flex items-center" title="Edit">
+                        <FaEdit className='text-yellow-500'/>
+                      </button>
+                      <button onClick={() => handleDelete(tpl.id)} className="px-3 py-1  rounded flex items-center" title="Delete">
+                        <FaTrash className='text-red-600'/>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -176,6 +185,23 @@ const SmsTemplatePage = () => {
               <div className="flex gap-3 justify-end">
                 <button onClick={closeModal} className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancel</button>
                 <button onClick={handleSave} className="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800">Save</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* View Modal */}
+        {viewing && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Template Message</h2>
+              <div className="mb-4">
+                <div className="font-semibold mb-2">{viewing.name}</div>
+                <div className="whitespace-pre-wrap text-gray-800 border rounded p-3 bg-gray-50 text-sm">
+                  {viewing.content}
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={() => setViewing(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Close</button>
               </div>
             </div>
           </div>
