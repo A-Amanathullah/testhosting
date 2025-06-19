@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Award, CreditCard, Users } from 'lucide-react';
+// import { X, Award, CreditCard, Users } from 'lucide-react';
+import { X} from 'lucide-react';
 
-const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
+const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [], isLoading = false }) => {
   const [formData, setFormData] = useState({
     tier: '',
     minPoints: 0,
@@ -11,7 +12,6 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
     amount: 1000,
     pointsPerAmount: 1,
     color: '#C0C0C0',
-    icon: 'card',
   });
   
   const [errors, setErrors] = useState({});
@@ -75,43 +75,30 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
     }
   };
   
-  const handlePointsMethodChange = (method) => {
-    setFormData({
-      ...formData,
-      pointsMethod: method
-    });
-  };
+  // const handlePointsMethodChange = (method) => {
+  //   setFormData({
+  //     ...formData,
+  //     pointsMethod: method
+  //   });
+  // };
   
-  const handleIconChange = (iconType) => {
-    setFormData({
-      ...formData,
-      icon: iconType
-    });
-  };
+  // const handleIconChange = (iconType) => {
+  //   setFormData({
+  //     ...formData,
+  //     icon: iconType
+  //   });
+  // };
   
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
       const newCard = {
         tier: formData.tier,
-        icon: formData.icon,
-        points: {
-          min: formData.minPoints,
-          max: formData.maxPoints,
-        },
-        customers: 0, // New cards start with 0 customers
-        pointsMethod: formData.pointsMethod,
+        minPoints: formData.minPoints,
+        maxPoints: formData.maxPoints,
+        pointsPerBooking: formData.pointsPerBooking,
         color: formData.color,
       };
-      
-      // Add specific fields based on points method
-      if (formData.pointsMethod === 'booking') {
-        newCard.pointsPerBooking = formData.pointsPerBooking;
-      } else {
-        newCard.amount = formData.amount;
-        newCard.pointsPerAmount = formData.pointsPerAmount;
-      }
-      
       onSave(newCard);
       resetForm();
     }
@@ -127,7 +114,6 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
       amount: 1000,
       pointsPerAmount: 1,
       color: '#C0C0C0',
-      icon: 'card',
     });
     setErrors({});
   };
@@ -174,7 +160,7 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
           </div>
           
           {/* Icon Selection */}
-          <div>
+          {/* <div>
             <label className="block mb-1 text-sm font-medium text-gray-700">
               Card Icon
             </label>
@@ -215,7 +201,7 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
                 <span className="text-xs">Award</span>
               </label>
             </div>
-          </div>
+          </div> */}
           
           {/* Min Points */}
           <div>
@@ -277,7 +263,7 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
           </div>
           
           {/* Points Method */}
-          <div>
+          {/* <div>
             <label className="block mb-1 text-sm font-medium text-gray-700">
               Points Earning Method
             </label>
@@ -303,10 +289,10 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
                 <span>Points per Amount</span>
               </label>
             </div>
-          </div>
+          </div> */}
           
           {/* Points Per Booking (conditional) */}
-          {formData.pointsMethod === 'booking' && (
+          
             <div>
               <label className="block mb-1 text-sm font-medium text-gray-700">
                 Points Per Booking
@@ -323,10 +309,10 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
                 <p className="mt-1 text-sm text-red-600">{errors.pointsPerBooking}</p>
               )}
             </div>
-          )}
+          
           
           {/* Amount and Points Per Amount (conditional) */}
-          {formData.pointsMethod === 'amount' && (
+          {/* {formData.pointsMethod === 'amount' && (
             <>
               <div>
                 <label className="block mb-1 text-sm font-medium text-gray-700">
@@ -362,7 +348,7 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
                 )}
               </div>
             </>
-          )}
+          )} */}
           
           {/* Submit buttons */}
           <div className="flex justify-end pt-4 mt-4 border-t border-gray-200">
@@ -376,8 +362,9 @@ const CreateCardModal = ({ isOpen, onClose, onSave, existingCards = [] }) => {
             <button
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              disabled={isLoading}
             >
-              Create Card
+              {isLoading ? 'Creating...' : 'Create Card'}
             </button>
           </div>
         </form>

@@ -1,18 +1,14 @@
 import React from 'react';
-import { Award, Users, CreditCard, Bus, DollarSign } from 'lucide-react';
+// import { Award, Users, CreditCard, Bus, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
 import logo from '../../../assets/Side.png'
 
 const LoyaltyCard = ({ 
   tier, 
-  icon, 
   points, 
   customers, 
-  color = '#C0C0C0', 
-  pointsMethod, 
-  pointsPerBooking, 
-  amount, 
-  pointsPerAmount, 
+  color = '#C0C0C0',
+  cardNo = '0000 0000 0000 0000',
   onEdit 
 }) => {
   // Use custom colors passed from props
@@ -53,11 +49,11 @@ const LoyaltyCard = ({
   };
   const customStyle = generateStyles(color);
   
-  // Determine which icon to use
-  const IconComponent = icon === 'award' ? Award : (icon === 'users' ? Users : CreditCard);
+  // // Determine which icon to use
+  // const IconComponent = icon === 'award' ? Award : (icon === 'users' ? Users : CreditCard);
   
-  // Determine points method icon
-  const PointsMethodIcon = pointsMethod === 'booking' ? Bus : DollarSign;
+  // // Determine points method icon
+  // const PointsMethodIcon = pointsMethod === 'booking' ? Bus : DollarSign;
 
   return (
     <motion.div 
@@ -84,14 +80,18 @@ const LoyaltyCard = ({
           <span className="px-3 py-1 text-xs font-bold justify-self-start uppercase rounded-full z-20 absolute bg-white/40">
               {tier}
             </span>
-          <h3 className="text-lg font-bold text-gray-900" style={ { fontFamily: 'Zen Dots'}}>
-            1234 5432 7654 3210
+          <h3 className="text-base font-medium text-gray-900" style={ { fontFamily: 'Zen Dots'}}>
+            {cardNo}
           </h3>
         </div>
         
         <div className="font-bold text-gray-900 flex items-center justify-between m-1">
-          <div className="text-sm text-gray-600" style={ { fontFamily: 'Zen Dots'}}>User's name</div>
-          <div style={ { fontFamily: 'Zen Dots'}}>{points} Points</div>
+          <div className="text-sm text-gray-600" style={ { fontFamily: 'Zen Dots'}}>{customers}</div>
+          <div style={ { fontFamily: 'Zen Dots'} } className="text-xs text-gray-600">
+            {points && typeof points === 'object' && points !== null
+              ? `${points.min} - ${points.max} Points`
+              : `${points} Points`}
+          </div>
         </div>
         
         {/* <div className="flex items-center mt-3 mb-2 text-sm text-gray-800">

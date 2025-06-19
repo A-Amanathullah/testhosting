@@ -1,60 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
+import { FaTrash } from 'react-icons/fa';
 // import { motion } from 'framer-motion';
 import { LoyaltyCard, EditLoyaltyCardModal, CreateCardModal } from '../../components/loyalty-card';
+import { createLoyaltyCard, getLoyaltyCards, updateLoyaltyCard, deleteLoyaltyCard } from '../../../services/loyaltyCardService';
 
 const CardPage = () => {
-  // Simulated data - in a real application, this would come from an API/backend
-  const [cards, setCards] = useState([
-    {
-      tier: 'Silver',
-      icon: 'card', 
-      points: 123,
-      customers: 142,
-      color: '#C0C0C0',
-      pointsMethod: 'booking',
-      pointsPerBooking: 5
-    },
-    {
-      tier: 'Gold',
-      icon: 'users',
-      points: 251,
-      customers: 68,
-      color: '#FFD700',
-      pointsMethod: 'booking',
-      pointsPerBooking: 10
-    },
-    {
-      tier: 'Platinum',
-      icon: 'award',
-      points: 751,
-      customers: 15,
-      color: '#E5E4E2',
-      pointsMethod: 'amount',
-      amount: 1000,
-      pointsPerAmount: 1
-    }
-  ]);
-
-  // Modal states
+  const [cards, setCards] = useState([]);
   const [isCreateCardModalOpen, setIsCreateCardModalOpen] = useState(false);
   const [isEditCardModalOpen, setIsEditCardModalOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    fetchCards();
+  }, []);
+
+  const fetchCards = async () => {
+    try {
+      const data = await getLoyaltyCards();
+      setCards(data);
+    } catch (err) {
+      alert('Failed to fetch loyalty cards.');
+    }
+  };
+
   const handleOpenCardEdit = (card) => {
     setSelectedCard(card);
     setIsEditCardModalOpen(true);
   };
 
-  const handleSaveCardChanges = (updatedCard) => {
-    setCards(cards.map(card => 
-      card.tier === updatedCard.tier ? { ...card, ...updatedCard } : card
-    ));
-  };
-  
-  const handleCreateCard = (newCard) => {
-    setCards([...cards, newCard]);
+  const handleCreateCard = async (newCard) => {
+    setIsLoading(true);
+    try {
+      await createLoyaltyCard(newCard);
+      await fetchCards();
+    } catch (err) {
+      alert('Failed to create loyalty card.');
+    }
+    setIsLoading(false);
     setIsCreateCardModalOpen(false);
   };
+
+  const handleSaveCardChanges = async (id, updatedCard) => {
+    setIsLoading(true);
+    try {
+      await updateLoyaltyCard(id, updatedCard);
+      await fetchCards();
+    } catch (err) {
+      alert('Failed to update loyalty card.');
+    }
+    setIsLoading(false);
+  };
+  
+  const handleDeleteCard = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this card?')) return;
+    try {
+      await deleteLoyaltyCard(id);
+      await fetchCards();
+    } catch (err) {
+      alert('Failed to delete loyalty card.');
+    }
+  };
+
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
       <div className="flex-grow p-6 overflow-auto">
@@ -78,19 +86,23 @@ const CardPage = () => {
         <div className="mb-6">
           <h2 className="mb-4 text-xl font-bold text-gray-800">Loyalty Tier Configuration</h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {cards.map((card) => (<LoyaltyCard
-                key={card.tier}
-                tier={card.tier}
-                icon={card.icon}
-                points={card.points}
-                customers={card.customers}
-                color={card.color}
-                pointsMethod={card.pointsMethod}
-                pointsPerBooking={card.pointsPerBooking}
-                amount={card.amount}
-                pointsPerAmount={card.pointsPerAmount}
-                onEdit={() => handleOpenCardEdit(card)}
-              />
+            {cards.map((card) => (
+              <div key={card.id || card.tier} className="relative">
+                <LoyaltyCard
+                  tier={card.tier}
+                  points={{ min: card.min_points, max: card.max_points }}
+                  color={card.color}
+                  pointsPerBooking={card.points_per_booking}
+                  onEdit={() => handleOpenCardEdit(card)}
+                />
+                <button
+                  onClick={() => handleDeleteCard(card.id)}
+                  className="absolute top-2 right-12 p-2 text-xs text-white bg-red-500 rounded-full hover:bg-red-700 flex items-center justify-center"
+                  title="Delete Card"
+                >
+                  <FaTrash size={14} />
+                </button>
+              </div>
             ))}
           </div>        </div>
       </div>
@@ -101,6 +113,7 @@ const CardPage = () => {
         onClose={() => setIsEditCardModalOpen(false)}
         onSave={handleSaveCardChanges}
         cardData={selectedCard}
+        isLoading={isLoading}
       />
       
       <CreateCardModal 
@@ -108,6 +121,7 @@ const CardPage = () => {
         onClose={() => setIsCreateCardModalOpen(false)}
         onSave={handleCreateCard}
         existingCards={cards}
+        isLoading={isLoading}
       />
     </div>
   );

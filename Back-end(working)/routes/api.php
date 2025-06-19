@@ -11,6 +11,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\BusRouteController;
 use App\Http\Controllers\SmsTemplateController;
+use App\Http\Controllers\LoyaltyCardController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -34,6 +35,7 @@ Route::post('/user-details', [AuthController::class, 'storeUserDetails'])->middl
 Route::apiResource('sms-templates', SmsTemplateController::class);
 Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
 Route::delete('/user/{id}', [AuthController::class, 'destroyUser'])->middleware('auth:sanctum');
+Route::apiResource('loyalty-cards', LoyaltyCardController::class);
 
 
 
