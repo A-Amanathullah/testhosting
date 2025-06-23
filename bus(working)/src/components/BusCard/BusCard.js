@@ -109,7 +109,16 @@ const BusCard = () => {
                                 className=""
                             >
                                 <div className="py-1 sm:py-2">
-                                    {trips.map((trip) => (
+                                    {trips
+                                      .filter(trip => {
+                                        // Only show trips with departure_date today or in the future
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        const depDate = new Date(trip.departure_date);
+                                        depDate.setHours(0, 0, 0, 0);
+                                        return depDate >= today;
+                                      })
+                                      .map((trip) => (
                                         <BusTripCard key={trip.id} trip={trip} buses={buses} />
                                     ))}
                                 </div>

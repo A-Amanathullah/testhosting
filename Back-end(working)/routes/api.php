@@ -12,6 +12,8 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\BusRouteController;
 use App\Http\Controllers\SmsTemplateController;
 use App\Http\Controllers\LoyaltyCardController;
+use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\RoleController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -36,6 +38,16 @@ Route::apiResource('sms-templates', SmsTemplateController::class);
 Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
 Route::delete('/user/{id}', [AuthController::class, 'destroyUser'])->middleware('auth:sanctum');
 Route::apiResource('loyalty-cards', LoyaltyCardController::class);
+Route::get('/role-permissions', [RolePermissionController::class, 'index']);
+Route::get('/role-permissions/{role}', [RolePermissionController::class, 'show']);
+Route::post('/role-permissions', [RolePermissionController::class, 'store']);
+Route::get('/roles', [RoleController::class, 'index']);
+Route::post('/roles', [RoleController::class, 'store']);
+
+// Fallback for unknown API routes to return JSON 404
+Route::fallback(function() {
+    return response()->json(['status' => 'error', 'message' => 'API route not found'], 404);
+});
 
 
 

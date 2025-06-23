@@ -139,12 +139,23 @@ const BusSchedulePage = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const filteredSchedules = schedules.filter(schedule =>
-    (schedule.bus_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (schedule.driver_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (schedule.conductor_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (`${schedule.start_point || ''} to ${schedule.end_point || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filter schedules to only show present and future dates
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of today
+
+  const filteredSchedules = schedules
+    .filter(schedule => {
+      // Only show schedules with departure_date today or in the future
+      const depDate = new Date(schedule.departure_date);
+      depDate.setHours(0, 0, 0, 0); // Ignore time part
+      return depDate >= today;
+    })
+    .filter(schedule => (
+      (schedule.bus_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (schedule.driver_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (schedule.conductor_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (`${schedule.start_point || ''} to ${schedule.end_point || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
+    ));
 
 
   return (

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { usePermissions } from '../../../context/PermissionsContext';
 
 const SIDEBAR_ITEMS = [
   {
@@ -165,7 +166,8 @@ const Sidebar = () => {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [expandedItems, setExpandedItems] = useState({});
   const location = useLocation();
-  
+  const { permissions, loading } = usePermissions();
+
   // Update the date and time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -230,6 +232,31 @@ const Sidebar = () => {
     }));
   };
 
+  // Helper to check if user has view permission for a module or submodule
+  const hasViewPermission = (moduleName) => {
+    if (!permissions) return false;
+    return permissions[moduleName]?.view === true;
+  };
+
+  // Filter sidebar items based on permissions
+  const filteredSidebarItems = SIDEBAR_ITEMS.filter(item => {
+    if (item.hasChildren) {
+      // At least one child must be visible
+      const visibleChildren = item.children.filter(child => hasViewPermission(child.name));
+      return visibleChildren.length > 0;
+    } else {
+      return hasViewPermission(item.name);
+    }
+  }).map(item => {
+    if (item.hasChildren) {
+      return {
+        ...item,
+        children: item.children.filter(child => hasViewPermission(child.name))
+      };
+    }
+    return item;
+  });
+
   return (
     <motion.div
       className={`relative z-10 transition-all duration-300 ease-in-out flex-shrink-0 ${
@@ -258,106 +285,110 @@ const Sidebar = () => {
 
           {/* Make nav element scrollable with flex-grow */}
           <nav className="flex-grow px-4 pb-2 overflow-y-auto">
-            {SIDEBAR_ITEMS.map((item, index) => (
-              <div key={item.name} className="mb-1">
-                {/* Main menu item */}
-                {item.hasChildren ? (
-                  // Item with children - clickable but doesn't navigate
-                  <div
-                    onClick={() => toggleSubmenu(item.name)}
-                    className={`flex items-center justify-between p-3 text-sm font-medium transition-colors rounded-lg cursor-pointer hover:bg-gray-100 
-                      ${hasActiveChild(item) ? 'bg-red-50 text-red-800' : 'text-gray-700'}`}
-                  >
-                    <div className="flex items-center">
-                      <item.icon
-                        size={20}
-                        style={{ color: hasActiveChild(item) ? '#991b1b' : item.color, minWidth: "20px" }}
-                      />
+            {loading ? (
+              <div className="text-center text-gray-400 py-4">Loading menu...</div>
+            ) : (
+              filteredSidebarItems.map((item, index) => (
+                <div key={item.name} className="mb-1">
+                  {/* Main menu item */}
+                  {item.hasChildren ? (
+                    // Item with children - clickable but doesn't navigate
+                    <div
+                      onClick={() => toggleSubmenu(item.name)}
+                      className={`flex items-center justify-between p-3 text-sm font-medium transition-colors rounded-lg cursor-pointer hover:bg-gray-100 
+                        ${hasActiveChild(item) ? 'bg-red-50 text-red-800' : 'text-gray-700'}`}
+                    >
+                      <div className="flex items-center">
+                        <item.icon
+                          size={20}
+                          style={{ color: hasActiveChild(item) ? '#991b1b' : item.color, minWidth: "20px" }}
+                        />
+                        <AnimatePresence>
+                          {isSidebarOpen && (
+                            <motion.span
+                              className="ml-4 whitespace-nowrap"
+                              initial={{ opacity: 0, width: 0 }}
+                              animate={{ opacity: 1, width: "auto" }}
+                              exit={{ opacity: 0, width: 0 }}
+                              transition={{ duration: 0.2, delay: 0.3 }}
+                            >
+                              {item.name}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+                      </div>
                       <AnimatePresence>
                         {isSidebarOpen && (
-                          <motion.span
-                            className="ml-4 whitespace-nowrap"
-                            initial={{ opacity: 0, width: 0 }}
-                            animate={{ opacity: 1, width: "auto" }}
-                            exit={{ opacity: 0, width: 0 }}
-                            transition={{ duration: 0.2, delay: 0.3 }}
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
                           >
-                            {item.name}
-                          </motion.span>
+                            {expandedItems[item.name] ? (
+                              <ChevronDown size={16} />
+                            ) : (
+                              <ChevronRight size={16} />
+                            )}
+                          </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
-                    <AnimatePresence>
-                      {isSidebarOpen && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                        >
-                          {expandedItems[item.name] ? (
-                            <ChevronDown size={16} />
-                          ) : (
-                            <ChevronRight size={16} />
+                  ) : (
+                    // Regular link item
+                    <Link to={item.href}>
+                      <motion.div 
+                        className={`flex items-center p-3 text-sm font-medium transition-colors rounded-lg hover:bg-gray-100 
+                        ${isActive(item.href) ? 'bg-red-50 text-red-800' : 'text-gray-700'}`}
+                      >
+                        <item.icon
+                          size={20}
+                          style={{ color: isActive(item.href) ? '#991b1b' : item.color, minWidth: "20px" }}
+                        />
+                        <AnimatePresence>
+                          {isSidebarOpen && (
+                            <motion.span
+                              className="ml-4 whitespace-nowrap"
+                              initial={{ opacity: 0, width: 0 }}
+                              animate={{ opacity: 1, width: "auto" }}
+                              exit={{ opacity: 0, width: 0 }}
+                              transition={{ duration: 0.2, delay: 0.3 }}
+                            >
+                              {item.name}
+                            </motion.span>
                           )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                ) : (
-                  // Regular link item
-                  <Link to={item.href}>
-                    <motion.div 
-                      className={`flex items-center p-3 text-sm font-medium transition-colors rounded-lg hover:bg-gray-100 
-                      ${isActive(item.href) ? 'bg-red-50 text-red-800' : 'text-gray-700'}`}
-                    >
-                      <item.icon
-                        size={20}
-                        style={{ color: isActive(item.href) ? '#991b1b' : item.color, minWidth: "20px" }}
-                      />
-                      <AnimatePresence>
-                        {isSidebarOpen && (
-                          <motion.span
-                            className="ml-4 whitespace-nowrap"
-                            initial={{ opacity: 0, width: 0 }}
-                            animate={{ opacity: 1, width: "auto" }}
-                            exit={{ opacity: 0, width: 0 }}
-                            transition={{ duration: 0.2, delay: 0.3 }}
-                          >
-                            {item.name}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                    </motion.div>
-                  </Link>
-                )}
+                        </AnimatePresence>
+                      </motion.div>
+                    </Link>
+                  )}
 
-                {/* Submenu items */}
-                {item.hasChildren && expandedItems[item.name] && isSidebarOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="ml-6"
-                  >
-                    {item.children.map((child) => (
-                      <Link key={child.href} to={child.href}>
-                        <motion.div 
-                          className={`flex items-center p-2 mt-1 text-xs font-medium transition-colors rounded-md hover:bg-gray-100 
-                          ${isActive(child.href) ? 'bg-red-50 text-red-800 font-semibold' : 'text-gray-600'}`}
-                        >
-                          <child.icon 
-                            size={14} 
-                            className="min-w-[14px]"
-                            style={{ color: isActive(child.href) ? '#991b1b' : 'currentColor' }}
-                          />
-                          <span className="ml-3">{child.name}</span>
-                        </motion.div>
-                      </Link>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-            ))}
+                  {/* Submenu items */}
+                  {item.hasChildren && expandedItems[item.name] && isSidebarOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="ml-6"
+                    >
+                      {item.children.map((child) => (
+                        <Link key={child.href} to={child.href}>
+                          <motion.div 
+                            className={`flex items-center p-2 mt-1 text-xs font-medium transition-colors rounded-md hover:bg-gray-100 
+                            ${isActive(child.href) ? 'bg-red-50 text-red-800 font-semibold' : 'text-gray-600'}`}
+                          >
+                            <child.icon 
+                              size={14} 
+                              className="min-w-[14px]"
+                              style={{ color: isActive(child.href) ? '#991b1b' : 'currentColor' }}
+                            />
+                            <span className="ml-3">{child.name}</span>
+                          </motion.div>
+                        </Link>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              ))
+            )}
           </nav>
         </div>
         

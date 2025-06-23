@@ -71,8 +71,6 @@ const Login = () => {
         navigate("/complete-profile");
       } else if (userData.role === "admin") {
         navigate("/admin", { replace: true });
-      } else if (userData.role === "agent") {
-        navigate("/agent", { replace: true });
       } else if (userData.role === "staff") {
         navigate("/staff-dashboard", { replace: true });
       } else {

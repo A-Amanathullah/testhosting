@@ -37,7 +37,16 @@ const BusList = () => {
     return (
         <div className="bg-slate-200 min-h-full py-2 sm:py-4">
             <div className="container flex flex-col gap-4 sm:gap-7 max-w-4xl mx-auto px-1 sm:px-2 md:px-4">
-                {trips.map(trip => (
+                {trips
+                  .filter(trip => {
+                    // Only show trips with departure_date today or in the future
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const depDate = new Date(trip.departure_date);
+                    depDate.setHours(0, 0, 0, 0);
+                    return depDate >= today;
+                  })
+                  .map(trip => (
                     <BusTripCard key={trip.id} trip={trip} buses={buses} />
                 ))}
             </div>
