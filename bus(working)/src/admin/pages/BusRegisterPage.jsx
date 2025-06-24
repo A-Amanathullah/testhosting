@@ -14,6 +14,8 @@ import {
   updateBus,
   deleteBus,
 } from '../../services/busApi';
+import { usePermissions } from '../../context/PermissionsContext';
+// import { AuthContext } from '../../context/AuthContext';
 
 const BusRegisterPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +24,10 @@ const BusRegisterPage = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedBus, setSelectedBus] = useState(null);
+  const { permissions } = usePermissions();
+  // const { user } = useContext(AuthContext);
+  // const role = user?.role;
+  const [notification, setNotification] = useState("");
 
   // Sample bus data - replace with actual data from your API
   const [buses, setBuses] = useState([]);
@@ -78,7 +84,11 @@ const handleDeleteBus = async () => {
   }
 };
 
-  
+  // Helper to check permission
+  const hasPermission = (action) => {
+    if (!permissions || !permissions['Bus Register']) return false;
+    return !!permissions['Bus Register'][action];
+  };
 
   const openViewModal = (bus) => {
     setSelectedBus(bus);
@@ -95,9 +105,40 @@ const handleDeleteBus = async () => {
     setIsDeleteModalOpen(true);
   };
 
+  // Modified handlers with permission checks
+  const handleAddClick = () => {
+    if (!hasPermission('add')) {
+      setNotification("You don't have permission to add buses.");
+      return;
+    }
+    setIsAddModalOpen(true);
+  };
+
+  const handleEditClick = (bus) => {
+    if (!hasPermission('edit')) {
+      setNotification("You don't have permission to edit buses.");
+      return;
+    }
+    openEditModal(bus);
+  };
+
+  const handleDeleteClick = (bus) => {
+    if (!hasPermission('delete')) {
+      setNotification("You don't have permission to delete buses.");
+      return;
+    }
+    openDeleteModal(bus);
+  };
+
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
-
+      {/* Notification */}
+      {notification && (
+        <div className="fixed top-6 right-6 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow">
+          {notification}
+          <button className="ml-3 text-red-700 font-bold" onClick={() => setNotification("")}>×</button>
+        </div>
+      )}
       <div className="flex-grow p-6 overflow-auto">
         {/* Top action bar */}
         <div className="flex items-center justify-between mb-6 bg-gray-50 z-10 sticky top-0 py-4">
@@ -117,7 +158,7 @@ const handleDeleteBus = async () => {
 
           {/* Add Bus button */}
           <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={handleAddClick}
             className="flex items-center px-4 py-2 text-white bg-red-800 rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -130,8 +171,8 @@ const handleDeleteBus = async () => {
           buses={buses}
           searchTerm={searchTerm}
           onViewBus={openViewModal}
-          onEditBus={openEditModal}
-          onDeleteBus={openDeleteModal}
+          onEditBus={handleEditClick}
+          onDeleteBus={handleDeleteClick}
         />
       </div>
 

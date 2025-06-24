@@ -9,7 +9,7 @@ const modules = [
 		name: 'Dashboard',
 		actions: ['view', 'edit'],
 	},
-  {
+	{
 		name: 'Bus Schedule',
 		actions: ['view', 'add', 'edit', 'delete'],
 	},
@@ -162,7 +162,7 @@ const BusRoleAccessManagement = () => {
 				}
 				setLoading(false);
 			});
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [roles]);
 
 	const handleModuleChange = (role, module) => {
@@ -170,19 +170,22 @@ const BusRoleAccessManagement = () => {
 		setPermissions((prev) => {
 			const prevRole = prev[role] || {};
 			const prevModule = prevRole[module] || { module: false };
+			const newModuleState = !prevModule.module;
+			// If enabling module, enable all actions; if disabling, keep actions as is
+			const updatedActions = {};
+			Object.keys(prevModule).forEach((key) => {
+				if (key !== 'module') {
+					updatedActions[key] = newModuleState ? true : prevModule[key];
+				}
+			});
 			return {
 				...prev,
 				[role]: {
 					...prevRole,
 					[module]: {
 						...prevModule,
-						module: !prevModule.module,
-						// If enabling module, enable all actions; if disabling, keep actions as is
-						...Object.fromEntries(
-							Object.keys(prevModule)
-								.filter((key) => key !== 'module')
-								.map((action) => [action, !prevModule.module ? true : prevModule[action]])
-						),
+						module: newModuleState,
+						...updatedActions,
 					},
 				},
 			};
@@ -201,7 +204,7 @@ const BusRoleAccessManagement = () => {
 					[module]: {
 						...prevModule,
 						[action]: !prevModule[action],
-						module: prevModule.module ? false : prevModule.module,
+						// Do NOT change the module property here!
 					},
 				},
 			};
@@ -299,38 +302,37 @@ const BusRoleAccessManagement = () => {
 												<tr className="bg-gray-100">
 													<th className="p-3 text-left text-gray-700 font-semibold">Permissions</th>
 													<th className="p-3 text-center text-gray-700 font-semibold">All</th>
-													{/* Render all unique actions for this role's modules/submodules */}
+													{/* Render all unique actions for this role's modules/submodules in the correct order */}
 													{(() => {
+														// Get all unique actions in the order: view, add, edit, delete, print
+														const actionOrder = ['view', 'add', 'edit', 'delete', 'print'];
 														const allActions = [];
 														modules.forEach((mod) => {
-															if (mod.submodules) {
-																mod.submodules.forEach((sub) => {
-																	sub.actions.forEach((a) => {
-																		if (!allActions.includes(a)) allActions.push(a);
-																	});
-																});
-														} else {
-															mod.actions.forEach((a) => {
+															const actions = mod.submodules
+																? mod.submodules.flatMap((sub) => sub.actions)
+																: mod.actions;
+															actions.forEach((a) => {
 																if (!allActions.includes(a)) allActions.push(a);
 															});
-														}
-													});
-													return allActions.map((action) => (
-														<th key={action} className="p-3 text-center text-gray-700 font-semibold capitalize">
-															{action}
-														</th>
-													));
-												})()}
-											</tr>
-										</thead>
-										<tbody>
-											{modules.map((mod) =>
-												mod.submodules
-													? mod.submodules.map((sub) => renderModuleRow(role, sub))
-													: renderModuleRow(role, mod)
-											)}
-										</tbody>
-									</table>
+														});
+														// Sort allActions by actionOrder
+														const sortedActions = actionOrder.filter((a) => allActions.includes(a));
+														return sortedActions.map((action) => (
+															<th key={action} className="p-3 text-center text-gray-700 font-semibold capitalize">
+																{action}
+															</th>
+														));
+													})()}
+												</tr>
+											</thead>
+											<tbody>
+												{modules.map((mod) =>
+													mod.submodules
+														? mod.submodules.map((sub) => renderModuleRow(role, sub))
+														: renderModuleRow(role, mod)
+												)}
+											</tbody>
+										</table>
 									)}
 								</div>
 							)}

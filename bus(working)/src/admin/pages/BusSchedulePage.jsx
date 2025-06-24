@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { usePermissions } from '../../context/PermissionsContext';
+import { useState, useEffect, useContext } from 'react';
+import { AuthContext } from '../../context/AuthContext';
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react';
 import {
   AddScheduleModal,
@@ -24,7 +26,14 @@ const BusSchedulePage = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const { permissions } = usePermissions();
+  const { user } = useContext(AuthContext);
+  const role = user?.role;
+  const [notification, setNotification] = useState("");
 
+  // Debug: Log role and permissions
+  console.log('DEBUG: role', role);
+  console.log('DEBUG: permissions', permissions);
 
   // Sample bus data - this would come from your API or context
   const [buses, setBuses] = useState([]);
@@ -157,10 +166,46 @@ const BusSchedulePage = () => {
       (`${schedule.start_point || ''} to ${schedule.end_point || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
     ));
 
+  // Helper to check permission
+  const hasPermission = (action) => {
+    if (!permissions || !permissions['Bus Schedule']) return false;
+    return !!permissions['Bus Schedule'][action];
+  };
+
+  // Modified handlers with permission checks
+  const handleAddClick = () => {
+    if (!hasPermission('add')) {
+      setNotification("You don't have permission to add schedules.");
+      return;
+    }
+    setIsAddModalOpen(true);
+  };
+
+  const handleEditClick = (schedule) => {
+    if (!hasPermission('edit')) {
+      setNotification("You don't have permission to edit schedules.");
+      return;
+    }
+    openEditModal(schedule);
+  };
+
+  const handleDeleteClick = (schedule) => {
+    if (!hasPermission('delete')) {
+      setNotification("You don't have permission to delete schedules.");
+      return;
+    }
+    openDeleteModal(schedule);
+  };
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
-
+      {/* Notification */}
+      {notification && (
+        <div className="fixed top-6 right-6 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow">
+          {notification}
+          <button className="ml-3 text-red-700 font-bold" onClick={() => setNotification("")}>×</button>
+        </div>
+      )}
       <div className="flex-grow p-6 ">
         {/* Top action bar with search and add button */}
         <div className="flex items-center justify-between mb-6 bg-gray-50 sticky top-0 z-20 py-4">
@@ -178,7 +223,7 @@ const BusSchedulePage = () => {
           </div>
 
           <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={handleAddClick}
             className="flex items-center px-4 py-2 text-white bg-red-800 rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -253,13 +298,13 @@ const BusSchedulePage = () => {
                         </button>
                         <button
                           className="mr-3 text-indigo-600 hover:text-indigo-900"
-                          onClick={() => openEditModal(schedule)}
+                          onClick={() => handleEditClick(schedule)}
                         >
                           <Edit className="w-5 h-5" />
                         </button>
                         <button
                           className="text-red-600 hover:text-red-900"
-                          onClick={() => openDeleteModal(schedule)}
+                          onClick={() => handleDeleteClick(schedule)}
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
