@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Edit, Trash, Printer, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 
-const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails }) => {
+const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, canPrint }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
   const [selectedStaff, setSelectedStaff] = useState([]);
@@ -59,84 +59,6 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails }) => {
     }
   };
 
-  // Print selected staff or all if none selected
-  const handlePrint = () => {
-    // In a real application, you would implement printing functionality here
-    const staffToPrint = selectedStaff.length > 0
-      ? filteredStaff.filter(s => selectedStaff.includes(s.id))
-      : filteredStaff;
-    
-    console.log('Printing staff:', staffToPrint);
-    
-    // Create a print-friendly version and use window.print()
-    const printContent = document.createElement('div');
-    printContent.className = 'staff-print-content';
-    
-    // Add company header
-    const header = document.createElement('div');
-    header.innerHTML = `
-      <h1 style="text-align: center; font-size: 24px; color: #880000;">RS-EXPRESS BUS SERVICE</h1>
-      <h2 style="text-align: center; font-size: 18px; margin-bottom: 20px;">Staff List</h2>
-      <p style="text-align: center; font-size: 12px; margin-bottom: 30px;">Generated on ${new Date().toLocaleDateString()}</p>
-    `;
-    printContent.appendChild(header);
-    
-    // Create table
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    
-    // Add table header
-    const thead = document.createElement('thead');
-    thead.innerHTML = `
-      <tr>
-        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">Name</th>
-        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">Role</th>
-        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">Email</th>
-        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">Contact</th>
-        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">NIC</th>
-      </tr>
-    `;
-    table.appendChild(thead);
-    
-    // Add table body
-    const tbody = document.createElement('tbody');
-    staffToPrint.forEach(person => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td style="border: 1px solid #ddd; padding: 8px;">${person.name}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">${person.role}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">${person.email}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">${person.contact_number}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">${person.nic_no}</td>
-      `;
-      tbody.appendChild(row);
-    });
-    table.appendChild(tbody);
-    
-    printContent.appendChild(table);
-    
-    // Add to a hidden div, print it, then remove
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'absolute';
-    printFrame.style.top = '-9999px';
-    document.body.appendChild(printFrame);
-    
-    const frameDoc = printFrame.contentDocument || printFrame.contentWindow.document;
-    frameDoc.write('<html><head><title>Staff List - RS-EXPRESS</title>');
-    frameDoc.write('<style>body { font-family: Arial, sans-serif; }</style>');
-    frameDoc.write('</head><body>');
-    frameDoc.write(printContent.innerHTML);
-    frameDoc.write('</body></html>');
-    frameDoc.close();
-    
-    setTimeout(() => {
-      printFrame.contentWindow.focus();
-      printFrame.contentWindow.print();
-      document.body.removeChild(printFrame);
-    }, 250);
-  };
-
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden">
       {/* Table toolbar */}
@@ -158,8 +80,10 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails }) => {
         {/* Action buttons */}
         <div className="flex gap-2">
           <button 
-            onClick={handlePrint} 
+            onClick={onPrint} 
             className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+            disabled={!canPrint}
+            style={!canPrint ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
           >
             <Printer size={18} className="mr-2" />
             Print

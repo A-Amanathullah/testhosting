@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 
 const API_URL = "http://localhost:8000/api";
@@ -10,78 +10,29 @@ const useBookings = (bus_id, date, userIdOrRefreshKey) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  // Define fetchBookings as a reusable function
+  const fetchBookings = useCallback(async () => {
     setLoading(true);
     setError(null);
-    // If all arguments are empty, fetch all bookings
-    if (!bus_id && !date && !userIdOrRefreshKey) {
-      axios
-        .get(`${API_URL}/bookings`)
-        .then((res) => {
-          const allBookings = res.data || [];
-          setBookings(
-            allBookings.filter(
-              (b) => String(b.status).toLowerCase() !== "freezed"
-            )
-          );
-          setFrozenSeats(
-            allBookings.filter((b) => String(b.status).toLowerCase() === "freezed")
-          );
-        })
-        .catch(setError)
-        .finally(() => setLoading(false));
-      return;
-    }
-    // If userId is provided and bus_id/date are not, fetch all bookings for user
-    if ((!bus_id || !date) && userIdOrRefreshKey) {
-      axios
-        .get(`${API_URL}/bookings`, { params: { user_id: userIdOrRefreshKey } })
-        .then((res) => {
-          const allBookings = res.data || [];
-          setBookings(
-            allBookings.filter(
-              (b) => String(b.status).toLowerCase() !== "freezed"
-            )
-          );
-          setFrozenSeats(
-            allBookings.filter((b) => String(b.status).toLowerCase() === "freezed")
-          );
-        })
-        .catch(setError)
-        .finally(() => setLoading(false));
-      return;
-    }
-    // If bus_id is provided and date is not, fetch all bookings for that bus
-    if (bus_id && !date) {
-      axios
-        .get(`${API_URL}/bookings`, { params: { bus_id } }) // <-- use bus_id
-        .then((res) => {
-          const allBookings = res.data || [];
-          setBookings(
-            allBookings.filter(
-              (b) => String(b.status).toLowerCase() !== "freezed"
-            )
-          );
-          setFrozenSeats(
-            allBookings.filter((b) => String(b.status).toLowerCase() === "freezed")
-          );
-        })
-        .catch(setError)
-        .finally(() => setLoading(false));
-      return;
-    }
-    // If neither bus_id/date nor userId, clear
-    if (!bus_id || !date) {
-      setBookings([]);
-      setFrozenSeats([]);
-      setLoading(false);
-      return;
-    }
-    // If bus_id and date are provided, fetch bookings for that bus and date
-    const fetchData = async () => {
-      try {
+    try {
+      // If all arguments are empty, fetch all bookings
+      if (!bus_id && !date && !userIdOrRefreshKey) {
+        const res = await axios.get(`${API_URL}/bookings`);
+        const allBookings = res.data || [];
+        setBookings(
+          allBookings.filter(
+            (b) => String(b.status).toLowerCase() !== "freezed"
+          )
+        );
+        setFrozenSeats(
+          allBookings.filter((b) => String(b.status).toLowerCase() === "freezed")
+        );
+        return;
+      }
+      // If userId is provided and bus_id/date are not, fetch all bookings for user
+      if ((!bus_id || !date) && userIdOrRefreshKey) {
         const res = await axios.get(`${API_URL}/bookings`, {
-          params: { bus_id, departure_date: date }, // <-- use bus_id
+          params: { user_id: userIdOrRefreshKey },
         });
         const allBookings = res.data || [];
         setBookings(
@@ -92,16 +43,53 @@ const useBookings = (bus_id, date, userIdOrRefreshKey) => {
         setFrozenSeats(
           allBookings.filter((b) => String(b.status).toLowerCase() === "freezed")
         );
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
-    fetchData();
+      // If bus_id is provided and date is not, fetch all bookings for that bus
+      if (bus_id && !date) {
+        const res = await axios.get(`${API_URL}/bookings`, { params: { bus_id } });
+        const allBookings = res.data || [];
+        setBookings(
+          allBookings.filter(
+            (b) => String(b.status).toLowerCase() !== "freezed"
+          )
+        );
+        setFrozenSeats(
+          allBookings.filter((b) => String(b.status).toLowerCase() === "freezed")
+        );
+        return;
+      }
+      // If neither bus_id/date nor userId, clear
+      if (!bus_id || !date) {
+        setBookings([]);
+        setFrozenSeats([]);
+        return;
+      }
+      // If bus_id and date are provided, fetch bookings for that bus and date
+      const res = await axios.get(`${API_URL}/bookings`, {
+        params: { bus_id, departure_date: date },
+      });
+      const allBookings = res.data || [];
+      setBookings(
+        allBookings.filter(
+          (b) => String(b.status).toLowerCase() !== "freezed"
+        )
+      );
+      setFrozenSeats(
+        allBookings.filter((b) => String(b.status).toLowerCase() === "freezed")
+      );
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
   }, [bus_id, date, userIdOrRefreshKey]);
 
-  return { bookings, frozenSeats, loading, error };
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  return { bookings, frozenSeats, loading, error, fetchBookings };
 };
 
 export default useBookings;

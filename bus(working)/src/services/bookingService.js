@@ -20,3 +20,12 @@ export const updateBookingStatus = async (updateData, token) => {
     },
   });
 };
+
+export const deleteBooking = async (bookingId, token) => {
+  return axios.delete(`${API_URL}/bookings/${bookingId}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+};

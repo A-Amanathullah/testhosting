@@ -14,10 +14,13 @@ use App\Http\Controllers\SmsTemplateController;
 use App\Http\Controllers\LoyaltyCardController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\CancellationController;
+use App\Http\Controllers\GuestBookingController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/signup', [AuthController::class, 'register']);
+Route::post('/google-login', [AuthController::class, 'googleLogin']);
 Route::get('/users', [AuthController::class, 'index'])->middleware('auth:sanctum');;
 Route::post('/admin/create-user', [AdminController::class, 'createUser']);
 Route::get('/user', [AuthController::class, 'me'])->middleware('auth:sanctum');
@@ -43,6 +46,12 @@ Route::get('/role-permissions/{role}', [RolePermissionController::class, 'show']
 Route::post('/role-permissions', [RolePermissionController::class, 'store']);
 Route::get('/roles', [RoleController::class, 'index']);
 Route::post('/roles', [RoleController::class, 'store']);
+Route::get('/cancellations', [CancellationController::class, 'index']);
+Route::post('/bookings/{id}/cancel', [CancellationController::class, 'cancel']);
+Route::apiResource('guest-bookings', GuestBookingController::class)->only(['index', 'store', 'update', 'destroy']);
+Route::post('/guest-bookings/{id}/cancel', [GuestBookingController::class, 'cancel']);
+Route::get('/guest-bookings/agent/{agentId}', [GuestBookingController::class, 'getByAgent']);
+Route::get('/agents', [GuestBookingController::class, 'getAgents']);
 
 // Fallback for unknown API routes to return JSON 404
 Route::fallback(function() {

@@ -7,7 +7,9 @@ import UnfreezeConfirmation from "../../components/seat-freezing/UnfreezeConfirm
 import { createBooking } from '../../../services/bookingService';
 import { AuthContext } from '../../../context/AuthContext';
 import useBusHook from '../../../hooks/useBusHook';
-import useBookings from '../../../hooks/useBookings'; // <-- Add this import
+import useBookings from '../../../hooks/useBookings';
+import useAdminGuestBookings from '../../hooks/useAdminGuestBookings';
+import { usePermissions } from '../../../context/PermissionsContext';
 import axios from 'axios';
 const API_URL = "http://localhost:8000/api";
 
@@ -24,10 +26,12 @@ const FreezingSeatPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { user } = useContext(AuthContext);
+  const { permissions } = usePermissions();
   const { buses, trips: schedules } = useBusHook();
   const selectedBusObj = buses.find(bus => String(bus.bus_no) === String(selectedBusNo));
   const selectedBusId = selectedBusObj?.id;
   const { bookings, frozenSeats, loading: bookingsLoading } = useBookings(selectedBusId, selectedDate, refreshKey);
+  const { guestBookings } = useAdminGuestBookings(selectedBusNo, selectedDate);
 
 
   
@@ -82,25 +86,130 @@ const FreezingSeatPage = () => {
         });
       });
 
+      // Process guest bookings
+      const filteredGuestBookings = (guestBookings || []).filter(booking => {
+        return String(booking.bus_no) === String(selectedBusNo) && String(booking.departure_date) === String(selectedDate);
+      });
+      filteredGuestBookings.forEach(booking => {
+        let seats = [];
+        if (Array.isArray(booking.seat_no)) {
+          seats = booking.seat_no.map(s => parseInt(String(s).replace(/[^0-9]/g, ""), 10)).filter(n => !isNaN(n));
+        } else if (typeof booking.seat_no === "string") {
+          seats = booking.seat_no.split(',').map(s => parseInt(s.replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n));
+        }
+        seats.forEach(seat => {
+          if (String(booking.status).toLowerCase() === 'confirmed') {
+            seatStatusMap[seat] = 'reserved';
+          } else if (String(booking.status).toLowerCase() === 'processing') {
+            seatStatusMap[seat] = 'processing';
+          } else if (String(booking.status).toLowerCase() === 'cancelled') {
+            seatStatusMap[seat] = 'cancelled';
+          }
+        });
+      });
+
       setSeatStatus(seatStatusMap);
     } else {
       setSeatStatus({});
     }
-  }, [selectedBusNo, selectedDate, schedules, buses, bookings, frozenSeats]);
+  }, [selectedBusNo, selectedDate, schedules, buses, bookings, frozenSeats, guestBookings]);
 
-  // Filter dates by selected bus
+  // Filter dates by selected bus and prioritize current/future dates
   const getAvailableDates = () => {
     if (!selectedBusNo) return [];
-    return schedules
+    
+    const availableDates = schedules
       .filter((schedule) => schedule.bus_no === selectedBusNo)  
-      .map((schedule) => schedule.departure_date);
+      .map((schedule) => schedule.departure_date)
+      .filter((date) => date); // Remove null/undefined dates
+    
+    // Remove duplicates and prioritize dates
+    const uniqueDates = [...new Set(availableDates)];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Separate dates into categories
+    const currentDate = [];
+    const futureDates = [];
+    const pastDates = [];
+    
+    uniqueDates.forEach(dateStr => {
+      const date = new Date(dateStr);
+      date.setHours(0, 0, 0, 0);
+      
+      if (date.getTime() === today.getTime()) {
+        currentDate.push(dateStr);
+      } else if (date > today) {
+        futureDates.push(dateStr);
+      } else {
+        pastDates.push(dateStr);
+      }
+    });
+    
+    // Sort future and past dates
+    futureDates.sort(); // Future dates in ascending order
+    pastDates.sort().reverse(); // Past dates in descending order
+    
+    // Combine in priority order: current, future, past
+    return [...currentDate, ...futureDates, ...pastDates];
   };
 
-  // Handle bus selection
+  // Handle bus selection and auto-select appropriate date
   const handleBusChange = (bus_no) => {
     setselectedBusNo(bus_no);
-    setSelectedDate(""); // Reset date when bus changes
+    setSelectedDate(""); // Reset date first
     setSelectedSeats([]); // Clear selected seats
+    
+    // Auto-select the best available date
+    setTimeout(() => {
+      const availableDates = schedules
+        .filter((schedule) => schedule.bus_no === bus_no)  
+        .map((schedule) => schedule.departure_date)
+        .filter((date) => date);
+      
+      if (availableDates.length > 0) {
+        const uniqueDates = [...new Set(availableDates)];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Find current date
+        const todayStr = today.toISOString().split('T')[0];
+        const currentDate = uniqueDates.find(dateStr => dateStr === todayStr);
+        
+        if (currentDate) {
+          setSelectedDate(currentDate);
+          return;
+        }
+        
+        // Find nearest future date
+        const futureDates = uniqueDates
+          .filter(dateStr => {
+            const date = new Date(dateStr);
+            date.setHours(0, 0, 0, 0);
+            return date > today;
+          })
+          .sort();
+        
+        if (futureDates.length > 0) {
+          setSelectedDate(futureDates[0]);
+          return;
+        }
+        
+        // Fallback to most recent past date
+        const pastDates = uniqueDates
+          .filter(dateStr => {
+            const date = new Date(dateStr);
+            date.setHours(0, 0, 0, 0);
+            return date < today;
+          })
+          .sort()
+          .reverse();
+        
+        if (pastDates.length > 0) {
+          setSelectedDate(pastDates[0]);
+        }
+      }
+    }, 100);
   };
 
   // Handle date selection
@@ -136,6 +245,10 @@ const FreezingSeatPage = () => {
 
   // Handle form submission for freezing seats
   const handleFreezeSubmit = async (formData) => {
+    if (!hasPermission('add')) {
+      alert('You do not have permission to freeze seats.');
+      return;
+    }
     if (selectedSeats.length === 0) return;
     // Prevent freezing already frozen seats
     const alreadyFrozen = selectedSeats.filter(seat => seatStatus[seat] === "freezed");
@@ -198,6 +311,10 @@ const FreezingSeatPage = () => {
 
   // Handle unfreeze request from form button
   const handleUnfreezeRequest = (seatsToUnfreeze) => {
+    if (!hasPermission('edit')) {
+      alert('You do not have permission to unfreeze seats.');
+      return;
+    }
     // Check if any of the selected seats are actually frozen
     const frozenSelectedSeats = selectedSeats.filter(seatNumber => 
       seatStatus[seatNumber] === "freezed"
@@ -298,6 +415,12 @@ const FreezingSeatPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper to check permission for Freezing Seat
+  const hasPermission = (action) => {
+    if (!permissions || !permissions['Freezing Seat']) return false;
+    return !!permissions['Freezing Seat'][action];
   };
 
   return (

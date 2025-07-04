@@ -7,7 +7,7 @@ import {
 } from '../../components/bus-booking';
 import '../../components/bus-booking/print.css';
 import useBusHook from '../../../hooks/useBusHook';
-import useBookings from '../../../hooks/useBookings';
+import useAdminCancellations from '../../../admin/hooks/useCancellations';
 
 const CancellationReportPage = () => {
   // State for selected filters and data
@@ -19,56 +19,37 @@ const CancellationReportPage = () => {
 
   // Fetch buses using hook
   const { buses, loading: busesLoading } = useBusHook();
-  // Always call hooks in the same order
-  const { bookings: allBookings, loading: bookingsLoading } = useBookings();
+  const { cancellations, loading: cancellationsLoading } = useAdminCancellations();
 
-  const isLoading = busesLoading || bookingsLoading;
+  const isLoading = busesLoading || cancellationsLoading;
 
-  // Generate available dates from allBookings
-  useEffect(() => {
-    if (allBookings && allBookings.length > 0) {
-      let allDates = allBookings
-        .map(b => b.departure_date || b.departureDate)
-        .filter(Boolean);
-      if (Array.isArray(allDates[0])) {
-        allDates = allDates.flat();
-      }
-      const uniqueDates = Array.from(new Set(allDates)).sort();
-      setAvailableDates(uniqueDates);
-    } else {
-      setAvailableDates([]);
-    }
-  }, [allBookings]);
+  // Only show buses that have cancellations
+  const cancelledBusNos = Array.from(new Set((cancellations || []).map(c => String(c.bus_no)))).filter(Boolean);
+  const cancelledBuses = buses.filter(bus => cancelledBusNos.includes(String(bus.bus_no)));
 
-  // Step 1: Filter by bus if selected
-  let filteredBookings = selectedBusNo
-    ? allBookings.filter(b => String(b.bus_no) === String(selectedBusNo))
-    : allBookings;
-
-  // Step 2: Extract available dates from filtered bookings
-  useEffect(() => {
-    const dates = filteredBookings
-      .map(b => b.departure_date || b.departureDate)
-      .filter(Boolean);
-    const uniqueDates = Array.from(new Set(dates)).sort();
-    setAvailableDates(uniqueDates);
-  }, [selectedBusNo, allBookings, filteredBookings]);
-
-  // Step 3: Filter by date if selected
-  const isUserDateSelected = availableDates.includes(selectedDate);
-  if (isUserDateSelected) {
-    filteredBookings = filteredBookings.filter(
-      b => (b.departure_date || b.departureDate) === selectedDate
-    );
+  // Filter cancellations by selected bus and date
+  let filteredCancellations = cancellations || [];
+  if (selectedBusNo) {
+    filteredCancellations = filteredCancellations.filter(c => String(c.bus_no) === String(selectedBusNo));
+  }
+  if (selectedDate) {
+    filteredCancellations = filteredCancellations.filter(c => String(c.departure_date) === String(selectedDate));
   }
 
-  // Only show cancelled bookings
-  const cancelledBookings = filteredBookings.filter(
-    b => String(b.status).toLowerCase() === 'cancelled'
-  );
+  // Generate available dates from cancellations (filtered by bus if selected)
+  useEffect(() => {
+    let dates = cancellations ? cancellations.map(c => c.departure_date).filter(Boolean) : [];
+    if (selectedBusNo) {
+      dates = cancellations
+        ? cancellations.filter(c => String(c.bus_no) === String(selectedBusNo)).map(c => c.departure_date).filter(Boolean)
+        : [];
+    }
+    const uniqueDates = Array.from(new Set(dates)).sort();
+    setAvailableDates(uniqueDates);
+  }, [selectedBusNo, cancellations]);
 
   // Map for table
-  const mappedTableBookings = cancelledBookings.map(booking => ({
+  const mappedTableBookings = (filteredCancellations || []).map(booking => ({
     id: booking.id,
     serialNo: booking.serial_no || '-',
     name: booking.name || '-',
@@ -120,7 +101,7 @@ const CancellationReportPage = () => {
         <div className="flex flex-wrap items-center gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <BusSelector 
-              buses={buses} 
+              buses={cancelledBuses} 
               selectedBusNo={selectedBusNo} 
               onChange={handleBusChange} 
             />

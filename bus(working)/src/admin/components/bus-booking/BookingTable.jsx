@@ -1,6 +1,6 @@
 import React from 'react';
 
-const BookingTable = ({ bookings, frozenSeats, isLoading, selectedBusNo, selectedDate, printRef, buses }) => {
+const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings = [], isLoading, selectedBusNo, selectedDate, printRef, buses, onCancelBooking }) => {
   // Helper: Map bus_id to bus_no
   const getBusNoById = (bus_id) => {
     const bus = buses?.find((b) => String(b.id) === String(bus_id));
@@ -50,7 +50,23 @@ const BookingTable = ({ bookings, frozenSeats, isLoading, selectedBusNo, selecte
     return <span className={`px-2 py-1 text-xs font-medium rounded-full ${color}`}>{status}</span>;
   };
 
-  // Prepare combined data of bookings and frozen seats
+  // Function to render action buttons based on booking status
+  const renderActions = (row) => {
+    // Show cancel button for confirmed regular bookings and guest bookings
+    if ((row.type === 'booking' || row.type === 'guest') && row.status.toLowerCase() === 'confirmed') {
+      return (
+        <button
+          onClick={() => onCancelBooking && onCancelBooking(row)}
+          className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded hover:bg-red-600 transition-colors"
+        >
+          Cancel
+        </button>
+      );
+    }
+    return null;
+  };
+
+  // Prepare combined data of bookings, frozen seats, and cancellations
   const prepareTableData = () => {
     // Filter bookings and frozenSeats by bus_id and selectedDate
     const selectedBusObj = buses?.find((b) => String(b.bus_no) === String(selectedBusNo));
@@ -60,10 +76,22 @@ const BookingTable = ({ bookings, frozenSeats, isLoading, selectedBusNo, selecte
       b => String(b.bus_id) === String(selectedBusId) &&
            (!selectedDate || String(b.departure_date || b.departureDate) === String(selectedDate))
     );
+    
     const filteredFrozenSeats = (frozenSeats || []).filter(
       f => String(f.bus_id) === String(selectedBusId) &&
            (!selectedDate || String(f.departure_date || f.departureDate) === String(selectedDate))
     );
+    
+    const filteredCancellations = (cancellations || []).filter(
+      c => String(c.bus_id) === String(selectedBusId) &&
+           (!selectedDate || String(c.departure_date) === String(selectedDate))
+    );
+    
+    const filteredGuestBookings = (guestBookings || []).filter(
+      g => String(g.bus_id) === String(selectedBusId) &&
+           (!selectedDate || String(g.departure_date) === String(selectedDate))
+    );
+    
     const bookingsData = filteredBookings.map(booking => ({
       id: booking.id,
       serialNo: booking.serial_no || '-',
@@ -77,8 +105,10 @@ const BookingTable = ({ bookings, frozenSeats, isLoading, selectedBusNo, selecte
       status: booking.status,
       reason: booking.reason,
       busNumber: getBusNoById(booking.bus_id),
-      type: 'booking'
+      type: 'booking',
+      raw: booking // Keep the raw booking data for the cancel action
     }));
+    
     const frozenData = filteredFrozenSeats.map(frozen => {
       const seatArr = Array.isArray(frozen.seat_no)
         ? frozen.seat_no.map(s => String(s).trim()).filter(Boolean)
@@ -97,7 +127,48 @@ const BookingTable = ({ bookings, frozenSeats, isLoading, selectedBusNo, selecte
         type: 'frozen'
       };
     });
-    return [...bookingsData, ...frozenData];
+    
+    const cancellationData = filteredCancellations.map(c => {
+      const seatArr = Array.isArray(c.seat_no)
+        ? c.seat_no.map(s => String(s).trim()).filter(Boolean)
+        : (typeof c.seat_no === 'string' ? c.seat_no.split(',').map(s => s.trim()).filter(Boolean) : []);
+      return {
+        id: `cancelled-${c.id}`,
+        serialNo: c.serial_no || '-',
+        name: c.name || 'Passenger',
+        ticketsReserved: seatArr.length,
+        seatNumbers: seatArr.sort((a, b) => Number(a) - Number(b)).join(', '),
+        paymentStatus: c.payment_status || null,
+        route: c.route || `${c.pickup || ''}${c.drop ? '-' + c.drop : ''}` || 'N/A',
+        status: 'Cancelled',
+        reason: c.reason,
+        busNumber: getBusNoById(c.bus_id),
+        type: 'cancelled'
+      };
+    });
+    
+    // Add guest bookings to the data
+    const guestData = filteredGuestBookings.map(guest => {
+      const seatArr = Array.isArray(guest.seat_no)
+        ? guest.seat_no.map(s => String(s).trim()).filter(Boolean)
+        : (typeof guest.seat_no === 'string' ? guest.seat_no.split(',').map(s => s.trim()).filter(Boolean) : []);
+      return {
+        id: `guest-${guest.id}`,
+        serialNo: guest.serial_no || '-',
+        name: guest.name || 'Guest',
+        ticketsReserved: guest.reserved_tickets || seatArr.length,
+        seatNumbers: seatArr.sort((a, b) => Number(a) - Number(b)).join(', '),
+        paymentStatus: guest.payment_status || null,
+        route: guest.route || `${guest.pickup || ''}${guest.drop ? '-' + guest.drop : ''}` || 'N/A',
+        status: guest.status,
+        reason: guest.reason,
+        busNumber: getBusNoById(guest.bus_id),
+        type: 'guest',
+        raw: guest // Keep the raw booking data for the cancel action
+      };
+    });
+    
+    return [...bookingsData, ...frozenData, ...cancellationData, ...guestData];
   };
 
   if (!selectedBusNo || !selectedDate) {
@@ -146,6 +217,9 @@ const BookingTable = ({ bookings, frozenSeats, isLoading, selectedBusNo, selecte
                 Name/Agent
               </th>
               <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                Type
+              </th>
+              <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                 Tickets
               </th>
               <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
@@ -163,19 +237,25 @@ const BookingTable = ({ bookings, frozenSeats, isLoading, selectedBusNo, selecte
               <th scope="col" className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                 Notes
               </th>
+              <th scope="col" className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {tableData.map((row) => (
               <tr 
                 key={row.id} 
-                className={`hover:bg-gray-50 ${row.type === 'frozen' ? 'bg-purple-50' : ''}`}
+                className={`hover:bg-gray-50 ${row.type === 'frozen' ? 'bg-purple-50' : row.type === 'guest' ? 'bg-blue-50' : ''}`}
               >
                 <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                   {row.serialNo}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                   {row.name}
+                </td>
+                <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
+                  {row.type === 'guest' ? 'Guest' : row.type === 'booking' ? 'User' : row.type === 'frozen' ? 'Frozen' : 'Cancelled'}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                   {row.ticketsReserved}
@@ -194,6 +274,9 @@ const BookingTable = ({ bookings, frozenSeats, isLoading, selectedBusNo, selecte
                 </td>
                 <td className="px-2 py-4 text-sm text-gray-900">
                   {row.reason && <span className="text-xs text-gray-500">{row.reason}</span>}
+                </td>
+                <td className="px-2 py-4 text-sm text-gray-900 whitespace-nowrap">
+                  {renderActions(row)}
                 </td>
               </tr>
             ))}

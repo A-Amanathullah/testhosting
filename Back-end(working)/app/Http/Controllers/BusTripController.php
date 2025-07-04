@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\BusRegister;
 use App\Models\Booking;
+use App\Models\GuestBooking;
 
 class BusTripController extends Controller
 {
@@ -21,10 +22,20 @@ class BusTripController extends Controller
             $total_seats = $bus ? $bus->total_seats : 0;
             $booked_seats = 0;
             if ($trip->bus_id && $trip->departure_date) {
-                $booked_seats = Booking::where('bus_id', $trip->bus_id)
+                // Calculate booked seats from regular bookings table
+                $regular_bookings = Booking::where('bus_id', $trip->bus_id)
                     ->where('departure_date', $trip->departure_date)
                     ->whereIn('status', ['confirmed', 'freezed'])
                     ->sum('reserved_tickets');
+                
+                // Calculate booked seats from guest bookings table
+                $guest_bookings = GuestBooking::where('bus_id', $trip->bus_id)
+                    ->where('departure_date', $trip->departure_date)
+                    ->whereIn('status', ['Confirmed', 'Processing']) // Include both confirmed and processing guest bookings
+                    ->sum('reserved_tickets');
+                
+                // Total booked seats from both tables
+                $booked_seats = $regular_bookings + $guest_bookings;
             }
             if ($booked_seats > 0) {
                 $trip->available_seats = $total_seats - $booked_seats;

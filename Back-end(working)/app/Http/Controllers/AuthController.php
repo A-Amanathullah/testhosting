@@ -26,7 +26,7 @@ class AuthController extends Controller
         $user = new User();
         $user->name = $validatedData['name'];
         $user->email = $validatedData['email'];
-        $user->password = bcrypt($validatedData['password']);
+        $user->password = $validatedData['password']; // Laravel will auto-hash due to 'hashed' cast
         $user->role = $validatedData['role'];
         $user->save();
 
@@ -109,7 +109,7 @@ class AuthController extends Controller
                 ['email' => $googleUser->getEmail()],
                 [
                     'name' => $googleUser->getName() ?? 'Google User',
-                    'password' => bcrypt(str()->random(16)),
+                    'password' => \Illuminate\Support\Str::random(16), // Laravel will auto-hash
                     'role' => 'user',
                 ]
             );
@@ -161,7 +161,7 @@ class AuthController extends Controller
             [
                 'first_name' => $validatedData['first_name'],
                 'last_name' => $validatedData['last_name'],
-                'phone_no' => $validatedData['phone_no'] ?? $validatedData['contact_number'],
+                'phone_no' => $validatedData['phone_no'] ?? null,
                 'gender' => $validatedData['gender'],
                 'email' => $validatedData['email'],
                 'role' => $validatedData['role'],
@@ -215,10 +215,10 @@ public function changePassword(Request $request)
     ]);
 
     $user = $request->user();
-    if (!\Hash::check($request->current_password, $user->password)) {
+    if (!Hash::check($request->current_password, $user->getAuthPassword())) {
         return response()->json(['message' => 'Current password is incorrect'], 400);
     }
-    $user->password = bcrypt($request->new_password);
+    $user->password = $request->new_password; // Laravel will auto-hash due to 'hashed' cast
     $user->save();
     return response()->json(['message' => 'Password changed successfully']);
 }
@@ -236,5 +236,55 @@ public function destroyUser($id)
     \App\Models\Staff::where('user_id', $id)->delete();
     $user->delete();
     return response()->json(['message' => 'User and related details deleted successfully']);
+}
+
+public function googleLogin(Request $request)
+{
+    try {
+        $validated = $request->validate([
+            'email' => 'required|string|email',
+        ]);
+
+        // Check if user exists
+        $user = User::where('email', $validated['email'])->first();
+        
+        if (!$user) {
+            // Auto-register new users from Google Sign-In
+            // For Laravel 12, we need to use create method to properly handle the password hashing
+            $user = User::create([
+                'name' => explode('@', $validated['email'])[0], // Use part of email as name
+                'email' => $validated['email'],
+                'password' => \Illuminate\Support\Str::random(16), // Laravel will auto-hash
+                'role' => 'user', // Default role
+            ]);
+            
+            // Create empty user details
+            $userDetail = new UserDetail();
+            $userDetail->user_id = $user->id;
+            $userDetail->first_name = '';
+            $userDetail->last_name = '';
+            $userDetail->phone = '';
+            $userDetail->gender = '';
+            $userDetail->save();
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user,
+        ]);
+        
+    } catch (ValidationException $e) {
+        return response()->json([
+            'message' => 'Validation error',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Something went wrong: ' . $e->getMessage(),
+        ], 500);
+    }
 }
 }

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PrintButton, ReportPrintLayout } from '../../components/bus-booking';
 import useBusHook from '../../../hooks/useBusHook';
 import useBookings from '../../../hooks/useBookings';
+import useAdminCancellations from '../../../admin/hooks/useCancellations';
+import useAdminGuestBookings from '../../hooks/useAdminGuestBookings';
 import '../../components/bus-booking/print.css';
 
 const RevenueReportPage = () => {
@@ -14,14 +16,26 @@ const RevenueReportPage = () => {
   // Data
   const { buses, loading: busesLoading } = useBusHook();
   const { bookings: allBookings, loading: bookingsLoading } = useBookings();
-  const isLoading = busesLoading || bookingsLoading;
+  const { guestBookings: allGuestBookings, loading: guestBookingsLoading } = useAdminGuestBookings();
+  const { cancellations, loading: cancellationsLoading } = useAdminCancellations();
+  const isLoading = busesLoading || bookingsLoading || cancellationsLoading || guestBookingsLoading;
 
   // Generate available dates from allBookings
   useEffect(() => {
     if (allBookings && allBookings.length > 0) {
+      // Get dates from regular bookings
       let allDates = allBookings
         .map(b => b.departure_date || b.departureDate)
         .filter(Boolean);
+      
+      // Get dates from guest bookings
+      const guestDates = allGuestBookings
+        .map(b => b.departure_date || b.departureDate)
+        .filter(Boolean);
+        
+      // Combine both sets of dates
+      allDates = [...allDates, ...guestDates];
+      
       if (Array.isArray(allDates[0])) {
         allDates = allDates.flat();
       }
@@ -30,21 +44,36 @@ const RevenueReportPage = () => {
     } else {
       setAvailableDates([]);
     }
-  }, [allBookings]);
+  }, [allBookings, allGuestBookings]);
 
   // Step 1: Filter by bus if selected
   let filteredBookings = selectedBusNo
     ? allBookings.filter(b => String(b.bus_no) === String(selectedBusNo))
     : allBookings;
+  
+  // Filter guest bookings by bus if selected
+  let filteredGuestBookings = selectedBusNo
+    ? allGuestBookings.filter(b => String(b.bus_no) === String(selectedBusNo))
+    : allGuestBookings;
 
   // Step 2: Extract available dates from filtered bookings
   useEffect(() => {
-    const dates = filteredBookings
+    // Get dates from regular bookings
+    const regularDates = filteredBookings
       .map(b => b.departure_date || b.departureDate)
       .filter(Boolean);
-    const uniqueDates = Array.from(new Set(dates)).sort();
+    
+    // Get dates from guest bookings  
+    const guestDates = filteredGuestBookings
+      .map(b => b.departure_date || b.departureDate)
+      .filter(Boolean);
+      
+    // Combine both sets of dates
+    const allDates = [...regularDates, ...guestDates];
+    
+    const uniqueDates = Array.from(new Set(allDates)).sort();
     setAvailableDates(uniqueDates);
-  }, [selectedBusNo, allBookings, filteredBookings]);
+  }, [selectedBusNo, allBookings, allGuestBookings, filteredBookings, filteredGuestBookings]);
 
   // Step 3: Filter by date if selected
   const isUserDateSelected = availableDates.includes(selectedDate);
@@ -52,19 +81,33 @@ const RevenueReportPage = () => {
     filteredBookings = filteredBookings.filter(
       b => (b.departure_date || b.departureDate) === selectedDate
     );
+    
+    filteredGuestBookings = filteredGuestBookings.filter(
+      b => (b.departure_date || b.departureDate) === selectedDate
+    );
   }
 
-  // Only show confirmed bookings
+  // Only show confirmed bookings (from bookings table)
   const confirmedBookings = filteredBookings.filter(
     b => String(b.status).toLowerCase() === 'confirmed'
   );
-  // Only show cancelled bookings
-  const cancelledBookings = filteredBookings.filter(
-    b => String(b.status).toLowerCase() === 'cancelled'
+  
+  // Only show confirmed guest bookings
+  const confirmedGuestBookings = filteredGuestBookings.filter(
+    b => String(b.status).toLowerCase() === 'confirmed'
   );
+  
+  // Only show cancelled bookings (from cancellations table, filtered by bus/date)
+  let filteredCancellations = cancellations || [];
+  if (selectedBusNo) {
+    filteredCancellations = filteredCancellations.filter(c => String(c.bus_no) === String(selectedBusNo));
+  }
+  if (selectedDate) {
+    filteredCancellations = filteredCancellations.filter(c => String(c.departure_date) === String(selectedDate));
+  }
 
-  // Map for table
-  const mappedTableBookings = confirmedBookings.map(booking => ({
+  // Map for regular bookings table
+  const mappedRegularBookings = confirmedBookings.map(booking => ({
     id: booking.id,
     date: booking.departure_date || booking.departureDate || '-',
     serialNo: booking.serial_no || '-',
@@ -74,10 +117,28 @@ const RevenueReportPage = () => {
     ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
     seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : (booking.seat_no || '-'),
     route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || '-',
+    bookingType: 'Regular'
   }));
+  
+  // Map for guest bookings table
+  const mappedGuestBookings = confirmedGuestBookings.map(booking => ({
+    id: booking.id,
+    date: booking.departure_date || booking.departureDate || '-',
+    serialNo: booking.serial_no || '-',
+    name: booking.name || '-',
+    busNumber: booking.bus_no || booking.busNumber || '-',
+    price: booking.price || 0,
+    ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
+    seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : (booking.seat_no || '-'),
+    route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || '-',
+    bookingType: 'Guest'
+  }));
+  
+  // Combine regular and guest bookings for the table
+  const mappedTableBookings = [...mappedRegularBookings, ...mappedGuestBookings];
 
   // Map for cancelations
-  const mappedCancelBookings = cancelledBookings.map(booking => ({
+  const mappedCancelBookings = filteredCancellations.map(booking => ({
     id: booking.id,
     price: booking.price || 0,
     ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
@@ -229,6 +290,8 @@ const RevenueReportPage = () => {
             summaryData={[
               { label: 'Total Revenue', value: 'Rs ' + totalRevenue.toLocaleString() },
               { label: 'Total Bookings', value: totalBookings },
+              { label: 'Regular Bookings', value: mappedRegularBookings.length },
+              { label: 'Guest Bookings', value: mappedGuestBookings.length },
               { label: 'Total Seats', value: totalSeats }
             ]}
           />
@@ -253,11 +316,15 @@ const RevenueReportPage = () => {
                     <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Price</th>
                     <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Tickets</th>
                     <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Seats</th>
+                    <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Type</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {mappedTableBookings.map((booking) => (
-                    <tr key={booking.id} className="hover:bg-gray-50">
+                    <tr 
+                      key={booking.id} 
+                      className={`hover:bg-gray-50 ${booking.bookingType === 'Guest' ? 'bg-blue-50' : ''}`}
+                    >
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">{booking.date}</td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">{booking.serialNo}</td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">{booking.name}</td>
@@ -266,6 +333,15 @@ const RevenueReportPage = () => {
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">{'Rs ' + Number(booking.price).toLocaleString()}</td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">{booking.ticketsReserved}</td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">{booking.seatNumbers}</td>
+                      <td className="px-4 py-4 text-sm whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          booking.bookingType === 'Guest' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-green-100 text-green-800'
+                        }`}>
+                          {booking.bookingType}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

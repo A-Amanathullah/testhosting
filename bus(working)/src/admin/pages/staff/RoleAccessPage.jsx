@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// import { useAppSelector } from '../../state/store'; // Import your custom hook if needed
-// import { fetchRoles } from '../../state/slices/roleSlice'; // Import your thunk action if needed
-// import { Role } from '../../models/Role'; // Import your Role model if needed
+import { usePermissions } from '../../../context/PermissionsContext';
 
 // Define modules, submodules, and actions
 const modules = [
@@ -20,15 +18,15 @@ const modules = [
 	{
 		name: 'Booking Management',
 		submodules: [
-			{ name: 'Booking List', actions: ['view', 'print'] },
-			{ name: 'Cancellation List', actions: ['view', 'print'] },
+			{ name: 'Bus Booking', actions: ['view', 'edit','print'] },
+			{ name: 'Freezing Seat', actions: ['view', 'add', 'edit'] },
 		],
 	},
 	{
 		name: 'Staff Management',
 		submodules: [
 			{ name: 'Staff List', actions: ['view', 'add', 'edit', 'delete', 'print'] },
-			{ name: 'Role Access Management', actions: ['view', 'edit'] },
+			{ name: 'Role Access Management', actions: ['view','add', 'edit'] },
 		],
 	},
 	{
@@ -90,6 +88,27 @@ const generateInitialPermissions = (roles) => {
 	return perms;
 };
 
+// Helper to set all permissions for Superadmin
+const setSuperadminPermissions = (perms) => {
+	const superPerms = {};
+	modules.forEach((mod) => {
+		if (mod.submodules) {
+			mod.submodules.forEach((sub) => {
+				superPerms[sub.name] = { module: true };
+				sub.actions.forEach((action) => {
+					superPerms[sub.name][action] = true;
+				});
+			});
+		} else {
+			superPerms[mod.name] = { module: true };
+			mod.actions.forEach((action) => {
+				superPerms[mod.name][action] = true;
+			});
+		}
+	});
+	return { ...perms, Superadmin: superPerms };
+};
+
 const BusRoleAccessManagement = () => {
 	const [roles, setRoles] = useState([]); // dynamic roles
 	const [permissions, setPermissions] = useState({});
@@ -99,6 +118,14 @@ const BusRoleAccessManagement = () => {
 	const [newRole, setNewRole] = useState(""); // New role input
 	const [adding, setAdding] = useState(false); // Add role loading
 	const [addError, setAddError] = useState("");
+
+	const { permissions: userPerms } = usePermissions();
+
+	// Helper to check permission for Role Access Management
+	const hasRoleAccessPermission = (action) => {
+		if (!userPerms || !userPerms['Role Access Management']) return false;
+		return !!userPerms['Role Access Management'][action];
+	};
 
 	// Add new role handler
 	const handleAddRole = (e) => {
@@ -144,7 +171,7 @@ const BusRoleAccessManagement = () => {
 				if (data && data.status === 'success' && Array.isArray(data.data)) {
 					const roleNames = data.data.map(r => r.name);
 					setRoles(roleNames);
-					setPermissions(perms => Object.keys(perms).length ? perms : generateInitialPermissions(roleNames));
+					setPermissions(perms => setSuperadminPermissions(Object.keys(perms).length ? perms : generateInitialPermissions(roleNames)));
 				}
 			});
 	}, []);
@@ -156,9 +183,9 @@ const BusRoleAccessManagement = () => {
 			.then(res => res.json())
 			.then(data => {
 				if (data && data.status === 'success' && data.data && Object.keys(data.data).length) {
-					setPermissions(data.data);
+					setPermissions(setSuperadminPermissions(data.data));
 				} else if (roles.length) {
-					setPermissions(generateInitialPermissions(roles));
+					setPermissions(setSuperadminPermissions(generateInitialPermissions(roles)));
 				}
 				setLoading(false);
 			});
@@ -213,19 +240,22 @@ const BusRoleAccessManagement = () => {
 
 	const handleSave = () => {
 		setSaving(true);
+		const updatedPermissions = setSuperadminPermissions(permissions);
 		fetch('http://localhost:8000/api/role-permissions', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(permissions),
+			body: JSON.stringify(updatedPermissions),
 		})
 			.then(res => res.json())
 			.then(() => {
 				setSaving(false);
+				setPermissions(setSuperadminPermissions(updatedPermissions));
 				alert('Permissions saved successfully!');
 			});
 	};
 
 	// Helper to render a row for a module or submodule
+	const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print'];
 	const renderModuleRow = (role, mod) => {
 		const modPerm = permissions[role]?.[mod.name] || {};
 		return (
@@ -240,17 +270,21 @@ const BusRoleAccessManagement = () => {
 						className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
 					/>
 				</td>
-				{mod.actions.map((action) => (
-					<td key={`${role}-${mod.name}-${action}`} className="p-3 text-center">
-						<input
-							type="checkbox"
-							checked={!!modPerm[action]}
-							onChange={() => handleActionChange(role, mod.name, action)}
-							disabled={!!modPerm.module || role === 'Superadmin'}
-							className={`h-5 w-5 text-blue-600 rounded focus:ring-blue-500 ${modPerm.module || role === 'Superadmin' ? 'opacity-50 cursor-not-allowed' : ''}`}
-						/>
-					</td>
-				))}
+				{ACTION_ORDER.map((action) =>
+					mod.actions.includes(action) ? (
+						<td key={`${role}-${mod.name}-${action}`} className="p-3 text-center">
+							<input
+								type="checkbox"
+								checked={!!modPerm[action]}
+								onChange={() => handleActionChange(role, mod.name, action)}
+								disabled={!!modPerm.module || role === 'Superadmin'}
+								className={`h-5 w-5 text-blue-600 rounded focus:ring-blue-500 ${modPerm.module || role === 'Superadmin' ? 'opacity-50 cursor-not-allowed' : ''}`}
+							/>
+						</td>
+					) : (
+						<td key={`${role}-${mod.name}-${action}`} className="p-3 text-center"></td>
+					)
+				)}
 			</tr>
 		);
 	};
@@ -272,16 +306,19 @@ const BusRoleAccessManagement = () => {
 							value={newRole}
 							onChange={e => setNewRole(e.target.value)}
 							className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-							disabled={adding}
+							disabled={adding || !hasRoleAccessPermission('add')}
 						/>
 						<button
 							type="submit"
-							disabled={adding}
+							disabled={adding || !hasRoleAccessPermission('add')}
 							className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
 						>
 							{adding ? 'Adding...' : 'Add Role'}
 						</button>
 						{addError && <span className="text-red-600 text-sm ml-2">{addError}</span>}
+						{!hasRoleAccessPermission('add') && (
+    <span className="text-red-600 text-sm ml-2">You don't have permission to add roles.</span>
+  )}
 					</form>
 					{roles.map((role) => (
 						<div key={role} className="mb-8 border rounded-lg">
@@ -340,12 +377,15 @@ const BusRoleAccessManagement = () => {
 					))}
 					<div className="mt-6 flex justify-end">
 						<button
-							disabled={saving}
+							disabled={saving || !hasRoleAccessPermission('edit')}
 							onClick={handleSave}
 							className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
 						>
 							{saving ? 'Saving...' : 'Save Permissions'}
 						</button>
+						{!hasRoleAccessPermission('edit') && (
+    <span className="text-red-600 text-sm ml-2">You don't have permission to save permissions.</span>
+  )}
 					</div>
 				</div>
 			</div>

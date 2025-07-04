@@ -64,8 +64,8 @@ function App() {
           <Route index element={<AutoRedirectDashboard />} />
           <Route path="bus-schedule" element={<ProtectedRoute module="Bus Schedule" action="view"><BusSchedulePage /></ProtectedRoute>} />
           <Route path="bus-register" element={<ProtectedRoute module="Bus Register" action="view"><BusRegisterPage /></ProtectedRoute>} />
-          <Route path="booking/bus-booking" element={<ProtectedRoute module="Booking List" action="view"><BusBookingPage /></ProtectedRoute>} />
-          <Route path="booking/freezing-seat" element={<ProtectedRoute module="Booking List" action="edit"><FreezingSeatPage /></ProtectedRoute>} />
+          <Route path="booking/bus-booking" element={<ProtectedRoute module="Bus Booking" action="view"><BusBookingPage /></ProtectedRoute>} />
+          <Route path="booking/freezing-seat" element={<ProtectedRoute module="Freezing Seat" action="view"><FreezingSeatPage /></ProtectedRoute>} />
           <Route path="payment/online" element={<ProtectedRoute module="Booking List" action="add"><OnlinePaymentPage /></ProtectedRoute>} />
           <Route path="payment/agent" element={<ProtectedRoute module="Booking List" action="add"><AgentPaymentPage /></ProtectedRoute>} />
           <Route path="staff/create" element={<ProtectedRoute module="Staff List" action="add"><StaffCreatePage /></ProtectedRoute>} />

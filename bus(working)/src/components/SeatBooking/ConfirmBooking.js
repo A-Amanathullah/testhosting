@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
 
-const ConfirmBooking = ({ selectedSeats, onClose, onConfirm,trip }) => {
+const ConfirmBooking = ({ selectedSeats, onClose, onConfirm, trip, onAgentBookForPassenger, isLoading = false }) => {
+  const { user } = useContext(AuthContext);
   const seatPrice = trip?.price || 0; // Use trip price if available, otherwise default to 0
   const totalAmount = selectedSeats.length * seatPrice;
 
@@ -58,16 +60,49 @@ const ConfirmBooking = ({ selectedSeats, onClose, onConfirm,trip }) => {
         <div className="mt-2 flex flex-col sm:flex-row justify-end gap-1">
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-2 py-1 bg-gray-300 rounded hover:bg-gray-400 transition text-xs"
+            className="w-full sm:w-auto px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading}
           >
-            Close
+            Cancel Booking
           </button>
-          <button
-            onClick={handleConfirm}
-            className="w-full sm:w-auto px-2 py-1 bg-primary/70 text-white rounded hover:bg-primary transition text-xs"
-          >
-            Confirm
-          </button>
+          
+          {user?.role === 'agent' ? (
+            <div className="flex flex-col sm:flex-row gap-1">
+              <button
+                onClick={onConfirm}
+                className="w-full sm:w-auto px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
+              >
+                {isLoading ? "Processing..." : "Confirm (Agent)"}
+              </button>
+              <button
+                onClick={() => {
+                  onClose();
+                  if (onAgentBookForPassenger) onAgentBookForPassenger();
+                }}
+                className="w-full sm:w-auto px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
+              >
+                {isLoading ? "Processing..." : "Book for Passenger"}
+              </button>
+            </div>
+          ) : user?.role === 'admin' ? (
+            <button
+              onClick={handleConfirm}
+              className="w-full sm:w-auto px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
+            >
+              {isLoading ? "Processing..." : "Confirm (Admin)"}
+            </button>
+          ) : (
+            <button
+              onClick={handleConfirm}
+              className="w-full sm:w-auto px-2 py-1 bg-primary/70 text-white rounded hover:bg-primary transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
+            >
+              {isLoading ? "Processing..." : "Proceed to Payment"}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -12,9 +12,9 @@ const BusSelector = ({ buses, selectedBusNo, onChange }) => {
         onChange={(e) => onChange(e.target.value)}
         className="block w-full px-3 py-2 mt-1 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
       >
-        <option value="">All Buses</option>
+        <option value="">Select Bus</option>
         {buses.map((bus) => (
-          <option key={bus.id} value={bus.bus_no}>
+          <option key={bus.bus_id} value={bus.bus_no}>
             {bus.bus_no}
           </option>
         ))}

@@ -3,24 +3,35 @@ import Button from './Button';
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import useBookings from "../../hooks/useBookings";
+import useCancellations from '../../hooks/useCancellations';
+import useAgentGuestBookings from '../../hooks/useAgentGuestBookings';
 import BookingQRCode from '../SeatBooking/BookingQRCode';
 import { RiQrCodeFill } from 'react-icons/ri';
+import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const PassengerDashboard = () => {
   const { user } = useContext(AuthContext);
   const [qrModal, setQrModal] = useState({ open: false, details: null });
 
   const passengerName = user.name;
+  const isAgent = user?.role === 'agent';
 
   // Fetch bookings for this user
   const { bookings = [] } = useBookings(undefined, undefined, user?.id);
+  // Fetch cancellations for this user (including guest cancellations if agent)
+  const { cancellations = [] } = useCancellations(user?.id, user?.role);
+  // Fetch guest bookings made by this agent (if user is an agent)
+  const { guestBookings = [] } = useAgentGuestBookings(isAgent ? user?.id : null);
 
-  // Calculate stats from bookings
+  // Calculate stats from bookings and cancellations (including agent guest bookings)
   const stats = {
-    booked: bookings.filter(b => String(b.status).toLowerCase() === 'confirmed').length,
-    pending: bookings.filter(b => String(b.status).toLowerCase() === 'processing').length,
-    cancelled: bookings.filter(b => String(b.status).toLowerCase() === 'cancelled').length,
+    booked: bookings.filter(b => String(b.status).toLowerCase() === 'confirmed').length + 
+            guestBookings.filter(gb => String(gb.status).toLowerCase() === 'confirmed').length,
+    pending: bookings.filter(b => String(b.status).toLowerCase() === 'processing').length + 
+             guestBookings.filter(gb => String(gb.status).toLowerCase() === 'processing').length,
+    cancelled: cancellations.length, // This now includes both regular and guest cancellations
   };
 
   // Helper: Check if current time is after 2:00 PM
@@ -29,10 +40,50 @@ const PassengerDashboard = () => {
     return now.getHours() > 14 || (now.getHours() === 14 && now.getMinutes() > 0);
   };
 
+  // Helper: Check if booking is today
+  const isToday = (dateStr) => {
+    const today = new Date();
+    const d = new Date(dateStr);
+    return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+  };
+  // Helper: Check if booking is in the future
+  const isFuture = (dateStr) => {
+    const today = new Date();
+    const d = new Date(dateStr);
+    // Ignore time, just compare date
+    return d > today.setHours(23,59,59,999);
+  };
+
   const actionTooltip = "You can't make changes after 2.00pm";
+
+  // Cancel booking handler (supports both regular bookings and guest bookings)
+  const handleCancelBooking = async (booking) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+    try {
+      const isGuestBooking = booking.hasOwnProperty('agent_id');
+      
+      if (isGuestBooking) {
+        // Cancel guest booking (moves to cancellations table)
+        await axios.post(`${API_URL}/guest-bookings/${booking.id}/cancel`);
+      } else {
+        // Cancel regular booking
+        await axios.post(`${API_URL}/bookings/${booking.id}/cancel`, {
+          ...booking,
+          status: 'cancelled',
+        });
+      }
+      
+      // Refresh the data
+      window.location.reload(); // Or refetch bookings if you want a better UX
+    } catch (err) {
+      alert('Failed to cancel booking: ' + (err.response?.data?.message || err.message));
+    }
+  };
 
   const renderActions = (status, booking) => {
     const disabled = isAfter2PM();
+    const journeyDate = booking.booked_date || booking.date;
+    const showCancel = isToday(journeyDate) || isFuture(journeyDate);
     switch (String(status).toLowerCase()) {
       case 'confirmed':
         return (
@@ -41,11 +92,13 @@ const PassengerDashboard = () => {
               <Button
                 variant="destructive"
                 className="w-full sm:w-auto bg-red-400 hover:bg-red-500"
-                disabled={disabled}
+                disabled={isToday(journeyDate) ? disabled : false}
+                onClick={() => handleCancelBooking(booking)}
+                style={{ display: showCancel ? undefined : 'none' }}
               >
                 Cancel
               </Button>
-              {disabled && (
+              {isToday(journeyDate) && disabled && (
                 <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover:block bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                   {actionTooltip}
                 </span>
@@ -60,7 +113,7 @@ const PassengerDashboard = () => {
                 pickup: booking.pickup,
                 drop: booking.drop,
                 price: booking.price,
-                date: booking.booked_date || booking.date,
+                date: journeyDate,
               } })}
               style={{ width: 36, height: 36 }}
             >
@@ -69,7 +122,7 @@ const PassengerDashboard = () => {
           </div>
         );
       case 'cancelled':
-        return null; // Or add a rebook button if needed
+        return null;
       case 'processing':
         return (
           <div className="flex justify-center w-full gap-2">
@@ -91,11 +144,99 @@ const PassengerDashboard = () => {
               <Button
                 variant="destructive"
                 className="bg-red-400 hover:bg-red-500 w-full sm:w-auto"
-                disabled={disabled}
+                disabled={isToday(journeyDate) ? disabled : false}
+                onClick={() => handleCancelBooking(booking)}
+                style={{ display: showCancel ? undefined : 'none' }}
               >
                 Cancel
               </Button>
+              {isToday(journeyDate) && disabled && (
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover:block bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                  {actionTooltip}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderGuestBookingActions = (status, guestBooking) => {
+    const disabled = isAfter2PM();
+    const journeyDate = guestBooking.departure_date;
+    const showCancel = isToday(journeyDate) || isFuture(journeyDate);
+    
+    switch (String(status).toLowerCase()) {
+      case 'confirmed':
+        return (
+          <div className="flex justify-center w-full gap-2">
+            <div className="relative group w-full sm:w-auto">
+              <Button
+                variant="destructive"
+                className="w-full sm:w-auto bg-red-400 hover:bg-red-500"
+                disabled={isToday(journeyDate) ? disabled : false}
+                onClick={() => handleCancelBooking(guestBooking)}
+                style={{ display: showCancel ? undefined : 'none' }}
+              >
+                Cancel
+              </Button>
+              {isToday(journeyDate) && disabled && (
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover:block bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                  {actionTooltip}
+                </span>
+              )}
+            </div>
+            <button
+              className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
+              title="See QR & Download"
+              onClick={() => setQrModal({ open: true, details: {
+                busName: guestBooking.bus_no,
+                seatNumbers: String(guestBooking.seat_no).split(',').map(s => s.trim()),
+                pickup: guestBooking.pickup,
+                drop: guestBooking.drop,
+                price: guestBooking.price,
+                date: journeyDate,
+                guestName: guestBooking.name,
+                guestPhone: guestBooking.phone,
+              } })}
+              style={{ width: 36, height: 36 }}
+            >
+              <RiQrCodeFill size={20} />
+            </button>
+          </div>
+        );
+      case 'cancelled':
+        return null;
+      case 'processing':
+        return (
+          <div className="flex justify-center w-full gap-2">
+            <div className="relative group w-full sm:w-auto">
+              <Button
+                variant="default"
+                className="bg-green-400 text-black hover:bg-green-500 w-full sm:w-auto"
+                disabled={disabled}
+              >
+                Complete
+              </Button>
               {disabled && (
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover:block bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                  {actionTooltip}
+                </span>
+              )}
+            </div>
+            <div className="relative group w-full sm:w-auto">
+              <Button
+                variant="destructive"
+                className="bg-red-400 hover:bg-red-500 w-full sm:w-auto"
+                disabled={isToday(journeyDate) ? disabled : false}
+                onClick={() => handleCancelBooking(guestBooking)}
+                style={{ display: showCancel ? undefined : 'none' }}
+              >
+                Cancel
+              </Button>
+              {isToday(journeyDate) && disabled && (
                 <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover:block bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                   {actionTooltip}
                 </span>
@@ -130,10 +271,12 @@ const PassengerDashboard = () => {
 
       {/* Booking Table */}
       <div className="w-full overflow-x-auto">
+        <h3 className="text-lg sm:text-xl font-semibold mb-4">Your Personal Bookings</h3>
         <table className="w-full min-w-[700px] table-auto border border-gray-200 text-xs sm:text-sm md:text-base">
           <thead className="bg-gray-100 text-xs sm:text-base md:text-lg">
             <tr>
-              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">ID</th>
+              {/* <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Booked Date</th> */}
+              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Bus No</th>
               <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Pickup</th>
               <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Drop</th>
               <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Journey Date</th>
@@ -145,7 +288,8 @@ const PassengerDashboard = () => {
           <tbody>
             {bookings.map((booking) => (
               <tr key={booking.id} className="text-center">
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.id}</td>
+                {/* <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.booked_date}</td> */}
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.bus_no}</td>
                 <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.pickup}</td>
                 <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.drop}</td>
                 <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.booked_date}</td>
@@ -154,9 +298,68 @@ const PassengerDashboard = () => {
                 <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border space-x-1">{renderActions(booking.status, booking)}</td>
               </tr>
             ))}
+            {/* Show cancellations as read-only rows */}
+            {cancellations.map((c) => (
+              <tr key={`cancelled-${c.id}`} className="text-center bg-red-50">
+                {/* <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.booked_date}</td> */}
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.bus_no}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.pickup}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.drop}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.booked_date}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{Array.isArray(c.seat_no) ? c.seat_no.join(', ') : c.seat_no}</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border capitalize break-words">cancelled</td>
+                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border text-gray-400 italic">-</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+
+      {/* Agent Guest Bookings Section */}
+      {isAgent && (
+        <div className="w-full overflow-x-auto mt-8">
+          <h3 className="text-lg sm:text-xl font-semibold mb-4">Guest Bookings You Made</h3>
+          <table className="w-full min-w-[800px] table-auto border border-gray-200 text-xs sm:text-sm md:text-base">
+            <thead className="bg-blue-100 text-xs sm:text-base md:text-lg">
+              <tr>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Guest Name</th>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Phone</th>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Bus No</th>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Pickup</th>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Drop</th>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Journey Date</th>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Seats</th>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Status</th>
+                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {guestBookings.map((guestBooking) => (
+                <tr key={`guest-${guestBooking.id}`} className="text-center bg-blue-50">
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.name}</td>
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.phone}</td>
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.bus_no}</td>
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.pickup}</td>
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.drop}</td>
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.departure_date}</td>
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.seat_no}</td>
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border capitalize break-words">{guestBooking.status}</td>
+                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border space-x-1">
+                    {renderGuestBookingActions(guestBooking.status, guestBooking)}
+                  </td>
+                </tr>
+              ))}
+              {guestBookings.length === 0 && (
+                <tr>
+                  <td colSpan="9" className="px-4 py-8 text-center text-gray-500 italic">
+                    No guest bookings found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
       {qrModal.open && (
         <BookingQRCode bookingDetails={qrModal.details} onCancel={() => setQrModal({ open: false, details: null })} />
       )}

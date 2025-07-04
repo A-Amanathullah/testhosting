@@ -5,17 +5,48 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => {
+    // Prioritize current month, then first available date's month
+    const today = new Date();
+    
     if (dates.length > 0) {
+      // Check if today's date exists in available dates
+      const todayStr = format(today, 'yyyy-MM-dd');
+      const hasToday = dates.includes(todayStr);
+      
+      if (hasToday) {
+        return startOfMonth(today);
+      }
+      
+      // Find future dates
+      const futureDates = dates.filter(dateStr => {
+        try {
+          const date = parse(dateStr, 'yyyy-MM-dd', new Date());
+          return date > today;
+        } catch {
+          return false;
+        }
+      }).sort();
+      
+      if (futureDates.length > 0) {
+        try {
+          const nearestFutureDate = parse(futureDates[0], 'yyyy-MM-dd', new Date());
+          return startOfMonth(nearestFutureDate);
+        } catch (error) {
+          console.error('Error parsing nearest future date:', error);
+        }
+      }
+      
+      // Fallback to first available date
       try {
-        const earliestDate = parse(dates[0], 'yyyy-MM-dd', new Date());
-        console.log('Earliest Date Parsed:', earliestDate);
-        return startOfMonth(earliestDate);
+        const firstDate = parse(dates[0], 'yyyy-MM-dd', new Date());
+        return startOfMonth(firstDate);
       } catch (error) {
-        console.error('Error parsing earliest date:', error);
-        return startOfMonth(new Date());
+        console.error('Error parsing first date:', error);
       }
     }
-    return startOfMonth(new Date());
+    
+    // Default to current month
+    return startOfMonth(today);
   });
 
   // Convert string dates to Date objects for comparison
@@ -36,14 +67,46 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
     console.log('Current Month:', currentMonth);
   }, [availableDates, currentMonth]);
 
-  // Automatically set currentMonth to the month of the first available date when dates change
+  // Automatically set currentMonth based on priority when dates change
   useEffect(() => {
     if (dates.length > 0) {
+      const today = new Date();
+      
+      // Check if today's date exists in available dates
+      const todayStr = format(today, 'yyyy-MM-dd');
+      const hasToday = dates.includes(todayStr);
+      
+      if (hasToday) {
+        setCurrentMonth(startOfMonth(today));
+        return;
+      }
+      
+      // Find future dates
+      const futureDates = dates.filter(dateStr => {
+        try {
+          const date = parse(dateStr, 'yyyy-MM-dd', new Date());
+          return date > today;
+        } catch {
+          return false;
+        }
+      }).sort();
+      
+      if (futureDates.length > 0) {
+        try {
+          const nearestFutureDate = parse(futureDates[0], 'yyyy-MM-dd', new Date());
+          setCurrentMonth(startOfMonth(nearestFutureDate));
+          return;
+        } catch (error) {
+          console.error('Error parsing nearest future date:', error);
+        }
+      }
+      
+      // Fallback to first available date
       try {
-        const earliestDate = parse(dates[0], 'yyyy-MM-dd', new Date());
-        setCurrentMonth(startOfMonth(earliestDate));
+        const firstDate = parse(dates[0], 'yyyy-MM-dd', new Date());
+        setCurrentMonth(startOfMonth(firstDate));
       } catch (error) {
-        // fallback: do nothing
+        console.error('Error parsing first date:', error);
       }
     }
   }, [dates]);

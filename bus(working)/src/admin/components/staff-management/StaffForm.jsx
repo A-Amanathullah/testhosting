@@ -232,6 +232,7 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
             className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
           >
             <option value="">Select a role</option>
+            <option value="Superadmin">Super Admin</option>
             <option value="admin">Admin</option>
             <option value="agent">Agent</option>
             <option value="data_entry_operator">Data Entry Operator</option>
