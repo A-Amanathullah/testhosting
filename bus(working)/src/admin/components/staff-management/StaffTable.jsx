@@ -29,7 +29,7 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
       person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       person.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       person.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      person.contact_number.includes(searchTerm)
+      (person.phone_no && person.phone_no.includes(searchTerm))
     );
   }, [sortedStaff, searchTerm]);
 
@@ -151,11 +151,11 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
               <th 
                 scope="col" 
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => requestSort('contact_number')}
+                onClick={() => requestSort('phone_no')}
               >
                 <div className="flex items-center">
                   Contact
-                  {sortConfig.key === 'contact_number' && (
+                  {sortConfig.key === 'phone_no' && (
                     sortConfig.direction === 'ascending' 
                       ? <ChevronUp size={16} className="ml-1" /> 
                       : <ChevronDown size={16} className="ml-1" />
@@ -198,7 +198,7 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{person.name}</div>
-                        <div className="text-sm text-gray-500">{person.nic_no}</div>
+                        <div className="text-sm text-gray-500">{person.nic_no || 'N/A'}</div>
                       </div>
                     </div>
                   </td>
@@ -221,7 +221,7 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
                     {person.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {person.contact_number}
+                    {person.phone_no || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button

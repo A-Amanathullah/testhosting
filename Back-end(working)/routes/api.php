@@ -12,6 +12,7 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\BusRouteController;
 use App\Http\Controllers\SmsTemplateController;
 use App\Http\Controllers\LoyaltyCardController;
+use App\Http\Controllers\LoyaltyMemberController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\CancellationController;
@@ -41,6 +42,16 @@ Route::apiResource('sms-templates', SmsTemplateController::class);
 Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
 Route::delete('/user/{id}', [AuthController::class, 'destroyUser'])->middleware('auth:sanctum');
 Route::apiResource('loyalty-cards', LoyaltyCardController::class);
+
+// Loyalty Members routes - specific routes first
+Route::post('/loyalty-members/create-all', [LoyaltyMemberController::class, 'createMembersForAllUsers']);
+Route::post('/loyalty-members/create-for-user', [LoyaltyMemberController::class, 'createMemberForUser']);
+Route::post('/loyalty-members/refresh-all', [LoyaltyMemberController::class, 'refreshAllMembersData']);
+Route::post('/loyalty-members/{id}/refresh', [LoyaltyMemberController::class, 'refreshMemberData']);
+Route::patch('/loyalty-members/{id}/status', [LoyaltyMemberController::class, 'updateStatus']);
+Route::get('/loyalty-members/statistics', [LoyaltyMemberController::class, 'getStatistics']);
+Route::get('/loyalty-members/report', [LoyaltyMemberController::class, 'getReport']);
+Route::apiResource('loyalty-members', LoyaltyMemberController::class)->only(['index', 'show', 'destroy']);
 Route::get('/role-permissions', [RolePermissionController::class, 'index']);
 Route::get('/role-permissions/{role}', [RolePermissionController::class, 'show']);
 Route::post('/role-permissions', [RolePermissionController::class, 'store']);

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Services\LoyaltyService;
 
 class Booking extends Model
 {
@@ -26,6 +27,35 @@ class Booking extends Model
         'reason',
         'price',
     ];
+
+    // Automatically update loyalty points when booking status changes
+    // Temporarily disabled to debug issues
+    /*
+    protected static function booted()
+    {
+        static::saved(function ($booking) {
+            try {
+                // Update loyalty points when booking is confirmed
+                if ($booking->isDirty('status') && $booking->status === 'confirmed') {
+                    LoyaltyService::updatePointsForBooking($booking);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error in Booking saved event: ' . $e->getMessage());
+            }
+        });
+
+        static::created(function ($booking) {
+            try {
+                // Update loyalty points when new booking is created and confirmed
+                if ($booking->status === 'confirmed') {
+                    LoyaltyService::updatePointsForBooking($booking);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error in Booking created event: ' . $e->getMessage());
+            }
+        });
+    }
+    */
 
     public function user()
     {

@@ -4,9 +4,11 @@ import { FaTrash } from 'react-icons/fa';
 // import { motion } from 'framer-motion';
 import { LoyaltyCard, EditLoyaltyCardModal, CreateCardModal } from '../../components/loyalty-card';
 import { createLoyaltyCard, getLoyaltyCards, updateLoyaltyCard, deleteLoyaltyCard } from '../../../services/loyaltyCardService';
+import { getLoyaltyStatistics } from '../../../services/loyaltyMemberService';
 
 const CardPage = () => {
   const [cards, setCards] = useState([]);
+  const [statistics, setStatistics] = useState(null);
   const [isCreateCardModalOpen, setIsCreateCardModalOpen] = useState(false);
   const [isEditCardModalOpen, setIsEditCardModalOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
@@ -14,6 +16,7 @@ const CardPage = () => {
 
   useEffect(() => {
     fetchCards();
+    fetchStatistics();
   }, []);
 
   const fetchCards = async () => {
@@ -23,6 +26,21 @@ const CardPage = () => {
     } catch (err) {
       alert('Failed to fetch loyalty cards.');
     }
+  };
+
+  const fetchStatistics = async () => {
+    try {
+      const data = await getLoyaltyStatistics();
+      setStatistics(data);
+    } catch (err) {
+      console.error('Failed to fetch statistics:', err);
+    }
+  };
+
+  const getCustomerCount = (cardType) => {
+    if (!statistics?.members_by_tier) return 0;
+    const tierData = statistics.members_by_tier.find(tier => tier.card_type === cardType);
+    return tierData ? tierData.count : 0;
   };
 
   const handleOpenCardEdit = (card) => {
@@ -35,6 +53,7 @@ const CardPage = () => {
     try {
       await createLoyaltyCard(newCard);
       await fetchCards();
+      await fetchStatistics();
     } catch (err) {
       alert('Failed to create loyalty card.');
     }
@@ -47,6 +66,7 @@ const CardPage = () => {
     try {
       await updateLoyaltyCard(id, updatedCard);
       await fetchCards();
+      await fetchStatistics();
     } catch (err) {
       alert('Failed to update loyalty card.');
     }
@@ -58,6 +78,7 @@ const CardPage = () => {
     try {
       await deleteLoyaltyCard(id);
       await fetchCards();
+      await fetchStatistics();
     } catch (err) {
       alert('Failed to delete loyalty card.');
     }
@@ -92,6 +113,7 @@ const CardPage = () => {
                   tier={card.tier}
                   points={{ min: card.min_points, max: card.max_points }}
                   color={card.color}
+                  customers={getCustomerCount(card.tier)}
                   pointsPerBooking={card.points_per_booking}
                   onEdit={() => handleOpenCardEdit(card)}
                 />

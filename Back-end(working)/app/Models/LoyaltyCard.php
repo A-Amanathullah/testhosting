@@ -16,4 +16,9 @@ class LoyaltyCard extends Model
         'points_per_booking',
         'color',
     ];
+
+    public function loyaltyMembers()
+    {
+        return $this->hasMany(LoyaltyMember::class);
+    }
 }

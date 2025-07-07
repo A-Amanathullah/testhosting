@@ -105,6 +105,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
       status: booking.status,
       reason: booking.reason,
       busNumber: getBusNoById(booking.bus_id),
+      role: booking.role,
       type: 'booking',
       raw: booking // Keep the raw booking data for the cancel action
     }));
@@ -124,6 +125,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         status: 'Frozen',
         reason: frozen.reason,
         busNumber: getBusNoById(frozen.bus_id),
+        role: frozen.role,
         type: 'frozen'
       };
     });
@@ -143,6 +145,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         status: 'Cancelled',
         reason: c.reason,
         busNumber: getBusNoById(c.bus_id),
+        role: c.role,
         type: 'cancelled'
       };
     });
@@ -255,7 +258,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
                   {row.name}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
-                  {row.type === 'guest' ? 'Guest' : row.type === 'booking' ? 'User' : row.type === 'frozen' ? 'Frozen' : 'Cancelled'}
+                  {row.type === 'guest' ? 'Guest' : row.type === 'booking' ? `${row.role}` : row.type === 'frozen' ? 'Frozen' : 'Cancelled'}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                   {row.ticketsReserved}

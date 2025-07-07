@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storeUserDetails } from '../../../services/authService';
 
-const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = false }) => {  // Form state
+const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = false, roles = [] }) => {  // Form state
   const [formData, setFormData] = useState({
     name: '',
     contact_number: '',
@@ -23,15 +23,23 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
   // If initialData is provided (for editing), populate the form
   useEffect(() => {
     if (initialData) {
+      // Find the matching role from the roles prop (case-insensitive)
+      const matchingRole = roles.find(r => 
+        r.name.toLowerCase() === (initialData.role || '').toLowerCase()
+      );
+      
       setFormData({
         ...initialData,
+        // Map backend field names to form field names
+        contact_number: initialData.phone_no || '',
+        // Use the properly cased role name from roles table
+        role: matchingRole ? matchingRole.name : initialData.role || '',
         // Don't populate password fields in edit mode
         password: '',
         confirmPassword: '',
-        // Removed: permissions: initialData.permissions || [],
       });
     }
-  }, [initialData]);
+  }, [initialData, roles]);
 
   // When role changes, set default permissions (only if not editing existing staff)
   useEffect(() => {
@@ -232,11 +240,11 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
             className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
           >
             <option value="">Select a role</option>
-            <option value="Superadmin">Super Admin</option>
-            <option value="admin">Admin</option>
-            <option value="agent">Agent</option>
-            <option value="data_entry_operator">Data Entry Operator</option>
-            <option value="conductor">Conductor</option>
+            {roles.map((role) => (
+              <option key={role.id} value={role.name}>
+                {role.name.charAt(0).toUpperCase() + role.name.slice(1).replace('_', ' ')}
+              </option>
+            ))}
           </select>
           {errors.role && <p className="mt-1 text-sm text-red-600">{errors.role}</p>}
         </div>

@@ -26,6 +26,7 @@ import AgentReportPage from "./admin/pages/report/AgentReportPage";
 import RevenueReportPage from "./admin/pages/report/RevenueReportPage";
 import TrackingPage from "./admin/pages/TrackingPage";
 import LoyaltyCardPage from "./admin/pages/loyalty/CardPage";
+import LoyaltyMembersPage from "./admin/pages/loyalty/LoyaltyMembersPage";
 import LoyaltyReportPage from "./admin/pages/loyalty/ReportPage";
 import UsersPage from "./admin/pages/UsersPage";
 import SmsTemplatePage from "./admin/pages/SmsTemplatePage";
@@ -36,6 +37,10 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { PermissionsProvider } from './context/PermissionsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotAuthorized from './pages/NotAuthorized';
+import AboutUs from './pages/AboutUs';
+import Gallery from './pages/Gallery';
+import Career from './pages/Career';
+import Contact from './pages/Contact';
 import React, { useContext } from 'react';
 import { usePermissions } from './context/PermissionsContext';
 import { Navigate } from 'react-router-dom';
@@ -53,6 +58,10 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/about-us" element={<AboutUs />} />
+        <Route path="/gallery" element={<Gallery />} />
+        <Route path="/career" element={<Career />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/busList" element={<BusList />} />
@@ -79,6 +88,7 @@ function App() {
           <Route path="report/revenue" element={<ProtectedRoute module="Revenue Report" action="view"><RevenueReportPage /></ProtectedRoute>} />
           <Route path="tracking" element={<ProtectedRoute module="Bus Tracking" action="view"><TrackingPage /></ProtectedRoute>} />
           <Route path="loyalty/card" element={<ProtectedRoute module="Loyalty Card" action="view"><LoyaltyCardPage /></ProtectedRoute>} />
+          <Route path="loyalty/members" element={<ProtectedRoute module="Loyalty Members" action="view"><LoyaltyMembersPage /></ProtectedRoute>} />
           <Route path="loyalty/report" element={<ProtectedRoute module="Loyalty Report" action="view"><LoyaltyReportPage /></ProtectedRoute>} />
           <Route path="users" element={<ProtectedRoute module="User Management" action="view"><UsersPage /></ProtectedRoute>} />
           <Route path="sms-template" element={<ProtectedRoute module="SMS Template" action="view"><SmsTemplatePage /></ProtectedRoute>} />
@@ -114,6 +124,7 @@ const ADMIN_PAGES = [
   { path: 'report/revenue', module: 'Revenue Report', action: 'view' },
   { path: 'tracking', module: 'Bus Tracking', action: 'view' },
   { path: 'loyalty/card', module: 'Loyalty Card', action: 'view' },
+  { path: 'loyalty/members', module: 'Loyalty Members', action: 'view' },
   { path: 'loyalty/report', module: 'Loyalty Report', action: 'view' },
   { path: 'users', module: 'User Management', action: 'view' },
   { path: 'sms-template', module: 'SMS Template', action: 'view' },

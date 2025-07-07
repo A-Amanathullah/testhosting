@@ -1,72 +1,44 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FileText, Calendar, Users, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { PrintReportButton } from '../../components/loyalty-card';
+import { getLoyaltyReport } from '../../../services/loyaltyMemberService';
 import '../../components/loyalty-card/report-print.css';
 
 const ReportPage = () => {
-  // Placeholder data for the customer loyalty reports
-  const [customerReports, setCustomerReports] = useState([
-    {
-      customerId: 'RS1001',
-      customerName: 'John Smith',
-      totalBookings: 12,
-      totalAmount: 25600,
-      pointsEarned: 120,
-      pointsRedeemed: 50,
-      balancePoints: 70,
-      tier: 'Gold'
-    },
-    {
-      customerId: 'RS1002',
-      customerName: 'Sarah Johnson',
-      totalBookings: 8,
-      totalAmount: 18400,
-      pointsEarned: 80,
-      pointsRedeemed: 30,
-      balancePoints: 50,
-      tier: 'Silver'
-    },
-    {
-      customerId: 'RS1003',
-      customerName: 'Michael Brown',
-      totalBookings: 20,
-      totalAmount: 42000,
-      pointsEarned: 200,
-      pointsRedeemed: 120,
-      balancePoints: 80,
-      tier: 'Platinum'
-    },
-    {
-      customerId: 'RS1004',
-      customerName: 'Emily Davis',
-      totalBookings: 5,
-      totalAmount: 10500,
-      pointsEarned: 50,
-      pointsRedeemed: 0,
-      balancePoints: 50,
-      tier: 'Silver'
-    },
-    {
-      customerId: 'RS1005',
-      customerName: 'David Wilson',
-      totalBookings: 15,
-      totalAmount: 31500,
-      pointsEarned: 150,
-      pointsRedeemed: 100,
-      balancePoints: 50,
-      tier: 'Gold'
-    }
-  ]);
+  // State for the customer loyalty reports
+  const [customerReports, setCustomerReports] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState('All');
+
+  // Fetch loyalty report data on component mount
+  useEffect(() => {
+    fetchLoyaltyReport();
+  }, []);
+
+  const fetchLoyaltyReport = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getLoyaltyReport();
+      setCustomerReports(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch loyalty report data');
+      console.error('Error fetching loyalty report:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Filter reports based on search query and tier filter
   const filteredReports = useMemo(() => {
     return customerReports.filter(customer => {
       const matchesSearch = 
-        customer.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        customer.customerId.toLowerCase().includes(searchQuery.toLowerCase());
+        customer.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        customer.customer_id?.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesTier = tierFilter === 'All' || customer.tier === tierFilter;
       
@@ -75,10 +47,9 @@ const ReportPage = () => {
   }, [customerReports, searchQuery, tierFilter]);
   
   // Calculate summary statistics based on filtered data
-  const totalCustomers = filteredReports.length;
-  const totalBookings = filteredReports.reduce((sum, customer) => sum + customer.totalBookings, 0);
-  const totalPointsEarned = filteredReports.reduce((sum, customer) => sum + customer.pointsEarned, 0);
-  const totalPointsRedeemed = filteredReports.reduce((sum, customer) => sum + customer.pointsRedeemed, 0);
+  const totalBookings = filteredReports.reduce((sum, customer) => sum + customer.total_bookings, 0);
+  const totalPointsEarned = filteredReports.reduce((sum, customer) => sum + customer.points_earned, 0);
+  const totalAmount = filteredReports.reduce((sum, customer) => sum + customer.total_amount, 0);
     const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -100,16 +71,26 @@ const ReportPage = () => {
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
       <div className="flex-grow p-6 overflow-auto">
-        {/* Header with title */}        <div className="flex items-center justify-between mb-6">
+        {/* Header with title */}
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Customer Loyalty Reports</h1>
             <p className="text-sm text-gray-600">View and print customer loyalty program metrics</p>
           </div>
           
-          <PrintReportButton 
-            onClick={handlePrint}
-            disabled={customerReports.length === 0}
-          />
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={fetchLoyaltyReport}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              {isLoading ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <PrintReportButton 
+              onClick={handlePrint}
+              disabled={customerReports.length === 0}
+            />
+          </div>
         </div>
           {/* Customer loyalty reports table */}
         <div className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm loyalty-report-print">          {/* This header will only show when printing */}
@@ -147,21 +128,37 @@ const ReportPage = () => {
                 <option value="Silver">Silver</option>
                 <option value="Gold">Gold</option>
                 <option value="Platinum">Platinum</option>
+                <option value="Diamond">Diamond</option>
               </select>
             </div>
           </div>
           
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+                <span className="ml-2 text-gray-600">Loading loyalty report...</span>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <p className="text-red-600 font-medium">{error}</p>
+                  <button 
+                    onClick={fetchLoyaltyReport}
+                    className="mt-2 px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr className="bg-gray-50">
                   <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Customer ID</th>
                   <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Customer Name</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Total Bookings</th>
                   <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Total Amount (Rs)</th>
                   <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Points Earned</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Points Redeemed</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Balance Points</th>
                   <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Tier</th>
                 </tr>
               </thead>
@@ -170,15 +167,13 @@ const ReportPage = () => {
                   <>
                     {filteredReports.map((customer, index) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{customer.customerId}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{customer.customerName}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.totalBookings}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.totalAmount.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.pointsEarned}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.pointsRedeemed}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.balancePoints}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{customer.customer_id}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{customer.customer_name}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.total_amount.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.points_earned}</td>
                         <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            customer.tier === 'Diamond' ? 'bg-blue-200 text-blue-800' :
                             customer.tier === 'Platinum' ? 'bg-slate-200 text-slate-800' : 
                             customer.tier === 'Gold' ? 'bg-amber-200 text-amber-800' : 
                             'bg-gray-200 text-gray-800'
@@ -193,19 +188,15 @@ const ReportPage = () => {
                       <td className="px-6 py-4 text-sm text-gray-900" colSpan="2">Total</td>
                       <td className="px-6 py-4 text-sm text-gray-900">{totalBookings}</td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {filteredReports.reduce((sum, c) => sum + c.totalAmount, 0).toLocaleString()} Rs
+                        {totalAmount.toLocaleString()} Rs
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">{totalPointsEarned}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{totalPointsRedeemed}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {filteredReports.reduce((sum, c) => sum + c.balancePoints, 0)}
-                      </td>
                       <td className="px-6 py-4 text-sm text-gray-900"></td>
                     </tr>
                   </>
                 ) : (
                   <tr>
-                    <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
                       <p className="text-lg font-medium">No customers found matching your search criteria</p>
                       <p className="mt-1">Try adjusting your search or filter options</p>
                     </td>
@@ -213,7 +204,9 @@ const ReportPage = () => {
                 )}
               </tbody>
             </table>
-          </div>        </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import {
   Award,
   Users,
   MessageSquare,
-  User,
+  // User,
   Menu,
   Clock,
   UserPlus,
@@ -135,6 +135,11 @@ const SIDEBAR_ITEMS = [
         href: "/admin/loyalty/card",
       },
       {
+        name: "Loyalty Members",
+        icon: Users,
+        href: "/admin/loyalty/members",
+      },
+      {
         name: "Loyalty Report",
         icon: BarChart,
         href: "/admin/loyalty/report",
@@ -153,12 +158,12 @@ const SIDEBAR_ITEMS = [
     color: "#06B6D4",
     href: "/admin/sms-template",
   },
-  {
-    name: "Profile",
-    icon: User,
-    color: "#6EE7B7",
-    href: "/admin/profile",
-  },
+  // {
+  //   name: "Profile",
+  //   icon: User,
+  //   color: "#6EE7B7",
+  //   href: "/admin/profile",
+  // },
 ];
 
 const Sidebar = () => {

@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { fetchUsers, createUser, updateUser, deleteUser } from '../../services/userService';
+import { getRoles } from '../../services/roleService';
 import { FaEdit, FaTrash, FaEye, FaEyeSlash } from '../components/Icons';
+
+// Import auth service to get current user info
+import { getToken } from '../../utils/auth';
+import axios from 'axios';
 
 const initialForm = {
   name: '',
   email: '',
-  role: 'user',
+  role: 'User',  // Match the capitalized role
   password: '',
   confirm_password: '',
   first_name: '',
@@ -16,6 +21,7 @@ const initialForm = {
 
 const UsersPage = () => {
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
@@ -26,17 +32,61 @@ const UsersPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [search, setSearch] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    fetchUsers()
-      .then(data => {
-        setUsers(data.filter(u => u.role === 'user'));
+    // Fetch current user info first
+    const fetchCurrentUser = async () => {
+      try {
+        const token = getToken();
+        if (!token) throw new Error('No token found');
+
+        const response = await axios.get('http://localhost:8000/api/user', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCurrentUser(response.data);
+      } catch (err) {
+        console.log('Could not fetch current user:', err);
+      }
+    };
+    
+    // Load users and roles
+    const loadData = async () => {
+      try {
+        const [userData, rolesData] = await Promise.all([
+          fetchUsers(),
+          getRoles()
+        ]);
+        
+        console.log('All users from API:', userData);
+        console.log('Roles from API:', rolesData);
+        console.log('Users with role "User":', userData.filter(u => u.role === 'User'));
+        
+        setUsers(userData.filter(u => u.role === 'User'));
+        // Ensure roles is always an array
+        setRoles(Array.isArray(rolesData) ? rolesData : []);
         setLoading(false);
-      })
-      .catch(err => {
-        setError('Failed to load users');
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        if (err.response && err.response.status === 403) {
+          setError('Access denied. You need admin privileges to manage users.');
+        } else {
+          setError('Failed to load data. Please check your connection.');
+        }
+        // Set empty arrays on error to prevent crashes
+        setUsers([]);
+        setRoles([]);
         setLoading(false);
-      });
+      }
+    };
+
+    if (getToken()) {
+      fetchCurrentUser();
+      loadData();
+    } else {
+      setError('Please login to access this page.');
+      setLoading(false);
+    }
   }, []);
 
   const handleEdit = (user) => {
@@ -79,7 +129,7 @@ const UsersPage = () => {
     const userPayload = {
       name: form.name,
       email: form.email,
-      role: form.role,
+      role: form.role.toLowerCase(), // Convert to lowercase for backend validation
       password: form.password,
     };
     const userDetailsPayload = {
@@ -88,7 +138,7 @@ const UsersPage = () => {
       phone_no: form.phone_no,
       gender: form.gender,
       email: form.email,
-      role: form.role,
+      role: form.role.toLowerCase(), // Convert to lowercase for backend validation
     };
     try {
       if (editingUser) {
@@ -125,14 +175,37 @@ const UsersPage = () => {
   });
 
   if (loading) return <div className="p-6">Loading...</div>;
-  if (error) return <div className="p-6 text-red-600">{error}</div>;
+  if (error) return (
+    <div className="p-6">
+      <div className="text-red-600 mb-4">{error}</div>
+      {error.includes('Access denied') && (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+          <strong>Note:</strong> To access user management, please login with an admin account.
+          <br />
+          <small>Test admin credentials: admin@test.com / password123</small>
+          {currentUser && (
+            <div className="mt-2">
+              <small>Currently logged in as: <strong>{currentUser.name}</strong> (Role: <strong>{currentUser.role}</strong>)</small>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
-      <div className="flex-grow p-6 overflow-auto">
-        <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex-grow p-6 overflow-auto">          <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold">User Management</h1>
+            <div>
+              <h1 className="text-2xl font-bold">User Management</h1>
+              {currentUser && (
+                <p className="text-sm text-gray-600">
+                  Logged in as: <span className="font-medium">{currentUser.name}</span> 
+                  ({currentUser.role})
+                </p>
+              )}
+            </div>
             <input
               type="text"
               placeholder="Search users..."
@@ -188,6 +261,15 @@ const UsersPage = () => {
                   <div>
                     <label className="block text-sm font-medium">Email</label>
                     <input type="email" className="w-full border rounded px-3 py-2" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Role</label>
+                    <select className="w-full border rounded px-3 py-2" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} required>
+                      <option value="">Select Role</option>
+                      {Array.isArray(roles) && roles.map(role => (
+                        <option key={role.id} value={role.name}>{role.label || role.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium">Password {editingUser ? '(Leave blank to keep unchanged)' : ''}</label>

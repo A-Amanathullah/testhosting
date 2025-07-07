@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 // import { Link } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 import {
@@ -7,14 +7,35 @@ import {
   DeleteConfirmationModal
 } from '../../components/staff-management';
 import useStaff from '../../../hooks/useStaff';
-import { deleteStaff, updateStaff } from '../../../services/staffService';
-import { AuthContext } from '../../../context/AuthContext';
+import { createUser, updateUser, deleteUser } from '../../../services/userService';
+import { getRoles } from '../../../services/roleService';
 import { usePermissions } from '../../../context/PermissionsContext';
 
 const ListPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
-  const { token } = useContext(AuthContext);
   const { staff, loading, error } = useStaff(refreshKey);
+  
+  // State for roles data
+  const [roles, setRoles] = useState([]);
+
+  // Load roles
+  React.useEffect(() => {
+    const loadRoles = async () => {
+      try {
+        const rolesData = await getRoles();
+        // Filter out 'User' role from the dropdown options
+        const staffRoles = rolesData.filter(role => 
+          role.name.toLowerCase() !== 'user'
+        );
+        setRoles(staffRoles);
+      } catch (err) {
+        console.error('Failed to load roles:', err);
+      }
+    };
+
+    loadRoles();
+  }, []);
+
   // Modal states
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -75,10 +96,10 @@ const ListPage = () => {
   const confirmDelete = async () => {
     if (selectedStaff) {
       try {
-        await deleteStaff(selectedStaff.id, token);
+        await deleteUser(selectedStaff.id);
         setRefreshKey(prev => prev + 1); // Refetch staff after delete
       } catch (err) {
-        alert('Failed to delete staff.');
+        alert('Failed to delete staff member.');
       }
     }
     setDeleteModalOpen(false);
@@ -86,12 +107,59 @@ const ListPage = () => {
   };
 
   const handleUpdateStaff = async (updatedStaffData) => {
-    if (selectedStaff) {
+    if (editModalOpen === 'create') {
+      // Creating new staff member
       try {
-        await updateStaff(selectedStaff.id, updatedStaffData, token);
-        setRefreshKey(prev => prev + 1); // Refetch staff after update
+        const userPayload = {
+          name: updatedStaffData.name,
+          email: updatedStaffData.email,
+          role: updatedStaffData.role.toLowerCase(), // Convert to lowercase for backend
+          password: updatedStaffData.password,
+        };
+        
+        const userDetailsPayload = {
+          first_name: updatedStaffData.first_name,
+          last_name: updatedStaffData.last_name,
+          phone_no: updatedStaffData.contact_number,
+          gender: updatedStaffData.gender,
+          email: updatedStaffData.email,
+          role: updatedStaffData.role.toLowerCase(),
+          nic_no: updatedStaffData.nic_no,
+          address: updatedStaffData.address,
+          profile_image: updatedStaffData.profile_image,
+        };
+
+        await createUser(userPayload, userDetailsPayload);
+        setRefreshKey(prev => prev + 1);
       } catch (err) {
-        alert('Failed to update staff.');
+        alert('Failed to create staff member.');
+      }
+    } else if (selectedStaff) {
+      // Updating existing staff member
+      try {
+        const userPayload = {
+          name: updatedStaffData.name,
+          email: updatedStaffData.email,
+          role: updatedStaffData.role.toLowerCase(),
+          password: updatedStaffData.password, // Optional - only if provided
+        };
+        
+        const userDetailsPayload = {
+          first_name: updatedStaffData.first_name,
+          last_name: updatedStaffData.last_name,
+          phone_no: updatedStaffData.contact_number,
+          gender: updatedStaffData.gender,
+          email: updatedStaffData.email,
+          role: updatedStaffData.role.toLowerCase(),
+          nic_no: updatedStaffData.nic_no,
+          address: updatedStaffData.address,
+          profile_image: updatedStaffData.profile_image,
+        };
+
+        await updateUser(selectedStaff.id, userPayload, userDetailsPayload);
+        setRefreshKey(prev => prev + 1);
+      } catch (err) {
+        alert('Failed to update staff member.');
       }
     }
     setEditModalOpen(false);
@@ -151,9 +219,10 @@ const ListPage = () => {
         onClose={() => setEditModalOpen(false)}
         title="Add Staff"
         staff={null}
-        onSubmit={handleUpdateStaff} // You may want a separate handleCreateStaff
+        onSubmit={handleUpdateStaff}
         isEdit={true}
         isCreate={true}
+        roles={roles} // 'User' role already filtered out during load
       />
       <StaffModal
         isOpen={editModalOpen === 'edit'}
@@ -162,6 +231,7 @@ const ListPage = () => {
         staff={selectedStaff}
         onSubmit={handleUpdateStaff}
         isEdit={true}
+        roles={roles} // 'User' role already filtered out during load
       />
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}

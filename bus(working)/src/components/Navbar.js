@@ -1,30 +1,43 @@
 import React from "react";
 import ResponsiveMenu from "./Other/ResponsiveMenu";
+import UserProfileDropdown from "./UserProfileDropdown";
 import logo from "../assets/Side.png"
 import { FaHome } from "react-icons/fa";
 import { BsFillGrid1X2Fill } from "react-icons/bs";
 import { IoIosPersonAdd } from "react-icons/io";
 import { TiThMenu } from "react-icons/ti";
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useState } from "react";
-import { FiLogOut } from "react-icons/fi";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useCallback } from "react";
 import { AuthContext } from "../context/AuthContext";
+import { usePermissions } from "../context/PermissionsContext";
 import { useNavigate } from "react-router-dom";
 
 function Navbar() {
     const [open, setOpen] = useState(false)
     const [navAdmin, setNavAdmin] = useState(false)
     const { user, setUser } = useContext(AuthContext);
+    const { permissions } = usePermissions();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Check if current path is admin panel
+    const isOnAdminPanel = location.pathname.startsWith('/admin');
+
+    // Helper function to check if user has any admin permissions
+    const hasAnyAdminPermissions = useCallback(() => {
+        if (!permissions || !user) return false;
+        
+        // Check if user has any permissions at all (indicating admin access)
+        return Object.keys(permissions).length > 0 && 
+               Object.values(permissions).some(modulePermissions => 
+                   Object.values(modulePermissions).some(hasPermission => hasPermission)
+               );
+    }, [permissions, user]);
 
     useEffect(() => {
-        if (user && user.role === "admin") {
-            setNavAdmin(true);
-        } else {
-            setNavAdmin(false);
-        }
-    }, [user]);
+        setNavAdmin(hasAnyAdminPermissions());
+    }, [user, permissions, hasAnyAdminPermissions]);
 
     const handleLogout = () => {
         navigate("/");
@@ -43,14 +56,22 @@ function Navbar() {
                     <div className="flex items-center gap-2 relative ">
                         <img src={logo} alt="RS Express" className="w-32 h-10 md:w-48 md:h-15 object-contain" />
                     </div>
-                    {/* menu items*/}
-                    {!navAdmin &&
+                    {/* menu items - hide when on admin panel */}
+                    {!isOnAdminPanel &&
                         <div className="hidden md:block cursor-pointer">
                             <ul className="flex items-center gap-6">
-                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">About us</li>
-                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">Galley</li>
-                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">Career</li>
-                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">Contact</li>
+                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">
+                                    <Link to="/about-us">About us</Link>
+                                </li>
+                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">
+                                    <Link to="/gallery">Gallery</Link>
+                                </li>
+                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">
+                                    <Link to="/career">Career</Link>
+                                </li>
+                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">
+                                    <Link to="/contact">Contact</Link>
+                                </li>
                             </ul>
                         </div>}
 
@@ -60,7 +81,7 @@ function Navbar() {
                             onClick={() => { handleMenuClick(); navigate("/"); }}>
                             <FaHome className="" />
                         </button>
-                        {user && user.role === "admin" ? (
+                        {user && hasAnyAdminPermissions() ? (
                             <Link to="/admin" onClick={handleMenuClick}>
                                 <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200">
                                     <BsFillGrid1X2Fill className="p-0.5" />
@@ -76,13 +97,7 @@ function Navbar() {
 
                         {user ? (
                             <div className="flex items-center gap-5">
-                                <div className="hover:bg-transparent text-lg font-bold text-primary px-6 py-2 duration-200 hidden md:block">
-                                    {(user.name).toUpperCase()}
-                                </div>
-                                <button className="hover:bg-primary text-primary font-semibold hover:text-white rounded-md border-2 border-primary px-6 py-2 duration-200 hidden md:block "
-                                    onClick={() => { handleMenuClick(); handleLogout(); }}>
-                                    <FiLogOut className="text-xl" />
-                                </button>
+                                <UserProfileDropdown user={user} onLogout={handleLogout} />
                             </div>
                         ) : (
                             <div className="flex items-center gap-5">

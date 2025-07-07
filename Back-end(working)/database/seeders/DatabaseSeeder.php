@@ -6,8 +6,6 @@ use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Database\Seeders\RoleSeeder;
-use Database\Seeders\RolePermissionsSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,11 +14,23 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            RoleSeeder::class,
+            RolePermissionsSeeder::class,
+            LoyaltyCardSeeder::class,
+            TestUserSeeder::class,
+            BusRegSeeder::class,
+            BusTripSeeder::class,
+            SmsTemplateSeeder::class,
         ]);
+
+        echo "\nAll seeders completed successfully!\n";
+        echo "Database has been seeded with:\n";
+        echo "- Roles and permissions\n";
+        echo "- Loyalty cards\n";
+        echo "- Test users and user details\n";
+        echo "- Bus registrations\n";
+        echo "- Bus trips\n";
+        echo "- SMS templates\n";
     }
 }

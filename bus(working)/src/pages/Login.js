@@ -1,12 +1,14 @@
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { loginUser, fetchUser, checkProfileCompletion } from "../services/authService";
 import { AuthContext } from "../context/AuthContext";
+import { usePermissions } from "../context/PermissionsContext";
 import GoogleAuthButton from "../components/Auth/GoogleAuthButton";
 import { FaEye, FaEyeSlash } from '../admin/components/Icons';
 
 const Login = () => {
   const { setUser, setToken } = useContext(AuthContext);
+  const { permissions,  loadPermissions } = usePermissions();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -16,6 +18,17 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const from = location.state?.from?.pathname || "/";
   const [searchParams] = useSearchParams();
+
+  // Helper function to check if user has any admin permissions
+  const hasAnyAdminPermissions = useCallback((userPermissions = permissions) => {
+    if (!userPermissions) return false;
+    
+    // Check if user has any permissions at all (indicating admin access)
+    return Object.keys(userPermissions).length > 0 && 
+           Object.values(userPermissions).some(modulePermissions => 
+               Object.values(modulePermissions).some(hasPermission => hasPermission)
+           );
+  }, [permissions]);
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -31,17 +44,18 @@ const Login = () => {
       fetchUser()
         .then(async (userData) => {
           setUser(userData);
+          
           const needsCompletion = await checkProfileCompletion();
           if (needsCompletion) {
             navigate("/complete-profile");
-          } else if (userData.role === "admin") {
-            navigate("/admin", { replace: true });
-          } else if (userData.role === "agent") {
-            navigate("/agent", { replace: true });
-          } else if (userData.role === "staff") {
-            navigate("/staff-dashboard", { replace: true });
           } else {
-            navigate(redirectTo, { replace: true });
+            // Load permissions for the user's role
+            const userPermissions = await loadPermissions(userData.role);
+            if (hasAnyAdminPermissions(userPermissions)) {
+              navigate("/admin", { replace: true });
+            } else {
+              navigate(redirectTo, { replace: true });
+            }
           }
         })
         .catch((error) => {
@@ -52,7 +66,7 @@ const Login = () => {
           setLoading(false);
         });
     }
-  }, [searchParams, setUser, setToken, navigate, from]);
+  }, [searchParams, setUser, setToken, navigate, from, hasAnyAdminPermissions, loadPermissions]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -69,14 +83,16 @@ const Login = () => {
       const needsCompletion = await checkProfileCompletion();
       if (needsCompletion) {
         navigate("/complete-profile");
-      } else if (userData.role === "admin") {
-        navigate("/admin", { replace: true });
-      } else if (userData.role === "staff") {
-        navigate("/staff-dashboard", { replace: true });
       } else {
-        // Prevent redirecting back to /login
-        const redirectTo = from === "/login" ? "/" : from;
-        navigate(redirectTo, { replace: true });
+        // Load permissions for the user's role
+        const userPermissions = await loadPermissions(userData.role);
+        if (hasAnyAdminPermissions(userPermissions)) {
+          navigate("/admin", { replace: true });
+        } else {
+          // Prevent redirecting back to /login
+          const redirectTo = from === "/login" ? "/" : from;
+          navigate(redirectTo, { replace: true });
+        }
       }
     } catch (err) {
       console.error("Login error:", err);

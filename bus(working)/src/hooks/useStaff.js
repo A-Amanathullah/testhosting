@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-
-const API_URL = "http://localhost:8000/api";
+import { fetchUsers } from "../services/userService";
 
 export default function useStaff(refreshKey) {
   const [staff, setStaff] = useState([]);
@@ -11,11 +9,19 @@ export default function useStaff(refreshKey) {
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
-    axios.get(`${API_URL}/staffs`)
-      .then(res => {
+    
+    fetchUsers()
+      .then(users => {
         if (isMounted) {
-          setStaff(res.data);
+          // Filter out users with role 'User' - only show staff members
+          const staffUsers = users.filter(user => {
+            const userRole = user.role || (user.roleModel && user.roleModel.name) || '';
+            return userRole.toLowerCase() !== 'user';
+          });
+          
+          setStaff(staffUsers);
           setLoading(false);
+          setError(null);
         }
       })
       .catch(err => {
@@ -24,6 +30,7 @@ export default function useStaff(refreshKey) {
           setLoading(false);
         }
       });
+    
     return () => { isMounted = false; };
   }, [refreshKey]);
 

@@ -47,6 +47,7 @@ const modules = [
 		name: 'Loyalty Management',
 		submodules: [
 			{ name: 'Loyalty Card', actions: ['view', 'add', 'edit', 'delete'] },
+			{ name: 'Loyalty Members', actions: ['view', 'add', 'edit', 'delete'] },
 			{ name: 'Loyalty Report', actions: ['view', 'print'] },
 		],
 	},

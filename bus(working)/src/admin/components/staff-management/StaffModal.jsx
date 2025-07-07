@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import StaffForm from './StaffForm';
 
-const StaffModal = ({ isOpen, onClose, title, staff = null, onSubmit, isEdit = false, isView = false }) => {
+const StaffModal = ({ isOpen, onClose, title, staff = null, onSubmit, isEdit = false, isView = false, roles = [] }) => {
   if (!isOpen) return null;
 
   return (
@@ -54,13 +54,23 @@ const StaffModal = ({ isOpen, onClose, title, staff = null, onSubmit, isEdit = f
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h4 className="text-sm font-medium text-gray-500">Name</h4>
+                      <h4 className="text-sm font-medium text-gray-500">Full Name</h4>
                       <p className="mt-1 text-sm text-gray-900">{staff.name}</p>
                     </div>
                     
                     <div>
+                      <h4 className="text-sm font-medium text-gray-500">First Name</h4>
+                      <p className="mt-1 text-sm text-gray-900">{staff.first_name || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Last Name</h4>
+                      <p className="mt-1 text-sm text-gray-900">{staff.last_name || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
                       <h4 className="text-sm font-medium text-gray-500">Contact Number</h4>
-                      <p className="mt-1 text-sm text-gray-900">{staff.contact_number}</p>
+                      <p className="mt-1 text-sm text-gray-900">{staff.phone_no || 'N/A'}</p>
                     </div>
                     
                     <div>
@@ -69,10 +79,21 @@ const StaffModal = ({ isOpen, onClose, title, staff = null, onSubmit, isEdit = f
                     </div>
                     
                     <div>
-                      <h4 className="text-sm font-medium text-gray-500">NIC Number</h4>
-                      <p className="mt-1 text-sm text-gray-900">{staff.nic_no}</p>
+                      <h4 className="text-sm font-medium text-gray-500">Gender</h4>
+                      <p className="mt-1 text-sm text-gray-900">{staff.gender || 'N/A'}</p>
                     </div>
+                    
                     <div>
+                      <h4 className="text-sm font-medium text-gray-500">NIC Number</h4>
+                      <p className="mt-1 text-sm text-gray-900">{staff.nic_no || 'N/A'}</p>
+                    </div>
+                    
+                    <div className="col-span-1 md:col-span-2">
+                      <h4 className="text-sm font-medium text-gray-500">Address</h4>
+                      <p className="mt-1 text-sm text-gray-900">{staff.address || 'N/A'}</p>
+                    </div>
+                    
+                    <div className="col-span-1 md:col-span-2">
                       <h4 className="text-sm font-medium text-gray-500">Role</h4>
                       <p className="mt-1 text-sm text-gray-900">
                         {staff.role ? (
@@ -90,11 +111,6 @@ const StaffModal = ({ isOpen, onClose, title, staff = null, onSubmit, isEdit = f
                         )}
                       </p>
                     </div>
-                    
-                    <div className="col-span-1 md:col-span-2">
-                      <h4 className="text-sm font-medium text-gray-500">Address</h4>
-                      <p className="mt-1 text-sm text-gray-900">{staff.address}</p>
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -102,6 +118,7 @@ const StaffModal = ({ isOpen, onClose, title, staff = null, onSubmit, isEdit = f
                   onSubmit={onSubmit}
                   initialData={staff}
                   isEdit={isEdit}
+                  roles={roles}
                 />
               )}
             </div>
