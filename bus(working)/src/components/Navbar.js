@@ -53,8 +53,8 @@ function Navbar() {
             <nav className="shadow-md">
                 <div className="container flex justify-between items-center bg-white px-2 md:px-0 ">
                     {/* logo section */}
-                    <div className="flex items-center gap-2 relative ">
-                        <img src={logo} alt="RS Express" className="w-32 h-10 md:w-48 md:h-15 object-contain" />
+                    <div className=" flex items-center gap-2 relative ">
+                        <img src={logo} alt="RS Express" className="w-36 h-16 ml-4 md:w-48 md:h-15 object-contain" />
                     </div>
                     {/* menu items - hide when on admin panel */}
                     {!isOnAdminPanel &&
@@ -76,7 +76,7 @@ function Navbar() {
                         </div>}
 
                     {/* icon section */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center mr-5 gap-4">
                         <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mx-2 "
                             onClick={() => { handleMenuClick(); navigate("/"); }}>
                             <FaHome className="" />
