@@ -43,6 +43,12 @@ const SIDEBAR_ITEMS = [
     href: "/admin/bus-schedule",
   },
   {
+    name: "Bus Routes",
+    icon: Map,
+    color: "#F59E0B",
+    href: "/admin/bus-routes",
+  },
+  {
     name: "Bus Register",
     icon: Bus,
     color: "#EC4899",

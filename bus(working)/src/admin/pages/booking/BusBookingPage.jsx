@@ -12,10 +12,53 @@ import '../../components/bus-booking/print.css';
 import useBusHook from '../../../hooks/useBusHook';
 import useBookings from '../../../hooks/useBookings';
 import useAdminCancellations from '../../../admin/hooks/useCancellations';
-import useAdminGuestBookings from '../../../admin/hooks/useGuestBookings';
+import useAdminGuestBookings from '../../../admin/hooks/useAdminGuestBookings';
+import { normalizeToYYYYMMDD } from '../../../utils/dateUtils';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
+// Helper function to parse seat numbers from any format (string, array, comma-separated)
+const parseSeatNumbers = (seatData) => {
+  if (!seatData) return [];
+  
+  if (Array.isArray(seatData)) {
+    return seatData.map(seat => {
+      const num = parseInt(String(seat).replace(/[^0-9]/g, ''), 10);
+      return isNaN(num) ? null : num;
+    }).filter(Boolean);
+  } 
+  
+  if (typeof seatData === "string") {
+    return seatData.split(",").map(seat => {
+      const num = parseInt(seat.replace(/[^0-9]/g, ''), 10);
+      return isNaN(num) ? null : num;
+    }).filter(Boolean);
+  }
+  
+  return [];
+};
+
+// Helper function to validate date strings
+const isValidDateStr = (dateStr) => {
+  if (!dateStr) return false;
+  
+  // Check if it's a properly formatted date string (yyyy-MM-dd)
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateStr)) return false;
+  
+  // Split the date string and check components
+  const [year, month, day] = dateStr.split('-').map(Number);
+  
+  // Basic validation for month and day ranges
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  
+  // Verify it's a valid date (not like 2023-02-31)
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && 
+         date.getMonth() === month - 1 && 
+         date.getDate() === day;
+};
 
 const BusBookingPage = () => {
   // State for selected filters and data
@@ -31,6 +74,11 @@ const BusBookingPage = () => {
   const { cancellations, loading: cancellationsLoading, fetchCancellations } = useAdminCancellations(selectedBusNo, selectedDate);
   const { guestBookings, loading: guestBookingsLoading, fetchGuestBookings } = useAdminGuestBookings(selectedBusNo, selectedDate);
   const { permissions } = usePermissions();
+
+  // Filter buses to only show those that have scheduled trips
+  const busesWithTrips = buses.filter(bus => {
+    return schedules.some(schedule => String(schedule.bus_no) === String(bus.bus_no));
+  });
 
   // Reference to the table for printing
   const printTableRef = useRef(null);
@@ -57,6 +105,17 @@ const BusBookingPage = () => {
       printWindow.close();
     }, 500);
   };
+
+  // Reset selected bus if it's not available in the filtered buses list
+  useEffect(() => {
+    if (selectedBusNo && busesWithTrips.length > 0) {
+      const isSelectedBusAvailable = busesWithTrips.some(bus => String(bus.bus_no) === String(selectedBusNo));
+      if (!isSelectedBusAvailable) {
+        setSelectedBusNo('');
+        setSelectedDate('');
+      }
+    }
+  }, [selectedBusNo, busesWithTrips]);
 
   // Refresh data when refreshData state changes
   useEffect(() => {
@@ -105,124 +164,128 @@ const BusBookingPage = () => {
 
   // Fetch bookings and frozen seats when bus and date are selected
   useEffect(() => {
-    const scheduleInfo = schedules.find(
-      (schedule) => schedule.bus_no === selectedBusNo && schedule.departure_date === selectedDate
-    );
-    const busInfo = buses.find((bus) => bus.bus_no === selectedBusNo);
-
-    if (selectedBusNo && selectedDate && scheduleInfo) {
+    // Find bus info based on bus_no
+    const busInfo = buses.find(bus => String(bus.bus_no) === String(selectedBusNo));
+    
+    if (selectedBusNo && selectedDate && busInfo) {
       setIsLoading(true);
+      
       // Generate seat status map
       const seatStatusMap = {};
       for (let i = 1; i <= (busInfo?.total_seats || 0); i++) {
         seatStatusMap[i] = 'available';
       }
-      // Filter bookings and frozenSeats for selected bus and date
-      const filteredBookings = (bookings || []).filter(
-        (b) =>
-          String(b.bus_no) === String(selectedBusNo) &&
-          String(b.departure_date || b.departureDate) === String(selectedDate)
-      );
-      const filteredFrozenSeats = (frozenSeats || []).filter(
-        (f) =>
-          String(f.bus_no) === String(selectedBusNo) &&
-          String(f.departure_date || f.departureDate) === String(selectedDate)
-      );
-      // Filter cancellations for selected bus and date
-      const filteredCancellations = (cancellations || []).filter(
-        (c) =>
-          String(c.bus_no) === String(selectedBusNo) &&
-          String(c.departure_date) === String(selectedDate)
-      );
       
-      // Filter guest bookings for selected bus and date
-      const filteredGuestBookings = (guestBookings || []).filter(
-        (g) =>
-          String(g.bus_no) === String(selectedBusNo) &&
-          String(g.departure_date) === String(selectedDate)
-      );
+      // Use normalized date for comparisons
+      const normalizedSelectedDate = normalizeToYYYYMMDD(selectedDate);
       
-      // Collect all cancelled seat numbers
-      const cancelledSeats = new Set();
-      filteredCancellations.forEach((c) => {
-        let seats = Array.isArray(c.seat_no)
-          ? c.seat_no
-          : typeof c.seat_no === 'string'
-            ? c.seat_no.split(',').map(s => parseInt(s.replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n))
-            : [];
-        seats.forEach((seat) => {
-          if (seat) cancelledSeats.add(Number(seat));
-        });
+      // Filter by bus_no and date
+      const filteredBookings = (bookings || []).filter(b => {
+        const normalizedBookingDate = normalizeToYYYYMMDD(b.departure_date || b.departureDate);
+        const busMatch = String(b.bus_no) === String(selectedBusNo);
+        const dateMatch = normalizedBookingDate === normalizedSelectedDate;
+        return busMatch && dateMatch;
       });
       
-      // Combine regular and guest bookings for seat status
-      const allBookings = [...filteredBookings, ...filteredGuestBookings];
+      const filteredFrozenSeats = (frozenSeats || []).filter(f => {
+        const normalizedFrozenDate = normalizeToYYYYMMDD(f.departure_date || f.departureDate);
+        const busMatch = String(f.bus_no) === String(selectedBusNo);
+        const dateMatch = normalizedFrozenDate === normalizedSelectedDate;
+        return busMatch && dateMatch;
+      });
       
-      // Update seat status based on all bookings
-      allBookings.forEach((booking) => {
-        const seats = Array.isArray(booking.seat_no)
-          ? booking.seat_no
-              .map((s) => {
-                const num = parseInt(String(s).replace(/[^0-9]/g, ''), 10);
-                return isNaN(num) ? null : num;
-              })
-              .filter((n) => n !== null)
-          : typeof booking.seat_no === 'string'
-            ? booking.seat_no.split(',').map(s => parseInt(s.replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n))
-            : [];
+      const filteredGuestBookings = (guestBookings || []).filter(g => {
+        if (!g) return false;
         
-        seats.forEach((seat) => {
-          if (cancelledSeats.has(seat)) return; // Exclude cancelled seats
-          if (String(booking.status).toLowerCase() === 'confirmed') {
-            seatStatusMap[seat] = 'reserved';
-          } else if (String(booking.status).toLowerCase() === 'processing') {
-            seatStatusMap[seat] = 'processing';
-          } else if (String(booking.status).toLowerCase() === 'cancelled') {
-            seatStatusMap[seat] = 'cancelled';
+        const normalizedGuestDate = normalizeToYYYYMMDD(g.departure_date);
+        const busMatch = String(g.bus_no) === String(selectedBusNo) || 
+                       (busInfo && String(g.bus_id) === String(busInfo.id));
+        const dateMatch = normalizedGuestDate === normalizedSelectedDate;
+        
+        return busMatch && dateMatch;
+      });
+      
+      // Process frozen seats first (lowest priority)
+      filteredFrozenSeats.forEach((frozen) => {
+        const seatNumbers = parseSeatNumbers(frozen.seat_no);
+        
+        seatNumbers.forEach((seatNum) => {
+          if (seatNum && seatStatusMap[seatNum]) {
+            seatStatusMap[seatNum] = 'freezed';
           }
         });
       });
       
-      // Update seat status based on filtered frozen seats
-      filteredFrozenSeats.forEach((frozen) => {
-        const seatArr = Array.isArray(frozen.seat_no)
-          ? frozen.seat_no
-              .map((s) => {
-                const num = parseInt(String(s).replace(/[^0-9]/g, ''), 10);
-                return isNaN(num) ? null : num;
-              })
-              .filter((n) => n !== null)
-          : typeof frozen.seat_no === 'string'
-            ? frozen.seat_no.split(',').map(s => parseInt(s.replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n))
-            : [];
+      // Process regular bookings (higher priority than frozen seats)
+      filteredBookings.forEach((booking) => {
+        // Skip cancelled bookings in the seat layout visualization
+        if (String(booking.status).toLowerCase() === 'cancelled') {
+          return;
+        }
         
-        seatArr.forEach((seat) => {
-          if (cancelledSeats.has(seat)) return; // Exclude cancelled seats
-          seatStatusMap[seat] = 'freezed';
+        const seatNumbers = parseSeatNumbers(booking.seat_no);
+        
+        seatNumbers.forEach((seatNum) => {
+          if (seatNum && seatStatusMap[seatNum]) {
+            // Apply status based on booking status
+            if (String(booking.status).toLowerCase() === 'confirmed') {
+              seatStatusMap[seatNum] = 'reserved';
+            } else if (String(booking.status).toLowerCase() === 'processing') {
+              seatStatusMap[seatNum] = 'processing';
+            }
+          }
         });
       });
       
+      // Process guest bookings (highest priority)
+      filteredGuestBookings.forEach((guestBooking) => {
+        // Skip cancelled guest bookings in the seat layout visualization
+        if (String(guestBooking.status).toLowerCase() === 'cancelled') {
+          return;
+        }
+        
+        const seatNumbers = parseSeatNumbers(guestBooking.seat_no);
+        
+        seatNumbers.forEach((seatNum) => {
+          if (seatNum && seatStatusMap[seatNum]) {
+            // Apply status based on guest booking status
+            if (String(guestBooking.status).toLowerCase() === 'processing') {
+              // Guest processing bookings use the same color as regular processing
+              seatStatusMap[seatNum] = 'processing';
+            } else {
+              // Confirmed or other guest bookings use guest color
+              seatStatusMap[seatNum] = 'guest';
+            }
+          }
+        });
+      });
+      
+      // Update the state
       setSeatStatus(seatStatusMap);
       setIsLoading(false);
     } else {
       setSeatStatus({});
     }
-  }, [selectedBusNo, selectedDate, schedules, buses, bookings, frozenSeats, cancellations, guestBookings]);
+  }, [selectedBusNo, selectedDate, buses, bookings, frozenSeats, cancellations, guestBookings]);
 
   // Filter dates by selected bus and prioritize current/future dates
   const getAvailableDates = () => {
-    console.log('Selected Bus No:', selectedBusNo);
-    console.log('Schedules:', schedules);
     if (!selectedBusNo) {
-      console.log('No bus selected, returning empty dates');
       return [];
     }
+    
     const availableDates = schedules
       .filter((schedule) => String(schedule.bus_no) === String(selectedBusNo))
-      .map((schedule) => schedule.departure_date)
-      .filter((date) => date); // Remove null/undefined dates
+      .map((schedule) => {
+        const normalizedDate = normalizeToYYYYMMDD(schedule.departure_date);
+        if (normalizedDate) {
+          return normalizedDate;
+        }
+        return null;
+      })
+      .filter(date => date !== null); // Remove null/undefined dates
     
-    // Remove duplicates and convert to Date objects for comparison
+    // Remove duplicates
     const uniqueDates = [...new Set(availableDates)];
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
@@ -233,15 +296,28 @@ const BusBookingPage = () => {
     const pastDates = [];
     
     uniqueDates.forEach(dateStr => {
-      const date = new Date(dateStr);
-      date.setHours(0, 0, 0, 0);
-      
-      if (date.getTime() === today.getTime()) {
-        currentDate.push(dateStr);
-      } else if (date > today) {
-        futureDates.push(dateStr);
-      } else {
-        pastDates.push(dateStr);
+      try {
+        if (!isValidDateStr(dateStr)) {
+          return; // Skip this iteration
+        }
+        
+        // Parse date components manually for better validation
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        date.setHours(0, 0, 0, 0);
+        
+        const todayTime = today.getTime();
+        const dateTime = date.getTime();
+        
+        if (dateTime === todayTime) {
+          currentDate.push(dateStr);
+        } else if (date > today) {
+          futureDates.push(dateStr);
+        } else {
+          pastDates.push(dateStr);
+        }
+      } catch (error) {
+        // Skip this date if it causes an error
       }
     });
     
@@ -251,7 +327,6 @@ const BusBookingPage = () => {
     
     // Combine in priority order: current, future, past
     const prioritizedDates = [...currentDate, ...futureDates, ...pastDates];
-    console.log('Available Dates (prioritized):', prioritizedDates);
     return prioritizedDates;
   };
 
@@ -264,16 +339,17 @@ const BusBookingPage = () => {
     setTimeout(() => {
       const availableDates = schedules
         .filter((schedule) => String(schedule.bus_no) === String(bus_no))
-        .map((schedule) => schedule.departure_date)
-        .filter((date) => date);
+        .map((schedule) => normalizeToYYYYMMDD(schedule.departure_date))
+        .filter(date => date !== null); // Remove null/undefined dates
       
       if (availableDates.length > 0) {
         const uniqueDates = [...new Set(availableDates)];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        // Find current date
-        const todayStr = today.toISOString().split('T')[0];
+        // Find current date - use our manual date formatting
+        const todayMonth = today.getMonth() + 1; // getMonth() is 0-based
+        const todayStr = `${today.getFullYear()}-${todayMonth < 10 ? '0' + todayMonth : todayMonth}-${today.getDate() < 10 ? '0' + today.getDate() : today.getDate()}`;
         const currentDate = uniqueDates.find(dateStr => dateStr === todayStr);
         
         if (currentDate) {
@@ -284,9 +360,16 @@ const BusBookingPage = () => {
         // Find nearest future date
         const futureDates = uniqueDates
           .filter(dateStr => {
-            const date = new Date(dateStr);
-            date.setHours(0, 0, 0, 0);
-            return date > today;
+            if (!isValidDateStr(dateStr)) return false;
+            try {
+              // Parse date components manually for better validation
+              const [year, month, day] = dateStr.split('-').map(Number);
+              const date = new Date(year, month - 1, day);
+              date.setHours(0, 0, 0, 0);
+              return date > today;
+            } catch {
+              return false;
+            }
           })
           .sort();
         
@@ -298,9 +381,16 @@ const BusBookingPage = () => {
         // Fallback to most recent past date
         const pastDates = uniqueDates
           .filter(dateStr => {
-            const date = new Date(dateStr);
-            date.setHours(0, 0, 0, 0);
-            return date < today;
+            if (!isValidDateStr(dateStr)) return false;
+            try {
+              // Parse date components manually for better validation
+              const [year, month, day] = dateStr.split('-').map(Number);
+              const date = new Date(year, month - 1, day);
+              date.setHours(0, 0, 0, 0);
+              return date < today;
+            } catch {
+              return false;
+            }
           })
           .sort()
           .reverse();
@@ -352,7 +442,7 @@ const BusBookingPage = () => {
         <div className="flex flex-wrap items-center gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <BusSelector
-              buses={buses}
+              buses={busesWithTrips}
               selectedBusNo={selectedBusNo}
               value={selectedBusNo}
               onChange={handleBusChange}

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { RiSteering2Fill } from "react-icons/ri";
 import ConfirmBooking from "./ConfirmBooking";
 import { createBooking, updateBookingStatus, deleteBooking } from "../../services/bookingService";
+import { createGuestBooking, updateGuestBooking, deleteGuestBooking } from "../../services/guestBookingService";
 import { AuthContext } from "../../context/AuthContext";
 import useBusHook from "../../hooks/useBusHook";
 import useBookings from "../../hooks/useBookings";
@@ -13,6 +14,7 @@ import PaymentAPI from "../PaymentAPI";
 import BookingQRCode from "./BookingQRCode";
 import GuestBookingForm from "./GuestBookingForm";
 import axios from "axios";
+import { formatDateForMySQL, formatDateForDisplay } from "../../utils/dateUtils";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
@@ -26,6 +28,16 @@ const SeatPlanning = ({ pickup, drop }) => {
     const date = trip?.departure_date;
     const busInfo = buses.find(bus => String(bus.bus_no) === String(busNo));
     const bus_id = busInfo ? busInfo.id : null;
+    
+    // Debug log to see what date format we're receiving from the backend
+    console.log("Original departure_date received:", trip?.departure_date);
+    console.log("Formatted for MySQL:", formatDateForMySQL(trip?.departure_date));
+    console.log("Formatted for display:", formatDateForDisplay(trip?.departure_date));
+    
+    // Log detailed booking information for debugging
+    console.log("Bus ID being used for booking fetch:", bus_id);
+    console.log("Date being used for booking fetch:", date);
+    
     const { bookings, frozenSeats, loading } = useBookings(bus_id, date);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const { guestBookings = [] } = useGuestBookings(bus_id, date, refreshTrigger);
@@ -51,6 +63,26 @@ const SeatPlanning = ({ pickup, drop }) => {
     const filteredBookings = (bookings || []).filter(b => String(b.bus_id) === String(bus_id));
     const filteredFrozenSeats = (frozenSeats || []).filter(f => String(f.bus_id) === String(bus_id));
 
+    // Debug log to verify booking data
+    console.log("All filtered bookings:", filteredBookings);
+    console.log("All guest bookings:", guestBookings);
+    console.log("All frozen seats:", filteredFrozenSeats);
+
+    // Helper function to parse seat_no from any format (string, array, comma-separated)
+    const parseSeatNumbers = (seatData) => {
+        if (!seatData) return [];
+        
+        if (Array.isArray(seatData)) {
+            return seatData.map(seat => seat.trim()).filter(Boolean);
+        } 
+        
+        if (typeof seatData === "string") {
+            return seatData.split(",").map(seat => seat.trim()).filter(Boolean);
+        }
+        
+        return [];
+    };
+
     // Merge user bookings and guest bookings for seat status
     const allBookings = [...(filteredBookings || []), ...(guestBookings || [])];
 
@@ -65,30 +97,33 @@ const SeatPlanning = ({ pickup, drop }) => {
         const rows = [];
         const totalSeats = busInfo?.total_seats || 0;
         const seatStatusMap = {};
+        
+        // Initialize all seats as available
         for (let i = 1; i <= totalSeats; i++) seatStatusMap[`S${i}`] = "available";
+        
+        // Mark frozen seats
         (filteredFrozenSeats || []).forEach(frozen => {
-            let seatArr = [];
-            if (Array.isArray(frozen.seat_no)) {
-                seatArr = frozen.seat_no;
-            } else if (typeof frozen.seat_no === "string") {
-                seatArr = frozen.seat_no.split(",").map(s => s.trim()).filter(Boolean);
-            }
+            const seatArr = parseSeatNumbers(frozen.seat_no);
             seatArr.forEach(seat => {
                 seatStatusMap[seat] = "freezed";
             });
         });
+        
+        // Mark regular bookings and guest bookings
+        console.log("Marking seats from all bookings:", allBookings);
         (allBookings || []).forEach(booking => {
-            let seats = [];
-            if (Array.isArray(booking.seat_no)) {
-                seats = booking.seat_no;
-            } else if (typeof booking.seat_no === "string") {
-                seats = booking.seat_no.split(",").map(s => s.trim()).filter(Boolean);
-            }
+            const seats = parseSeatNumbers(booking.seat_no);
+            
+            // Debug log each booking's seats and status
+            console.log(`Booking ${booking.id} with status ${booking.status} has seats:`, seats);
+            
             seats.forEach(seat => {
                 if (String(booking.status).toLowerCase() === "confirmed") {
                     seatStatusMap[seat] = "reserved";
+                    console.log(`Marked seat ${seat} as reserved`);
                 } else if (String(booking.status).toLowerCase() === "processing") {
                     seatStatusMap[seat] = "processing";
+                    console.log(`Marked seat ${seat} as processing`);
                 }
             });
         });
@@ -134,25 +169,22 @@ const SeatPlanning = ({ pickup, drop }) => {
         const row = [];
         const totalSeats = busInfo?.total_seats || 0;
         const seatStatusMap = {};
+        
+        // Initialize all seats as available
         for (let i = 1; i <= totalSeats; i++) seatStatusMap[`S${i}`] = "available";
+        
+        // Mark frozen seats
         (filteredFrozenSeats || []).forEach(frozen => {
-            let seatArr = [];
-            if (Array.isArray(frozen.seat_no)) {
-                seatArr = frozen.seat_no;
-            } else if (typeof frozen.seat_no === "string") {
-                seatArr = frozen.seat_no.split(",").map(s => s.trim()).filter(Boolean);
-            }
+            const seatArr = parseSeatNumbers(frozen.seat_no);
             seatArr.forEach(seat => {
                 seatStatusMap[seat] = "freezed";
             });
         });
+        
+        // Mark both regular and guest bookings
         (allBookings || []).forEach(booking => {
-            let seats = [];
-            if (Array.isArray(booking.seat_no)) {
-                seats = booking.seat_no;
-            } else if (typeof booking.seat_no === "string") {
-                seats = booking.seat_no.split(",").map(s => s.trim()).filter(Boolean);
-            }
+            const seats = parseSeatNumbers(booking.seat_no);
+            
             seats.forEach(seat => {
                 if (String(booking.status).toLowerCase() === "confirmed") {
                     seatStatusMap[seat] = "reserved";
@@ -161,6 +193,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                 }
             });
         });
+        
         for (let i = totalSeats; i >= 41; i--) {
             const seatLabel = `S${i}`;
             const isSelected = selectedSeats.includes(seatLabel);
@@ -198,13 +231,17 @@ const SeatPlanning = ({ pickup, drop }) => {
             console.log("guestProcessingBookingId:", guestProcessingBookingId);
             console.log("guestForm:", guestForm);
             
+            // Use the robust function to ensure MySQL-compatible date format
+            const formattedDepartureDate = formatDateForMySQL(trip.departure_date);
+            console.log("Formatted departure date for MySQL:", formattedDepartureDate);
+            
             // If we have a guest processing booking, update it instead of creating new one
             if (guestProcessingBookingId) {
                 console.log("=== UPDATING EXISTING BOOKING ===");
                 
                 // First, fetch the existing temporary booking to preserve its serial_no
                 console.log("Fetching existing booking...");
-                const existingBookingResponse = await axios.get(`${API_URL}/guest-bookings?bus_id=${trip.bus_id}&departure_date=${trip.departure_date}`);
+                const existingBookingResponse = await axios.get(`${API_URL}/guest-bookings?bus_id=${trip.bus_id}&departure_date=${formattedDepartureDate}`);
                 console.log("All guest bookings:", existingBookingResponse.data);
                 
                 const existingBooking = existingBookingResponse.data.find(booking => booking.id === guestProcessingBookingId);
@@ -226,7 +263,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                     seat_no: selectedSeats.join(","),
                     pickup,
                     drop,
-                    departure_date: trip.departure_date,
+                    departure_date: formattedDepartureDate,
                     reason: null,
                     price: totalPrice,
                 };
@@ -235,7 +272,8 @@ const SeatPlanning = ({ pickup, drop }) => {
                 console.log("UPDATE URL:", `${API_URL}/guest-bookings/${guestProcessingBookingId}`);
                 console.log("UPDATE DATA:", bookingData);
                 
-                const response = await axios.put(`${API_URL}/guest-bookings/${guestProcessingBookingId}`, bookingData);
+                // Use updateGuestBooking service instead of direct axios call
+                const response = await updateGuestBooking(guestProcessingBookingId, bookingData);
                 console.log("=== UPDATE RESPONSE ===", response.data);
                 
                 // Store the final booking details for QR code
@@ -253,7 +291,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                 setTimeout(async () => {
                     console.log("=== VERIFYING BOOKING EXISTS BEFORE REFRESH ===");
                     try {
-                        const verifyResponse = await axios.get(`${API_URL}/guest-bookings?bus_id=${trip.bus_id}&departure_date=${trip.departure_date}`);
+                        const verifyResponse = await axios.get(`${API_URL}/guest-bookings?bus_id=${trip.bus_id}&departure_date=${formattedDepartureDate}`);
                         const updatedBooking = verifyResponse.data.find(booking => booking.id === bookingIdToVerify);
                         console.log("Booking verification:", updatedBooking);
                         if (updatedBooking) {
@@ -295,7 +333,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                     seat_no: selectedSeats.join(","),
                     pickup,
                     drop,
-                    departure_date: trip.departure_date,
+                    departure_date: formattedDepartureDate,
                     reason: null,
                     price: totalPrice,
                     // If agent booking, set confirmed status and not applicable payment
@@ -305,7 +343,8 @@ const SeatPlanning = ({ pickup, drop }) => {
                     })
                 };
                 
-                const response = await axios.post(`${API_URL}/guest-bookings`, bookingData);
+                // Use createGuestBooking service instead of direct axios call
+                const response = await createGuestBooking(bookingData);
                 console.log("New booking created:", response.data);
                 
                 finalSerialNo = response.data.serial_no || serialNo;
@@ -334,7 +373,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                     drop,
                     price: totalPrice,
                     serialNo: finalSerialNo,
-                    date: trip.departure_date,
+                    date: trip.departure_date, // For display, keep original format
                 });
                 setShowQRCode(true);
             } else if (guestForm.payment_status === "Paid") {
@@ -347,7 +386,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                     drop,
                     price: totalPrice,
                     serialNo: finalSerialNo,
-                    date: trip.departure_date,
+                    date: trip.departure_date, // For display, keep original format
                 });
                 setShowQRCode(true);
             } else {
@@ -381,6 +420,9 @@ const SeatPlanning = ({ pickup, drop }) => {
             const serialNo = `TEMP-${yymmdd}-${rand}`;
             const totalPrice = Number(trip.price) * selectedSeats.length;
 
+            // Use the robust function to ensure MySQL-compatible date format
+            const formattedDepartureDate = formatDateForMySQL(trip.departure_date);
+
             const tempBookingData = {
                 name: "Temporary Guest", // Temporary placeholder name
                 phone: "0000000000", // Temporary placeholder phone
@@ -392,14 +434,15 @@ const SeatPlanning = ({ pickup, drop }) => {
                 seat_no: selectedSeats.join(","),
                 pickup,
                 drop,
-                departure_date: trip.departure_date,
+                departure_date: formattedDepartureDate,
                 reason: null,
                 price: totalPrice,
                 status: "Processing",
                 payment_status: "Pending"
             };
 
-            const response = await axios.post(`${API_URL}/guest-bookings`, tempBookingData);
+            // Use the guestBookingService instead of direct axios call
+            const response = await createGuestBooking(tempBookingData);
             console.log("Temporary booking created:", response.data);
             setGuestProcessingBookingId(response?.data?.id);
             console.log("Set guestProcessingBookingId to:", response?.data?.id);
@@ -442,6 +485,9 @@ const SeatPlanning = ({ pickup, drop }) => {
             const rand = Math.floor(100 + Math.random() * 900);
             const serialNo = `BK-${yymmdd}-${rand}`;
             const totalPrice = seatPrice * selectedSeats.length;
+            
+            // Use the robust function to ensure MySQL-compatible date format
+            const formattedDepartureDate = formatDateForMySQL(trip.departure_date);
 
             const bookingData = {
                 user_id: user.id,
@@ -453,7 +499,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                 pickup,
                 drop,
                 role: user.role,
-                departure_date: trip.departure_date,
+                departure_date: formattedDepartureDate,
                 reason: null,
                 price: totalPrice,
                 status: "Processing",
@@ -488,6 +534,9 @@ const SeatPlanning = ({ pickup, drop }) => {
         setIsLoading(true);
         
         try {
+            // For display purposes, keep original format
+            const displayDate = trip.departure_date;
+            
             if (user.role === "agent" || user.role === "admin") {
                 // For agents and admins, directly confirm the booking
                 await updateBookingStatus({
@@ -508,7 +557,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                     drop,
                     price: Number(trip.price) * selectedSeats.length,
                     serialNo: processingBookingId,
-                    date: trip.departure_date,
+                    date: displayDate,
                 });
                 setShowQRCode(true);
             } else {
@@ -576,7 +625,8 @@ const SeatPlanning = ({ pickup, drop }) => {
         console.log("=== FORCE CANCELLING GUEST PROCESSING BOOKING ===", guestProcessingBookingId);
         if (guestProcessingBookingId) {
             try {
-                await axios.delete(`${API_URL}/guest-bookings/${guestProcessingBookingId}`);
+                // Use deleteGuestBooking service instead of direct axios call
+                await deleteGuestBooking(guestProcessingBookingId);
                 setRefreshTrigger(prev => prev + 1); // Refresh to remove processing seats
                 toast.info("Booking cancelled successfully.");
             } catch (err) {
@@ -600,6 +650,10 @@ const SeatPlanning = ({ pickup, drop }) => {
                 setSelectedSeats([]);
                 setShowPayment(false);
                 toast.success("Payment successful! Booking confirmed.");
+                
+                // For display purposes, keep original format
+                const displayDate = trip.departure_date;
+                
                 setQrBookingDetails({
                     busName: busInfo?.bus_name || trip.bus_no,
                     seatNumbers: selectedSeats,
@@ -607,7 +661,7 @@ const SeatPlanning = ({ pickup, drop }) => {
                     drop,
                     price: Number(trip.price) * selectedSeats.length,
                     serialNo: bookingId,
-                    date: trip.departure_date,
+                    date: displayDate,
                 });
                 setShowQRCode(true);
                 // navigate("/passengerdash"); // Optionally navigate after download

@@ -6,6 +6,8 @@ const BusSeatLayout = ({ seatStatus, isLoading }) => {
     switch (status) {
       case 'reserved':
         return 'bg-red-500';
+      case 'guest':
+        return 'bg-blue-500';  // Guest booking color
       case 'processing':
         return 'bg-green-600'; // Processing is green
       case 'freezed':
@@ -17,14 +19,23 @@ const BusSeatLayout = ({ seatStatus, isLoading }) => {
     }
   };
 
+  const getSeatTextColor = (status) => {
+    // For darker backgrounds, use white text
+    if (['reserved', 'processing', 'freezed', 'guest'].includes(status)) {
+      return 'text-white';
+    }
+    // For lighter backgrounds, use dark text
+    return 'text-gray-700';
+  };
+
   // Render a single seat
   const renderSeat = (seatNumber) => {
     // Make sure seatNumber is a number for lookup
-    const status = seatStatus[Number(seatNumber)] || 'available';
+    const numSeat = Number(seatNumber);
+    const status = seatStatus[numSeat] || 'available';
     const bgClass = getSeatColor(status);
-    const textClass = (status === 'reserved' || status === 'processing' || status === 'freezed' || status === 'cancelled')
-      ? 'text-white'
-      : 'text-gray-700';
+    const textClass = getSeatTextColor(status);
+    
     return (
       <div
         key={seatNumber}
@@ -47,36 +58,108 @@ const BusSeatLayout = ({ seatStatus, isLoading }) => {
     return <div className="p-4 text-center text-gray-500">Select a bus and date to view seat layout</div>;
   }
 
-  // Dynamically render rows based on totalSeats (like FreezingSeatSelector)
+  // Dynamically render rows based on totalSeats
   const renderDynamicRows = () => {
     const rows = [];
-    let seatNum = 1;
-    // Render main rows (1-40)
-    while (seatNum <= Math.min(40, Object.keys(seatStatus).length)) {
-      rows.push(
-        <div key={`row-${seatNum}`} className="flex justify-center mb-1">
-          {renderSeat(seatNum)}
-          {renderSeat(seatNum + 1)}
-          <div className="w-10"></div> {/* aisle */}
-          {renderSeat(seatNum + 2)}
-          {renderSeat(seatNum + 3)}
-        </div>
-      );
-      seatNum += 4;
-    }
-    // All seats after 40 in one row, in reverse order
     const totalSeats = Object.keys(seatStatus).length;
-    if (totalSeats > 40) {
-      const lastRowSeats = [];
-      for (let i = totalSeats; i > 40; i--) {
-        lastRowSeats.push(i);
-      }
-      rows.push(
-        <div key="last-row" className="flex justify-center mt-2">
-          {lastRowSeats.map(renderSeat)}
-        </div>
-      );
+    
+    // If we have 0 seats, return early with a message
+    if (totalSeats === 0) {
+      return <div className="text-center text-red-500">No seat data available</div>;
     }
+    
+    // Standard 2+2 layout for most buses
+    if (totalSeats > 0) {
+      let seatNum = 1;
+      
+      // Front row (usually 2 seats for driver and conductor)
+      if (totalSeats <= 32) {
+        rows.push(
+          <div key="front-row" className="flex justify-center mb-3">
+            <div className="w-14 h-14 md:w-16 md:h-16 m-1"></div>
+            {renderSeat(1)}
+            <div className="w-10"></div> {/* aisle */}
+            {renderSeat(2)}
+            <div className="w-14 h-14 md:w-16 md:h-16 m-1"></div>
+          </div>
+        );
+        seatNum = 3; // Start from seat 3
+      }
+      
+      // Main rows (4 seats per row: 2 on each side of aisle)
+      while (seatNum <= totalSeats) {
+        const rowSeats = [];
+        
+        // Determine the seats for this row
+        let seatsInRow;
+        
+        // Special handling for seats after 40 - group them to avoid single seats
+        if (seatNum > 40) {
+          // For seats after 40, try to group remaining seats optimally
+          const remainingSeats = totalSeats - seatNum + 1;
+          
+          if (remainingSeats === 5) {
+            // If we have exactly 5 seats left, put all 5 in one row
+            seatsInRow = [seatNum, seatNum + 1, seatNum + 2, seatNum + 3, seatNum + 4].filter(s => s <= totalSeats);
+          } else if (remainingSeats <= 4) {
+            // If 4 or fewer seats left, put them all in one row
+            seatsInRow = [];
+            for (let i = 0; i < remainingSeats && seatNum + i <= totalSeats; i++) {
+              seatsInRow.push(seatNum + i);
+            }
+          } else {
+            // Normal grouping of 4
+            seatsInRow = [seatNum, seatNum + 1, seatNum + 2, seatNum + 3].filter(s => s <= totalSeats);
+          }
+          
+          // For seats > 40, always display in reverse order
+          const reversedSeats = [...seatsInRow].reverse();
+          
+          // Handle different row sizes for seats after 40
+          if (seatsInRow.length === 5) {
+            // 5 seats: 3 on left, aisle, 2 on right
+            rowSeats.push(renderSeat(reversedSeats[0]));
+            rowSeats.push(renderSeat(reversedSeats[1]));
+            rowSeats.push(renderSeat(reversedSeats[2]));
+            rowSeats.push(<div key={`aisle-${seatNum}`} className="w-10"></div>);
+            rowSeats.push(renderSeat(reversedSeats[3]));
+            rowSeats.push(renderSeat(reversedSeats[4]));
+          } else {
+            // Standard 2+2 layout
+            if (reversedSeats[0]) rowSeats.push(renderSeat(reversedSeats[0]));
+            if (reversedSeats[1]) rowSeats.push(renderSeat(reversedSeats[1]));
+            rowSeats.push(<div key={`aisle-${seatNum}`} className="w-10"></div>);
+            if (reversedSeats[2]) rowSeats.push(renderSeat(reversedSeats[2]));
+            if (reversedSeats[3]) rowSeats.push(renderSeat(reversedSeats[3]));
+          }
+          
+          seatNum += seatsInRow.length; // Advance by the number of seats we just processed
+        } else {
+          // For seats <= 40, use normal order and standard 4-seat grouping
+          seatsInRow = [seatNum, seatNum + 1, seatNum + 2, seatNum + 3].filter(s => s <= totalSeats);
+          
+          // Left side
+          if (seatsInRow[0]) rowSeats.push(renderSeat(seatsInRow[0]));
+          if (seatsInRow[1]) rowSeats.push(renderSeat(seatsInRow[1]));
+          
+          // Aisle
+          rowSeats.push(<div key={`aisle-${seatNum}`} className="w-10"></div>);
+          
+          // Right side
+          if (seatsInRow[2]) rowSeats.push(renderSeat(seatsInRow[2]));
+          if (seatsInRow[3]) rowSeats.push(renderSeat(seatsInRow[3]));
+          
+          seatNum += 4; // Always advance by 4 for normal seats
+        }
+        
+        rows.push(
+          <div key={`row-${seatNum}`} className="flex justify-center mb-1">
+            {rowSeats}
+          </div>
+        );
+      }
+    }
+    
     return rows;
   };
 

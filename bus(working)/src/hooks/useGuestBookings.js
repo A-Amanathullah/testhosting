@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+import { getGuestBookings } from "../services/guestBookingService";
 
 const useGuestBookings = (bus_id, date, refreshTrigger = 0) => {
   const [guestBookings, setGuestBookings] = useState([]);
@@ -17,8 +15,9 @@ const useGuestBookings = (bus_id, date, refreshTrigger = 0) => {
     console.log(`useGuestBookings: Fetching for bus_id=${bus_id}, date=${date}, refreshTrigger=${refreshTrigger}`);
     setLoading(true);
     setError(null);
-    axios
-      .get(`${API_URL}/guest-bookings`, { params: { bus_id, departure_date: date } })
+    
+    // Use the guestBookingService instead of direct axios calls
+    getGuestBookings(bus_id, date)
       .then((res) => {
         console.log("useGuestBookings: Raw response:", res.data);
         const bookings = Array.isArray(res.data) ? res.data : [];

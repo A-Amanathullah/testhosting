@@ -27,6 +27,16 @@ class Booking extends Model
         'reason',
         'price',
     ];
+    
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'departure_date' => 'date:Y-m-d',
+        'booked_date' => 'date:Y-m-d',
+    ];
 
     // Automatically update loyalty points when booking status changes
     // Temporarily disabled to debug issues

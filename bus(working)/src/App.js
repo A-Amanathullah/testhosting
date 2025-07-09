@@ -13,6 +13,7 @@ import AdminRoutes from "./admin/AdminRoutes";
 import CompleteProfile from "./pages/CompleteProfile";
 import DashboardPage from "./admin/pages/DashboardPage";
 import BusSchedulePage from "./admin/pages/BusSchedulePage";
+import BusRouteManagementPage from "./admin/pages/BusRouteManagementPage";
 import BusRegisterPage from "./admin/pages/BusRegisterPage";
 import BusBookingPage from "./admin/pages/booking/BusBookingPage";
 import FreezingSeatPage from "./admin/pages/booking/FreezingSeatPage";
@@ -72,6 +73,7 @@ function App() {
         <Route path="/admin" element={<PrivateRoute><AdminRoutes /></PrivateRoute>}>
           <Route index element={<AutoRedirectDashboard />} />
           <Route path="bus-schedule" element={<ProtectedRoute module="Bus Schedule" action="view"><BusSchedulePage /></ProtectedRoute>} />
+          <Route path="bus-routes" element={<ProtectedRoute module="Bus Routes" action="view"><BusRouteManagementPage /></ProtectedRoute>} />
           <Route path="bus-register" element={<ProtectedRoute module="Bus Register" action="view"><BusRegisterPage /></ProtectedRoute>} />
           <Route path="booking/bus-booking" element={<ProtectedRoute module="Bus Booking" action="view"><BusBookingPage /></ProtectedRoute>} />
           <Route path="booking/freezing-seat" element={<ProtectedRoute module="Freezing Seat" action="view"><FreezingSeatPage /></ProtectedRoute>} />

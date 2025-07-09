@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ScheduleForm = ({ formData, onChange, buses, errors = {} }) => {
+const ScheduleForm = ({ formData, onChange, buses, busRoutes = [], errors = {} }) => {
   return (
     <div className="space-y-4">
       <div>
@@ -23,6 +23,30 @@ const ScheduleForm = ({ formData, onChange, buses, errors = {} }) => {
         </select>
         {errors.id && (
           <p className="mt-1 text-sm text-red-600">{errors.id}</p>
+        )}
+      </div>
+
+      {/* Bus Route Selection */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Bus Route</label>
+        <select
+          name="bus_route_id"
+          value={formData.bus_route_id || ''}
+          onChange={onChange}
+          className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border ${
+            errors.bus_route_id ? 'border-red-300' : 'border-gray-300'
+          } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+          required
+        >
+          <option value="">Select a route</option>
+          {busRoutes.map((route) => (
+            <option key={route.id} value={route.id}>
+              {route.route_name} ({route.start_location} → {route.end_location})
+            </option>
+          ))}
+        </select>
+        {errors.bus_route_id && (
+          <p className="mt-1 text-sm text-red-600">{errors.bus_route_id}</p>
         )}
       </div>
       

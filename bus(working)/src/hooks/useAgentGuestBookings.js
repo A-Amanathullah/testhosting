@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { getToken } from '../utils/auth';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+import { getAgentGuestBookings } from '../services/guestBookingService';
 
 const useAgentGuestBookings = (agentId) => {
   const [guestBookings, setGuestBookings] = useState([]);
@@ -20,13 +17,8 @@ const useAgentGuestBookings = (agentId) => {
       setError(null);
       
       try {
-        const token = getToken();
-        const response = await axios.get(`${API_URL}/guest-bookings/agent/${agentId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        
+        // Use the guestBookingService instead
+        const response = await getAgentGuestBookings(agentId);
         console.log('Agent guest bookings response:', response.data);
         setGuestBookings(response.data || []);
       } catch (err) {
@@ -49,13 +41,8 @@ const useAgentGuestBookings = (agentId) => {
         setError(null);
         
         try {
-          const token = getToken();
-          const response = await axios.get(`${API_URL}/guest-bookings/agent/${agentId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          
+          // Use the guestBookingService instead
+          const response = await getAgentGuestBookings(agentId);
           console.log('Refreshed agent guest bookings:', response.data);
           setGuestBookings(response.data || []);
         } catch (err) {

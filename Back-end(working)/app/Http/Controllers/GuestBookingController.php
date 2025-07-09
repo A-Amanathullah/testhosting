@@ -45,10 +45,23 @@ class GuestBookingController extends Controller
     public function index(Request $request)
     {
         $bus_id = $request->query('bus_id');
+        $bus_no = $request->query('bus_no');
         $date = $request->query('departure_date');
+        
         $query = GuestBooking::query();
-        if ($bus_id) $query->where('bus_id', $bus_id);
-        if ($date) $query->where('departure_date', $date);
+        
+        // Support filtering by either bus_id or bus_no
+        if ($bus_id) {
+            $query->where('bus_id', $bus_id);
+        } elseif ($bus_no) {
+            $query->where('bus_no', $bus_no);
+        }
+        
+        // Filter by date if provided
+        if ($date) {
+            $query->where('departure_date', $date);
+        }
+        
         return $query->get();
     }
 
@@ -148,8 +161,7 @@ class GuestBookingController extends Controller
             'price' => $guestBooking->price,
         ];
         
-        $cancellation = new \App\Models\Cancellation($cancellationData);
-        $cancellation->save();
+        $cancellation = \App\Models\Cancellation::create($cancellationData);
         
         // Delete the guest booking
         $guestBooking->delete();

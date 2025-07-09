@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { format, parse, startOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
@@ -8,7 +8,7 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
     // Prioritize current month, then first available date's month
     const today = new Date();
     
-    if (dates.length > 0) {
+    if (dates && dates.length > 0) {
       // Check if today's date exists in available dates
       const todayStr = format(today, 'yyyy-MM-dd');
       const hasToday = dates.includes(todayStr);
@@ -20,7 +20,8 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
       // Find future dates
       const futureDates = dates.filter(dateStr => {
         try {
-          const date = parse(dateStr, 'yyyy-MM-dd', new Date());
+          if (!isValidDateFormat(dateStr)) return false;
+          const date = new Date(dateStr);
           return date > today;
         } catch {
           return false;
@@ -29,19 +30,26 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
       
       if (futureDates.length > 0) {
         try {
-          const nearestFutureDate = parse(futureDates[0], 'yyyy-MM-dd', new Date());
-          return startOfMonth(nearestFutureDate);
+          const nearestFutureDate = new Date(futureDates[0]);
+          if (!isNaN(nearestFutureDate.getTime())) {
+            return startOfMonth(nearestFutureDate);
+          }
         } catch (error) {
           console.error('Error parsing nearest future date:', error);
         }
       }
       
       // Fallback to first available date
-      try {
-        const firstDate = parse(dates[0], 'yyyy-MM-dd', new Date());
-        return startOfMonth(firstDate);
-      } catch (error) {
-        console.error('Error parsing first date:', error);
+      for (const dateStr of dates) {
+        try {
+          if (!isValidDateFormat(dateStr)) continue;
+          const firstDate = new Date(dateStr);
+          if (!isNaN(firstDate.getTime())) {
+            return startOfMonth(firstDate);
+          }
+        } catch (error) {
+          continue;
+        }
       }
     }
     
@@ -49,11 +57,40 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
     return startOfMonth(today);
   });
 
+  // Helper function to validate date format
+  const isValidDateFormat = (dateStr) => {
+    if (!dateStr) return false;
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateStr)) return false;
+    
+    const [year, month, day] = dateStr.split('-').map(Number);
+    // Basic validation for month and day ranges
+    if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+    
+    // Verify it's a valid date (not like 2023-02-31)
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && 
+           date.getMonth() === month - 1 && 
+           date.getDate() === day;
+  };
+
   // Convert string dates to Date objects for comparison
-  const availableDates = dates.map((dateStr) => {
+  const availableDates = (dates || []).map((dateStr) => {
     try {
-      const parsedDate = parse(dateStr, 'yyyy-MM-dd', new Date());
-      console.log(`Parsed Date (${dateStr}):`, parsedDate);
+      // Validate date format before parsing
+      if (!isValidDateFormat(dateStr)) {
+        console.warn(`Skipping invalid date format: ${dateStr}`);
+        return null;
+      }
+      
+      const parsedDate = new Date(dateStr);
+      
+      // Additional validation to ensure the date is valid
+      if (isNaN(parsedDate.getTime())) {
+        console.warn(`Invalid date value: ${dateStr}`);
+        return null;
+      }
+      
       return parsedDate;
     } catch (error) {
       console.error(`Error parsing date ${dateStr}:`, error);
@@ -63,13 +100,15 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
 
   // Debug available dates
   useEffect(() => {
-    console.log('Available Dates:', availableDates);
+    console.log('Available Dates (raw):', dates);
+    console.log('Available Dates (parsed):', availableDates);
     console.log('Current Month:', currentMonth);
-  }, [availableDates, currentMonth]);
+    console.log('Selected Date:', selectedDate);
+  }, [availableDates, currentMonth, dates, selectedDate]);
 
   // Automatically set currentMonth based on priority when dates change
   useEffect(() => {
-    if (dates.length > 0) {
+    if (dates && dates.length > 0) {
       const today = new Date();
       
       // Check if today's date exists in available dates
@@ -84,7 +123,8 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
       // Find future dates
       const futureDates = dates.filter(dateStr => {
         try {
-          const date = parse(dateStr, 'yyyy-MM-dd', new Date());
+          if (!isValidDateFormat(dateStr)) return false;
+          const date = new Date(dateStr);
           return date > today;
         } catch {
           return false;
@@ -93,38 +133,48 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
       
       if (futureDates.length > 0) {
         try {
-          const nearestFutureDate = parse(futureDates[0], 'yyyy-MM-dd', new Date());
-          setCurrentMonth(startOfMonth(nearestFutureDate));
-          return;
+          const nearestFutureDate = new Date(futureDates[0]);
+          if (!isNaN(nearestFutureDate.getTime())) {
+            setCurrentMonth(startOfMonth(nearestFutureDate));
+            return;
+          }
         } catch (error) {
           console.error('Error parsing nearest future date:', error);
         }
       }
       
       // Fallback to first available date
-      try {
-        const firstDate = parse(dates[0], 'yyyy-MM-dd', new Date());
-        setCurrentMonth(startOfMonth(firstDate));
-      } catch (error) {
-        console.error('Error parsing first date:', error);
+      for (const dateStr of dates) {
+        try {
+          if (!isValidDateFormat(dateStr)) continue;
+          const firstDate = new Date(dateStr);
+          if (!isNaN(firstDate.getTime())) {
+            setCurrentMonth(startOfMonth(firstDate));
+            break;
+          }
+        } catch (error) {
+          continue;
+        }
       }
     }
   }, [dates]);
 
   // Get formatted selected date for display
-  const formattedSelectedDate = selectedDate
-    ? format(parse(selectedDate, 'yyyy-MM-dd', new Date()), 'MMM dd, yyyy')
+  const formattedSelectedDate = selectedDate && isValidDateFormat(selectedDate)
+    ? format(new Date(selectedDate), 'MMM dd, yyyy')
     : 'Select a date';
 
   // Check if a date is available in our dates array
   const isDateAvailable = (date) => {
+    if (!date || isNaN(date.getTime())) return false;
+    
     const isAvailable = availableDates.some(
       (availableDate) =>
+        availableDate &&
         date.getDate() === availableDate.getDate() &&
         date.getMonth() === availableDate.getMonth() &&
         date.getFullYear() === availableDate.getFullYear()
     );
-    console.log(`Checking date ${format(date, 'yyyy-MM-dd')}:`, isAvailable);
     return isAvailable;
   };
 
@@ -249,9 +299,17 @@ const DateCalendarSelector = ({ dates, selectedDate, onChange, disabled }) => {
             {renderCalendarDays()}
           </div>
 
-          {dates.length === 0 && (
+          {(!dates || dates.length === 0) && (
             <div className="py-3 text-sm text-center text-gray-500">
-              No dates available for selected bus
+              {disabled 
+                ? 'Please select a bus first' 
+                : 'No dates available for selected bus'}
+            </div>
+          )}
+          
+          {dates && dates.length > 0 && availableDates.length === 0 && (
+            <div className="py-3 text-sm text-center text-red-500">
+              Found {dates.length} date(s), but none are in a valid format
             </div>
           )}
 

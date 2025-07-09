@@ -1,5 +1,5 @@
 import React from "react";
-import{motion,AnimatePresence} from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Link } from "react-router-dom";
 
 function ResponsiveMenu({ open, onMenuClick, user, navAdmin, handleLogout }) {

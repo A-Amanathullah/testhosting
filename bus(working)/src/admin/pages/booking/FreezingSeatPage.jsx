@@ -245,7 +245,7 @@ const FreezingSeatPage = () => {
 
   // Handle form submission for freezing seats
   const handleFreezeSubmit = async (formData) => {
-    if (!hasPermission('add')) {
+    if (!can('add')) {
       alert('You do not have permission to freeze seats.');
       return;
     }
@@ -311,7 +311,7 @@ const FreezingSeatPage = () => {
 
   // Handle unfreeze request from form button
   const handleUnfreezeRequest = (seatsToUnfreeze) => {
-    if (!hasPermission('edit')) {
+    if (!can('edit')) {
       alert('You do not have permission to unfreeze seats.');
       return;
     }
@@ -417,8 +417,8 @@ const FreezingSeatPage = () => {
     }
   };
 
-  // Helper to check permission for Freezing Seat
-  const hasPermission = (action) => {
+  // Helper to check permissions for Freezing Seat
+  const can = (action) => {
     if (!permissions || !permissions['Freezing Seat']) return false;
     return !!permissions['Freezing Seat'][action];
   };

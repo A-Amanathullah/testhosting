@@ -54,6 +54,6 @@ class UpdateUserRoleIds extends Command
         $this->info("Updated: {$updated} users");
         $this->info("Skipped: {$skipped} users");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

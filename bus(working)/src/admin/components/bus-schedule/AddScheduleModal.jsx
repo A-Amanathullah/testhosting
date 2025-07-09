@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { format, addDays, parseISO } from 'date-fns';
+import { getAllBusRoutes } from '../../../services/busRouteService';
 
 const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
   const initialFormData = {
@@ -11,9 +12,12 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
     conductor_name: '',
     conductor_contact: '',
     departure_date: '',
+    bus_route_id: '', // Add bus route selection
   };
 
   const [formData, setFormData] = useState(initialFormData);
+  const [busRoutes, setBusRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
   // Start with 1 schedule detail row
   const [scheduleDetails, setScheduleDetails] = useState([
     {
@@ -27,6 +31,22 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
     }
   ]);
   const [errors, setErrors] = useState({});
+
+  // Fetch bus routes on component mount
+  useEffect(() => {
+    const fetchBusRoutes = async () => {
+      try {
+        const routes = await getAllBusRoutes();
+        setBusRoutes(routes);
+      } catch (error) {
+        console.error('Failed to fetch bus routes:', error);
+      }
+    };
+    
+    if (isOpen) {
+      fetchBusRoutes();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     // When bus or departure_date changes, auto-fill first row's date/start/end if possible
@@ -66,6 +86,27 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
           const updated = [...prev];
           if (selectedBus.start_point) updated[0].start_point = selectedBus.start_point;
           if (selectedBus.end_point) updated[0].end_point = selectedBus.end_point;
+          return updated;
+        });
+      }
+    }
+
+    if (name === 'bus_route_id') {
+      const route = busRoutes.find(r => r.id === parseInt(value));
+      if (route) {
+        setSelectedRoute(route);
+        // Auto-fill start and end points from route
+        setFormData(prev => ({
+          ...prev,
+          bus_route_id: value,
+          start_point: route.start_location,
+          end_point: route.end_location,
+        }));
+        // Update schedule details with route info
+        setScheduleDetails((prev) => {
+          const updated = [...prev];
+          updated[0].start_point = route.start_location;
+          updated[0].end_point = route.end_location;
           return updated;
         });
       }
@@ -119,6 +160,7 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
     const newErrors = {};
 
     if (!formData.id) newErrors.id = 'Please select a bus';
+    if (!formData.bus_route_id) newErrors.bus_route_id = 'Please select a bus route';
     if (!formData.departure_date) newErrors.departure_date = 'Please select a departure date';
     if (!formData.conductor_name) newErrors.conductor_name = 'Please enter conductor name';
     if (!formData.conductor_contact) newErrors.conductor_contact = 'Please enter conductor contact';
@@ -173,6 +215,7 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
       const newSchedules = scheduleDetails.map((detail, index) => ({
         id: parseInt(formData.id),
         bus_no: formData.bus_no,
+        bus_route_id: parseInt(formData.bus_route_id),
         driver_name: formData.driver_name,
         driver_contact: formData.driver_contact,
         conductor_name: formData.conductor_name,
@@ -188,6 +231,7 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
 
       onSave(newSchedules);
       setFormData(initialFormData);
+      setSelectedRoute(null);
       setScheduleDetails([
         {
           date: '',
@@ -245,6 +289,38 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                 </select>
                 {errors.id && (
                   <p className="mt-1 text-sm text-red-600">{errors.id}</p>
+                )}
+              </div>
+
+              {/* Bus Route Selection */}
+              <div>
+                <label htmlFor="bus_route_id" className="block text-sm font-medium text-gray-700">
+                  Select Route
+                </label>
+                <select
+                  id="bus_route_id"
+                  name="bus_route_id"
+                  value={formData.bus_route_id}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full px-3 py-2 border ${errors.bus_route_id ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500`}
+                >
+                  <option value="">-- Select Route --</option>
+                  {busRoutes.map(route => (
+                    <option key={route.id} value={route.id}>
+                      {route.route_name} ({route.start_location} → {route.end_location})
+                    </option>
+                  ))}
+                </select>
+                {errors.bus_route_id && (
+                  <p className="mt-1 text-sm text-red-600">{errors.bus_route_id}</p>
+                )}
+                {selectedRoute && selectedRoute.stops && (
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-600">
+                      Route Stops: {selectedRoute.stops.map(stop => stop.location_name).join(' → ')}
+                    </p>
+                  </div>
                 )}
               </div>
 

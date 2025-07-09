@@ -17,6 +17,7 @@ use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\CancellationController;
 use App\Http\Controllers\GuestBookingController;
+use App\Http\Controllers\LocationController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -26,6 +27,25 @@ Route::get('/users', [AuthController::class, 'index'])->middleware('auth:sanctum
 Route::post('/admin/create-user', [AdminController::class, 'createUser']);
 Route::get('/user', [AuthController::class, 'me'])->middleware('auth:sanctum');
 Route::apiResource('bus-trips', BusTripController::class);
+
+// Route-based search routes
+Route::post('/bus-trips/search-by-route', [BusTripController::class, 'searchByRoute']);
+
+// Location routes for autocomplete
+Route::get('/locations/search', [LocationController::class, 'searchLocations']);
+Route::get('/locations', [LocationController::class, 'getAllLocations']);
+Route::get('/locations/major-stops', [LocationController::class, 'getMajorStops']);
+
+// Sri Lankan locations routes for advanced autocomplete
+Route::get('/sri-lankan-locations/search', [App\Http\Controllers\SriLankanLocationController::class, 'search']);
+Route::get('/sri-lankan-locations/districts', [App\Http\Controllers\SriLankanLocationController::class, 'getDistricts']);
+Route::get('/sri-lankan-locations/provinces', [App\Http\Controllers\SriLankanLocationController::class, 'getProvinces']);
+Route::get('/sri-lankan-locations/district/{district}', [App\Http\Controllers\SriLankanLocationController::class, 'getByDistrict']);
+Route::get('/sri-lankan-locations/major-stops', [App\Http\Controllers\SriLankanLocationController::class, 'getMajorStops']);
+Route::get('/sri-lankan-locations/sync-stats', [App\Http\Controllers\SriLankanLocationController::class, 'getSyncStats']);
+Route::post('/sri-lankan-locations/{id}/verify', [App\Http\Controllers\SriLankanLocationController::class, 'verify']);
+Route::apiResource('sri-lankan-locations', App\Http\Controllers\SriLankanLocationController::class)->only(['store', 'update']);
+
 Route::post('/bus-reg', [BusRegController::class, 'store']);
 Route::get('/bus-reg', [BusRegController::class, 'index']);
 Route::put('/bus-reg/{id}', [BusRegController::class, 'update']);
@@ -36,7 +56,6 @@ Route::apiResource('bookings', BookingController::class);
 Route::apiResource('staffs', StaffController::class);
 Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
-Route::get('/store-route/batticaloa', [BusRouteController::class, 'storeRouteViaBatticaloa']);
 Route::post('/user-details', [AuthController::class, 'storeUserDetails'])->middleware('auth:sanctum');
 Route::apiResource('sms-templates', SmsTemplateController::class);
 Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
@@ -63,6 +82,13 @@ Route::apiResource('guest-bookings', GuestBookingController::class)->only(['inde
 Route::post('/guest-bookings/{id}/cancel', [GuestBookingController::class, 'cancel']);
 Route::get('/guest-bookings/agent/{agentId}', [GuestBookingController::class, 'getByAgent']);
 Route::get('/agents', [GuestBookingController::class, 'getAgents']);
+
+// Bus route endpoints
+Route::get('/bus-routes', [BusRouteController::class, 'index']);
+Route::get('/bus-routes/{id}', [BusRouteController::class, 'show']);
+Route::post('/bus-routes', [BusRouteController::class, 'store']);
+Route::put('/bus-routes/{id}', [BusRouteController::class, 'update']);
+Route::delete('/bus-routes/{id}', [BusRouteController::class, 'destroy']);
 
 // Fallback for unknown API routes to return JSON 404
 Route::fallback(function() {

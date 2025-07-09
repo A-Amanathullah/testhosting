@@ -1,8 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
 import PaymentAPI from "../PaymentAPI";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+import { createGuestBooking } from "../../services/guestBookingService";
 
 const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 0, agentId = null, isAgentBooking = false, processingBookingId = null, onRefresh = null }) => {
   const [form, setForm] = useState({
@@ -48,7 +46,7 @@ const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 
         } else {
           // Only make direct API call if no onSubmit callback
           console.log("Agent booking: Creating new booking directly");
-          await axios.post(`${API_URL}/guest-bookings`, guestData);
+          await createGuestBooking(guestData);
           // Only close if we're handling the booking directly (fallback case)
           onClose();
         }
@@ -98,7 +96,7 @@ const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 
         // Don't call onClose() here - let the parent handle closing after successful booking
       } else {
         console.log("Payment Success: Creating new booking directly");
-        await axios.post(`${API_URL}/guest-bookings`, updatedData);
+        await createGuestBooking(updatedData);
         // Only close if we're handling the booking directly (fallback case)
         onClose();
       }
@@ -134,7 +132,7 @@ const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 
         // Don't call onClose() here - let the parent handle closing after successful booking
       } else {
         console.log("Pay Later: Creating new booking directly");
-        await axios.post(`${API_URL}/guest-bookings`, pendingData);
+        await createGuestBooking(pendingData);
         // Only close if we're handling the booking directly (fallback case)
         onClose();
       }

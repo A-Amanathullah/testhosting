@@ -1,7 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+import { getGuestBookings } from "../../services/guestBookingService";
 
 const useAdminGuestBookings = (busNo, date) => {
   const [guestBookings, setGuestBookings] = useState([]);
@@ -13,11 +11,8 @@ const useAdminGuestBookings = (busNo, date) => {
     setError(null);
     try {
       // Get all guest bookings if busNo and date are not provided
-      let params = {};
-      if (busNo) params.bus_no = busNo;
-      if (date) params.departure_date = date;
-
-      const res = await axios.get(`${API_URL}/guest-bookings`, { params });
+      // Note: getGuestBookings handles the date formatting internally
+      const res = await getGuestBookings(busNo, date);
       setGuestBookings(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setError(err);

@@ -12,6 +12,7 @@ class RolePermissionsSeeder extends Seeder
         $modules = [
             ['name' => 'Dashboard', 'actions' => ['view', 'edit']],
             ['name' => 'Bus Schedule', 'actions' => ['view', 'add', 'edit', 'delete']],
+            ['name' => 'Bus Routes', 'actions' => ['view', 'add', 'edit', 'delete']],
             ['name' => 'Bus Register', 'actions' => ['view', 'add', 'edit', 'delete']],
             ['name' => 'Booking Management', 'submodules' => [
                 ['name' => 'Bus Booking', 'actions' => ['view', 'print', 'cancel']],

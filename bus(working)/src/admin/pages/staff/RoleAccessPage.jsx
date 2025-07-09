@@ -12,6 +12,10 @@ const modules = [
 		actions: ['view', 'add', 'edit', 'delete'],
 	},
 	{
+		name: 'Bus Routes',
+		actions: ['view', 'add', 'edit', 'delete'],
+	},
+	{
 		name: 'Bus Register',
 		actions: ['view', 'add', 'edit', 'delete'],
 	},

@@ -21,6 +21,7 @@ export const AddSchedule = async (formData) => {
 export const updateSchedule = async (updatedSchedule) => {
   const formData = new FormData();
   formData.append("bus_no", updatedSchedule.bus_no);
+  formData.append("bus_route_id", updatedSchedule.bus_route_id); // Add bus route ID
   formData.append("driver_name", updatedSchedule.driver_name);
   formData.append("driver_contact", updatedSchedule.driver_contact);
   formData.append("conductor_name", updatedSchedule.conductor_name);

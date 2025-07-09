@@ -79,6 +79,7 @@ const BusSchedulePage = () => {
 
         formData.append("bus_no", schedule.bus_no);
         formData.append("bus_id", busInfo.id);
+        formData.append("bus_route_id", schedule.bus_route_id); // Add bus route ID
         formData.append("driver_name", schedule.driver_name);
         formData.append("driver_contact", schedule.driver_contact);
         formData.append("conductor_name", schedule.conductor_name);
@@ -166,15 +167,15 @@ const BusSchedulePage = () => {
       (`${schedule.start_point || ''} to ${schedule.end_point || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
     ));
 
-  // Helper to check permission
-  const hasPermission = (action) => {
+  // Helper to check permissions for Bus Schedule
+  const can = (action) => {
     if (!permissions || !permissions['Bus Schedule']) return false;
     return !!permissions['Bus Schedule'][action];
   };
 
   // Modified handlers with permission checks
   const handleAddClick = () => {
-    if (!hasPermission('add')) {
+    if (!can('add')) {
       setNotification("You don't have permission to add schedules.");
       return;
     }
@@ -182,7 +183,7 @@ const BusSchedulePage = () => {
   };
 
   const handleEditClick = (schedule) => {
-    if (!hasPermission('edit')) {
+    if (!can('edit')) {
       setNotification("You don't have permission to edit schedules.");
       return;
     }
@@ -190,7 +191,7 @@ const BusSchedulePage = () => {
   };
 
   const handleDeleteClick = (schedule) => {
-    if (!hasPermission('delete')) {
+    if (!can('delete')) {
       setNotification("You don't have permission to delete schedules.");
       return;
     }
@@ -222,105 +223,150 @@ const BusSchedulePage = () => {
             />
           </div>
 
-          <button
-            onClick={handleAddClick}
-            className="flex items-center px-4 py-2 text-white bg-red-800 rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add Schedule
-          </button>
+          {can('add') && (
+            <button
+              onClick={handleAddClick}
+              className="flex items-center px-4 py-2 text-white bg-red-800 rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Add Schedule
+            </button>
+          )}
         </div>
 
         {/* Schedule table */}
-        <div className="mt-6 overflow-hidden bg-white rounded-lg shadow-sm h-[70vh] overflow-y-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  image
-                </th>
-                <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Bus Number
-                </th>
-                <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Driver/Conductor
-                </th>
-                <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Route
-                </th>
-                <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Departure
-                </th>
-                <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Price
-                </th>
-                <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSchedules.length > 0 ? (
-                filteredSchedules.map((schedule) => {
-                  const busInfo = buses.find(bus => bus.bus_no === schedule.bus_no);
-                  return (
-                    <tr key={schedule.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <img
-                          src={busInfo?.image ? `http://localhost:8000/storage/${busInfo.image}` : '/placeholder.jpg'} // Fallback image
-                          alt={`Bus ${schedule.bus_no}`}
-                          className="object-cover w-16 h-12 rounded-md"
-                        />
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                        {schedule.bus_no}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                        <div>D: {schedule.driver_name}</div>
-                        <div>C: {schedule.conductor_name}</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                        {schedule.start_point} to {schedule.end_point}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                        <div>{new Date(schedule.departure_date).toLocaleDateString()}</div>
-                        <div className="text-xs text-gray-400">{schedule.departure_time}</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                        Rs. {schedule.price}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                        <button
-                          className="mr-3 text-blue-600 hover:text-blue-900"
-                          onClick={() => openViewModal(schedule)}
-                        >
-                          <Eye className="w-5 h-5" />
-                        </button>
-                        <button
-                          className="mr-3 text-indigo-600 hover:text-indigo-900"
-                          onClick={() => handleEditClick(schedule)}
-                        >
-                          <Edit className="w-5 h-5" />
-                        </button>
-                        <button
-                          className="text-red-600 hover:text-red-900"
-                          onClick={() => handleDeleteClick(schedule)}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
+        <div className="mt-6 bg-white rounded-lg shadow-sm max-h-[calc(100vh-200px)] overflow-hidden flex flex-col">
+          <div className="flex-shrink-0 overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-sm text-center text-gray-500">
-                    No schedules found matching your search.
-                  </td>
+                  <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Bus Info
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Driver/Conductor
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Route
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Schedule
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Price
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+            </table>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <table className="min-w-full">
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredSchedules.length > 0 ? (
+                  filteredSchedules.map((schedule) => {
+                    const busInfo = buses.find(bus => bus.bus_no === schedule.bus_no);
+                    return (
+                      <tr key={schedule.id} className="hover:bg-gray-50">
+                        {/* Bus Info with Image */}
+                        <td className="px-4 py-4" style={{width: '16.66%'}}>
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={busInfo?.image ? `http://localhost:8000/storage/${busInfo.image}` : '/placeholder.jpg'}
+                              alt={`Bus ${schedule.bus_no}`}
+                              className="object-cover w-12 h-12 rounded-lg flex-shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{schedule.bus_no}</div>
+                              <div className="text-xs text-gray-500">Bus Number</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Driver/Conductor */}
+                        <td className="px-4 py-4" style={{width: '20%'}}>
+                          <div className="text-sm text-gray-900">
+                            <div className="font-medium truncate">Driver: {schedule.driver_name}</div>
+                            <div className="text-gray-500 truncate">Conductor: {schedule.conductor_name}</div>
+                          </div>
+                        </td>
+
+                        {/* Route */}
+                        <td className="px-4 py-4" style={{width: '18%'}}>
+                          <div className="text-sm text-gray-900">
+                            <div className="font-medium truncate">{schedule.start_point}</div>
+                            <div className="text-xs text-gray-500 text-center">↓</div>
+                            <div className="font-medium truncate">{schedule.end_point}</div>
+                          </div>
+                        </td>
+
+                        {/* Schedule */}
+                        <td className="px-4 py-4" style={{width: '15%'}}>
+                          <div className="text-sm text-gray-900">
+                            <div className="font-medium">{new Date(schedule.departure_date).toLocaleDateString()}</div>
+                            <div className="text-xs text-gray-500">{schedule.departure_time}</div>
+                          </div>
+                        </td>
+
+                        {/* Price */}
+                        <td className="px-4 py-4" style={{width: '12%'}}>
+                          <div className="text-sm font-medium text-gray-900">
+                            Rs. {schedule.price}
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-4" style={{width: '18.34%'}}>
+                          <div className="flex items-center justify-center space-x-2">
+                            {can('view') && (
+                              <button
+                                className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-colors"
+                                onClick={() => openViewModal(schedule)}
+                                title="View Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            )}
+                            {can('edit') && (
+                              <button
+                                className="p-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-lg transition-colors"
+                                onClick={() => handleEditClick(schedule)}
+                                title="Edit Schedule"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            )}
+                            {can('delete') && (
+                              <button
+                                className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors"
+                                onClick={() => handleDeleteClick(schedule)}
+                                title="Delete Schedule"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="px-4 py-8 text-sm text-center text-gray-500">
+                      <div className="flex flex-col items-center space-y-2">
+                        <div className="text-gray-400">
+                          <Search className="w-8 h-8 mx-auto" />
+                        </div>
+                        <div>No schedules found matching your search.</div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

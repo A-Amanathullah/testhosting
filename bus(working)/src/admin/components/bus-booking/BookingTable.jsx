@@ -1,4 +1,26 @@
 import React from 'react';
+import { normalizeToYYYYMMDD } from '../../../utils/dateUtils';
+
+// Helper function to parse seat numbers from any format (string, array, comma-separated)
+const parseSeatNumbers = (seatData) => {
+  if (!seatData) return [];
+  
+  if (Array.isArray(seatData)) {
+    return seatData.map(seat => {
+      const num = parseInt(String(seat).replace(/[^0-9]/g, ''), 10);
+      return isNaN(num) ? null : num;
+    }).filter(Boolean);
+  } 
+  
+  if (typeof seatData === "string") {
+    return seatData.split(",").map(seat => {
+      const num = parseInt(seat.replace(/[^0-9]/g, ''), 10);
+      return isNaN(num) ? null : num;
+    }).filter(Boolean);
+  }
+  
+  return [];
+};
 
 const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings = [], isLoading, selectedBusNo, selectedDate, printRef, buses, onCancelBooking }) => {
   // Helper: Map bus_id to bus_no
@@ -71,55 +93,91 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
     // Filter bookings and frozenSeats by bus_id and selectedDate
     const selectedBusObj = buses?.find((b) => String(b.bus_no) === String(selectedBusNo));
     const selectedBusId = selectedBusObj?.id;
-
-    const filteredBookings = bookings.filter(
-      b => String(b.bus_id) === String(selectedBusId) &&
-           (!selectedDate || String(b.departure_date || b.departureDate) === String(selectedDate))
-    );
     
-    const filteredFrozenSeats = (frozenSeats || []).filter(
-      f => String(f.bus_id) === String(selectedBusId) &&
-           (!selectedDate || String(f.departure_date || f.departureDate) === String(selectedDate))
-    );
+    // Normalize selected date for comparison
+    const normalizedSelectedDate = normalizeToYYYYMMDD(selectedDate);
     
-    const filteredCancellations = (cancellations || []).filter(
-      c => String(c.bus_id) === String(selectedBusId) &&
-           (!selectedDate || String(c.departure_date) === String(selectedDate))
-    );
+    // Filter regular bookings
+    const filteredBookings = bookings.filter(b => {
+      const normalizedBookingDate = normalizeToYYYYMMDD(b.departure_date || b.departureDate);
+      const busMatches = String(b.bus_id) === String(selectedBusId) || 
+                         String(b.bus_no) === String(selectedBusNo);
+      const dateMatches = !normalizedSelectedDate || normalizedBookingDate === normalizedSelectedDate;
+      return busMatches && dateMatches;
+    });
     
-    const filteredGuestBookings = (guestBookings || []).filter(
-      g => String(g.bus_id) === String(selectedBusId) &&
-           (!selectedDate || String(g.departure_date) === String(selectedDate))
-    );
+    // Filter frozen seats
+    const filteredFrozenSeats = (frozenSeats || []).filter(f => {
+      const normalizedFrozenDate = normalizeToYYYYMMDD(f.departure_date || f.departureDate);
+      const busMatches = String(f.bus_id) === String(selectedBusId) || 
+                         String(f.bus_no) === String(selectedBusNo);
+      const dateMatches = !normalizedSelectedDate || normalizedFrozenDate === normalizedSelectedDate;
+      return busMatches && dateMatches;
+    });
     
-    const bookingsData = filteredBookings.map(booking => ({
-      id: booking.id,
-      serialNo: booking.serial_no || '-',
-      name: booking.name || booking.frozenBy || 'Admin',
-      ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
-      seatNumbers: Array.isArray(booking.seat_no)
-        ? booking.seat_no.map(s => String(s).trim()).filter(Boolean).sort((a, b) => Number(a) - Number(b)).join(', ')
-        : (booking.seat_no || booking.seatNumbers || ''),
-      paymentStatus: booking.payment_status || booking.paymentStatus || null,
-      route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || 'N/A',
-      status: booking.status,
-      reason: booking.reason,
-      busNumber: getBusNoById(booking.bus_id),
-      role: booking.role,
-      type: 'booking',
-      raw: booking // Keep the raw booking data for the cancel action
-    }));
+    // Filter cancellations - be more flexible with bus ID matching
+    const filteredCancellations = (cancellations || []).filter(c => {
+      const normalizedCancelDate = normalizeToYYYYMMDD(c.departure_date);
+      const busMatches = String(c.bus_id) === String(selectedBusId) || 
+                         String(c.bus_no) === String(selectedBusNo);
+      const dateMatches = !normalizedSelectedDate || normalizedCancelDate === normalizedSelectedDate;
+      return busMatches && dateMatches;
+    });
+    
+    // Filter guest bookings
+    const filteredGuestBookings = (guestBookings || []).filter(g => {
+      if (!g) return false;
+      
+      let normalizedGuestDate;
+      try {
+        normalizedGuestDate = normalizeToYYYYMMDD(g.departure_date);
+      } catch (err) {
+        normalizedGuestDate = null;
+      }
+      
+      const busMatches = 
+        String(g.bus_no) === String(selectedBusNo) || 
+        String(g.bus_id) === String(selectedBusId);
+      
+      const dateMatches = 
+        !normalizedSelectedDate || 
+        !normalizedGuestDate ||
+        normalizedGuestDate === normalizedSelectedDate;
+      
+      return busMatches && dateMatches;
+    });
+    
+    const bookingsData = filteredBookings.map(booking => {
+      const parsedSeats = parseSeatNumbers(booking.seat_no);
+      const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
+      
+      return {
+        id: booking.id,
+        serialNo: booking.serial_no || '-',
+        name: booking.name || booking.frozenBy || 'Admin',
+        ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || parsedSeats.length || 0,
+        seatNumbers: formattedSeatNumbers,
+        paymentStatus: booking.payment_status || booking.paymentStatus || null,
+        route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || 'N/A',
+        status: booking.status,
+        reason: booking.reason,
+        busNumber: getBusNoById(booking.bus_id),
+        role: booking.role,
+        type: 'booking',
+        raw: booking // Keep the raw booking data for the cancel action
+      };
+    });
     
     const frozenData = filteredFrozenSeats.map(frozen => {
-      const seatArr = Array.isArray(frozen.seat_no)
-        ? frozen.seat_no.map(s => String(s).trim()).filter(Boolean)
-        : (typeof frozen.seat_no === 'string' ? frozen.seat_no.split(',').map(s => s.trim()).filter(Boolean) : []);
+      const parsedSeats = parseSeatNumbers(frozen.seat_no);
+      const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
+      
       return {
         id: `frozen-${frozen.id}`,
         serialNo: frozen.serial_no || '-',
         name: frozen.name || frozen.frozenBy || 'Admin',
-        ticketsReserved: seatArr.length,
-        seatNumbers: seatArr.sort((a, b) => Number(a) - Number(b)).join(', '),
+        ticketsReserved: parsedSeats.length,
+        seatNumbers: formattedSeatNumbers,
         paymentStatus: frozen.payment_status || null,
         route: frozen.route || `${frozen.start_point || ''}${frozen.end_point ? '-' + frozen.end_point : ''}` || 'N/A',
         status: 'Frozen',
@@ -131,15 +189,15 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
     });
     
     const cancellationData = filteredCancellations.map(c => {
-      const seatArr = Array.isArray(c.seat_no)
-        ? c.seat_no.map(s => String(s).trim()).filter(Boolean)
-        : (typeof c.seat_no === 'string' ? c.seat_no.split(',').map(s => s.trim()).filter(Boolean) : []);
+      const parsedSeats = parseSeatNumbers(c.seat_no);
+      const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
+      
       return {
         id: `cancelled-${c.id}`,
         serialNo: c.serial_no || '-',
         name: c.name || 'Passenger',
-        ticketsReserved: seatArr.length,
-        seatNumbers: seatArr.sort((a, b) => Number(a) - Number(b)).join(', '),
+        ticketsReserved: parsedSeats.length,
+        seatNumbers: formattedSeatNumbers,
         paymentStatus: c.payment_status || null,
         route: c.route || `${c.pickup || ''}${c.drop ? '-' + c.drop : ''}` || 'N/A',
         status: 'Cancelled',
@@ -152,24 +210,30 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
     
     // Add guest bookings to the data
     const guestData = filteredGuestBookings.map(guest => {
-      const seatArr = Array.isArray(guest.seat_no)
-        ? guest.seat_no.map(s => String(s).trim()).filter(Boolean)
-        : (typeof guest.seat_no === 'string' ? guest.seat_no.split(',').map(s => s.trim()).filter(Boolean) : []);
-      return {
-        id: `guest-${guest.id}`,
+      if (!guest) {
+        return null;
+      }
+      
+      const parsedSeats = parseSeatNumbers(guest.seat_no);
+      const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
+      
+      const tableData = {
+        id: `guest-${guest.id || 'unknown'}`,
         serialNo: guest.serial_no || '-',
         name: guest.name || 'Guest',
-        ticketsReserved: guest.reserved_tickets || seatArr.length,
-        seatNumbers: seatArr.sort((a, b) => Number(a) - Number(b)).join(', '),
+        ticketsReserved: guest.reserved_tickets || parsedSeats.length,
+        seatNumbers: formattedSeatNumbers,
         paymentStatus: guest.payment_status || null,
         route: guest.route || `${guest.pickup || ''}${guest.drop ? '-' + guest.drop : ''}` || 'N/A',
-        status: guest.status,
+        status: guest.status || 'Confirmed',  // Default to Confirmed if no status is provided
         reason: guest.reason,
-        busNumber: getBusNoById(guest.bus_id),
+        busNumber: guest.bus_no || getBusNoById(guest.bus_id),
         type: 'guest',
         raw: guest // Keep the raw booking data for the cancel action
       };
-    });
+      
+      return tableData;
+    }).filter(Boolean); // Filter out any null entries from invalid data
     
     return [...bookingsData, ...frozenData, ...cancellationData, ...guestData];
   };

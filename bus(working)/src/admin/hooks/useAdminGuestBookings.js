@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+import { getGuestBookings } from "../../services/guestBookingService";
+import { normalizeToYYYYMMDD } from "../../utils/dateUtils";
 
 const useAdminGuestBookings = (busNo, date) => {
   const [guestBookings, setGuestBookings] = useState([]);
@@ -11,16 +10,23 @@ const useAdminGuestBookings = (busNo, date) => {
   const fetchGuestBookings = useCallback(async () => {
     setLoading(true);
     setError(null);
+    
     try {
-      // Get all guest bookings if busNo and date are not provided
-      let params = {};
-      if (busNo) params.bus_no = busNo;
-      if (date) params.departure_date = date;
-
-      const res = await axios.get(`${API_URL}/guest-bookings`, { params });
-      setGuestBookings(Array.isArray(res.data) ? res.data : []);
+      // Always fetch guest bookings - let the service and backend handle filtering
+      const res = await getGuestBookings(busNo, date);
+      
+      // Process the data to ensure we have consistent formatting
+      const processedData = Array.isArray(res.data) ? res.data.map(booking => ({
+        ...booking,
+        // Normalize the departure date to ensure consistency
+        normalizedDate: normalizeToYYYYMMDD(booking.departure_date)
+      })) : [];
+      
+      setGuestBookings(processedData);
     } catch (err) {
+      console.error("Error fetching guest bookings:", err);
       setError(err);
+      setGuestBookings([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

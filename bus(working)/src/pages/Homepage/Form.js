@@ -4,9 +4,10 @@ import { LuArrowLeftRight } from "react-icons/lu";
 import { PiLineVertical } from "react-icons/pi";
 import { FaSearch } from "react-icons/fa";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AutocompleteInput from "../../components/Other/AutocompleteInput";
 import DatePickerInput from "../../components/Other/DatePickerInput";
+import locationService from "../../services/locationService";
 
 const Form = () => {
 
@@ -17,14 +18,14 @@ const Form = () => {
     const [startDate, setStartDate] = useState(null);
     const [returnDate, setReturnDate] = useState(null);
     const [startDateStatus, setStartDateStatus] = useState(null);
+    const [searching, setSearching] = useState(false);
 
-
+    const navigate = useNavigate();
 
     const [showBus, setShowBus] = useState(true);
     const [showStatus, setShowStatus] = useState(false);
     const [selectedView, setSelectedView] = useState("bus");
     const [isSwapped, setIsSwapped] = useState(false);
-
 
     const handleBus = (e) => {
         e.preventDefault();
@@ -45,6 +46,108 @@ const Form = () => {
 
     const handleSwap = () => {
         setIsSwapped(!isSwapped);
+    };
+
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        
+        if (!fromCityBus || !toCityBus || !startDate) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        setSearching(true);
+        
+        try {
+            // Format date for API - handle Day.js object
+            const formattedDate = startDate.format('YYYY-MM-DD');
+            
+            // Debug logging
+            console.log('Search parameters:', {
+                from: fromCityBus,
+                to: toCityBus,
+                originalDate: startDate,
+                formattedDate: formattedDate,
+                isReturn: selectedView === "bus",
+                returnDate: returnDate
+            });
+            
+            let outboundResults = null;
+            let returnResults = null;
+            
+            // Search for outbound journey
+            outboundResults = await locationService.searchBusTripsByRoute(
+                fromCityBus,
+                toCityBus,
+                formattedDate
+            );
+            
+            // If return journey is selected and return date is provided, search for return journey
+            if (selectedView === "bus" && returnDate) {
+                const formattedReturnDate = returnDate.format('YYYY-MM-DD');
+                console.log('Searching return journey:', {
+                    from: toCityBus,
+                    to: fromCityBus,
+                    date: formattedReturnDate
+                });
+                
+                returnResults = await locationService.searchBusTripsByRoute(
+                    toCityBus, // Opposite direction
+                    fromCityBus, // Opposite direction
+                    formattedReturnDate
+                );
+            }
+
+            console.log('Search results:', {
+                outbound: outboundResults,
+                return: returnResults
+            });
+
+            // Combine results for navigation
+            const combinedTrips = [];
+            
+            // Add outbound trips with direction marker
+            if (outboundResults && outboundResults.trips) {
+                outboundResults.trips.forEach(trip => {
+                    combinedTrips.push({
+                        ...trip,
+                        journey_type: 'outbound',
+                        journey_label: `${fromCityBus} → ${toCityBus}`
+                    });
+                });
+            }
+            
+            // Add return trips with direction marker
+            if (returnResults && returnResults.trips) {
+                returnResults.trips.forEach(trip => {
+                    combinedTrips.push({
+                        ...trip,
+                        journey_type: 'return',
+                        journey_label: `${toCityBus} → ${fromCityBus}`
+                    });
+                });
+            }
+
+            // Navigate to bus list with combined search results
+            navigate('/busList', {
+                state: {
+                    searchResults: combinedTrips,
+                    searchParams: {
+                        from: fromCityBus,
+                        to: toCityBus,
+                        date: formattedDate,
+                        isReturn: selectedView === "bus",
+                        returnDate: returnDate ? returnDate.format('YYYY-MM-DD') : null,
+                        hasReturnResults: returnResults && returnResults.trips && returnResults.trips.length > 0
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Search error:', error);
+            alert('Error searching for bus trips. Please try again.');
+        } finally {
+            setSearching(false);
+        }
     };
 
     return (
@@ -103,34 +206,29 @@ const Form = () => {
                             <div className="flex border border-black gap-3 items-center p-2 grow shrink mx-4 rounded-2xl">
                                 {!isSwapped ? (
                                     <div className="flex grow shrink  gap-2  border border-primary transition-all duration-300 rounded-md">
-                                        {/* <input type="text" className="input-form flex grow shrink transition-all duration-300 rounded-lg text-md border-none" placeholder="From" /> */}
                                         <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
                                             placeholder="From" value={fromCityBus} setValue={setFromCityBus} />
                                         <button className="transition-transform duration-300 active:rotate-180"
                                             onClick={handleSwap}>
                                             <LuArrowLeftRight className="inline-block text-xl" />
                                         </button>
-                                        {/* <input type="text" className="input-form flex grow shrink transition-all duration-300 rounded-lg text-lg border-none" placeholder="To" /> */}
                                         <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
                                             placeholder="To" value={toCityBus} setValue={setToCityBus} />
                                     </div>
                                 ) : (
                                     <div className="flex grow shrink  gap-2  border border-primary transition-all duration-300 rounded-md">
-                                        {/* <input type="text" className="input-form flex grow shrink transition-all duration-300 rounded-lg text-lg border-none" placeholder="To" /> */}
                                         <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
                                             placeholder="To" value={toCityBus} setValue={setToCityBus} />
                                         <button className="transition-transform duration-300 active:rotate-180"
                                             onClick={handleSwap}>
                                             <LuArrowLeftRight className="inline-block text-xl" />
                                         </button>
-                                        {/* <input type="text" className="input-form flex grow shrink transition-all duration-300 rounded-lg text-md border-none" placeholder="From" /> */}
                                         <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
                                             placeholder="From" value={fromCityBus} setValue={setFromCityBus} />
                                     </div>
                                 )}
                                 <PiLineVertical className="inline-block text-xl opacity-10" />
                                 <div className="flex gap-2 border border-primary rounded-md">
-                                    {/* <input type="date" className="input-form flex justify-self-center  rounded-lg text-md border-none" /> */}
                                     <DatePickerInput 
                                     className="input-form flex justify-self-center  rounded-lg text-md border-none"
                                     selectedDate={startDate} setSelectedDate={setStartDate} placeholder="Departure Date" />
@@ -149,16 +247,18 @@ const Form = () => {
                         {/* search button */}
 
                         <div className="flex justify-center m-4 p-4">
-                            <Link to="/busList">
-                                <button className="bg-transparent border border-primary py-3 px-10 rounded-full
-                        hover:bg-primary duration-200 hover:text-white text-primary">
-                                    <div className="flex gap-3 justify-center items-center">
-                                        {/* onClick={() => setShowBus((prev) => !prev)} */}
-                                        <FaSearch className="inline-block text-2xl " />
-                                        <div className="text-lg font-semibold"> Search</div>
+                            <button 
+                                onClick={handleSearch}
+                                disabled={searching}
+                                className="bg-transparent border border-primary py-3 px-10 rounded-full
+                        hover:bg-primary duration-200 hover:text-white text-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                                <div className="flex gap-3 justify-center items-center">
+                                    <FaSearch className="inline-block text-2xl " />
+                                    <div className="text-lg font-semibold">
+                                        {searching ? 'Searching...' : 'Search'}
                                     </div>
-                                </button>
-                            </Link>
+                                </div>
+                            </button>
                         </div>
 
                     </div>
@@ -170,27 +270,23 @@ const Form = () => {
                             <div className="flex px-5 py-5 pt-9 bg-white gap-3 items-center p-2 flex-wrap grow shrink  rounded-2xl">
                                 {!isSwapped ? (
                                     <div className="flex grow shrink  gap-2  border border-primary transition-all duration-300 rounded-md">
-                                        {/* <input type="text" className="input-form flex grow shrink transition-all duration-300 rounded-lg text-md border-none" placeholder="From" /> */}
                                         <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
                                             placeholder="From" value={fromCityStatus} setValue={setFromCityStatus} />
                                         <button className="transition-transform duration-300 active:rotate-180"
                                             onClick={handleSwap}>
                                             <LuArrowLeftRight className="inline-block text-xl" />
                                         </button>
-                                        {/* <input type="text" className="input-form flex grow shrink transition-all duration-300 rounded-lg text-lg border-none" placeholder="To" /> */}
                                         <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
                                             placeholder="To" value={toCityStatus} setValue={setToCityStatus} />
                                     </div>
                                 ) : (
                                     <div className="flex grow shrink  gap-2  border border-primary transition-all duration-300 rounded-md">
-                                        {/* <input type="text" className="input-form flex grow shrink transition-all duration-300 rounded-lg text-lg border-none" placeholder="To" /> */}
                                         <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
                                             placeholder="To" value={toCityStatus} setValue={setToCityStatus} />
                                         <button className="transition-transform duration-300 active:rotate-180"
                                             onClick={handleSwap}>
                                             <LuArrowLeftRight className="inline-block text-xl" />
                                         </button>
-                                        {/* <input type="text" className="input-form flex grow shrink transition-all duration-300 rounded-lg text-md border-none" placeholder="From" /> */}
                                         <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
                                             placeholder="From" value={fromCityStatus} setValue={setFromCityStatus} />
                                     </div>
@@ -198,7 +294,6 @@ const Form = () => {
 
                                 <div><PiLineVertical className="inline-block text-xl opacity-10" /></div>
                                 <div className="flex gap-2 border border-primary rounded-md">
-                                    {/* <input type="date" className="input-form flex grow justify-center shrink  rounded-lg text-md border-none" /> */}
                                     <DatePickerInput 
                                     className="input-form flex justify-self-center  rounded-lg text-md border-none"
                                     selectedDate={startDateStatus} setSelectedDate={setStartDateStatus} placeholder="Date" />

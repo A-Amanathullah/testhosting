@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import ScheduleForm from './ScheduleForm';
+import { getAllBusRoutes } from '../../../services/busRouteService';
 
 const EditScheduleModal = ({ isOpen, onClose, onSave, scheduleData, buses }) => {
   const [formData, setFormData] = useState({
     id: '',
     bus_no: '',
+    bus_route_id: '',
     driver_name: '',
     driver_contact: '',
     conductor_name: '',
@@ -17,14 +19,32 @@ const EditScheduleModal = ({ isOpen, onClose, onSave, scheduleData, buses }) => 
     arrival_date: '',
     arrival_time: ''
   });
+  const [busRoutes, setBusRoutes] = useState([]);
   const [errors, setErrors] = useState({});
   const [selectedBusPhoto, setSelectedBusPhoto] = useState(null);
+
+  // Fetch bus routes when modal opens
+  useEffect(() => {
+    const fetchBusRoutes = async () => {
+      try {
+        const routes = await getAllBusRoutes();
+        setBusRoutes(routes);
+      } catch (error) {
+        console.error('Failed to fetch bus routes:', error);
+      }
+    };
+    
+    if (isOpen) {
+      fetchBusRoutes();
+    }
+  }, [isOpen]);
   
   useEffect(() => {
     if (scheduleData && isOpen) {
       setFormData({
         id: scheduleData.id || '',
         bus_no: scheduleData.bus_no || '',
+        bus_route_id: scheduleData.bus_route_id || '',
         driver_name: scheduleData.driver_name || '',
         driver_contact: scheduleData.driver_contact || '',
         conductor_name: scheduleData.conductor_name || '',
@@ -64,6 +84,7 @@ const EditScheduleModal = ({ isOpen, onClose, onSave, scheduleData, buses }) => 
     const newErrors = {};
     
     if (!formData.id) newErrors.id = 'Please select a bus';
+    if (!formData.bus_route_id) newErrors.bus_route_id = 'Please select a bus route';
     if (!formData.driver_name) newErrors.driver_name = 'Driver name is required';
     if (!formData.driver_contact) newErrors.driver_contact = 'Driver contact is required';
     if (!formData.conductor_name) newErrors.conductor_name = 'Conductor name is required';
@@ -85,6 +106,22 @@ const EditScheduleModal = ({ isOpen, onClose, onSave, scheduleData, buses }) => 
     // Special handling for id dropdown
     if (name === 'id') {
       handleBusChange(e);
+    } else if (name === 'bus_route_id') {
+      const route = busRoutes.find(r => r.id === parseInt(value));
+      if (route) {
+        // Auto-fill start and end points from route
+        setFormData({
+          ...formData,
+          bus_route_id: value,
+          start_point: route.start_location,
+          end_point: route.end_location,
+        });
+      } else {
+        setFormData({
+          ...formData,
+          [name]: value
+        });
+      }
     } else {
       setFormData({
         ...formData,
@@ -150,6 +187,7 @@ const EditScheduleModal = ({ isOpen, onClose, onSave, scheduleData, buses }) => 
             onChange={handleInputChange} 
             errors={errors}
             buses={buses}
+            busRoutes={busRoutes}
           />
         </div>
         

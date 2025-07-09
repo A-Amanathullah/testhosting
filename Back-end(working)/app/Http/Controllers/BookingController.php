@@ -60,6 +60,17 @@ class BookingController extends Controller
         $user = \App\Models\User::findOrFail($request->user_id);
         $bus = \App\Models\BusRegister::findOrFail($request->bus_id);
 
+        // Parse the departure date to ensure it's in the correct format
+        try {
+            // Parse the date using Carbon, which will handle many formats
+            $departureDate = \Carbon\Carbon::parse($request->departure_date)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Invalid date format for departure_date. Please use YYYY-MM-DD format.',
+                'error' => $e->getMessage()
+            ], 422);
+        }
+
         $booking = Booking::create([
             'user_id' => $user->id,
             'bus_id' => $bus->id,
@@ -73,7 +84,7 @@ class BookingController extends Controller
             'role' => $user->role,
             'payment_status' => $request->payment_status,
             'status' => $request->status,
-            'departure_date' => $request->departure_date,
+            'departure_date' => $departureDate,
             'booked_date' => now()->toDateString(),
             'reason' => $request->reason,
             'price' => $request->price ?? 0

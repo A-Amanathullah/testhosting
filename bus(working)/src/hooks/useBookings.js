@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { formatDateForMySQL } from "../utils/dateUtils";
 
 const API_URL = "http://localhost:8000/api";
 
@@ -66,8 +67,12 @@ const useBookings = (bus_id, date, userIdOrRefreshKey) => {
         return;
       }
       // If bus_id and date are provided, fetch bookings for that bus and date
+      // Format date for MySQL compatibility
+      const formattedDate = formatDateForMySQL(date);
+      console.log(`useBookings: Fetching bookings with bus_id=${bus_id}, formatted date=${formattedDate}`);
+      
       const res = await axios.get(`${API_URL}/bookings`, {
-        params: { bus_id, departure_date: date },
+        params: { bus_id, departure_date: formattedDate },
       });
       const allBookings = res.data || [];
       setBookings(

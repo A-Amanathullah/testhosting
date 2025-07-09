@@ -14,6 +14,13 @@ import { usePermissions } from '../../../context/PermissionsContext';
 const ListPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const { staff, loading, error } = useStaff(refreshKey);
+  const { permissions } = usePermissions();
+  
+  // Helper to check permissions for Staff List
+  const can = (action) => {
+    if (!permissions || !permissions['Staff List']) return false;
+    return !!permissions['Staff List'][action];
+  };
   
   // State for roles data
   const [roles, setRoles] = useState([]);
@@ -42,18 +49,11 @@ const ListPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
 
-  const { permissions } = usePermissions();
   const [notification, setNotification] = useState("");
-
-  // Helper to check permission for Staff List
-  const hasPermission = (action) => {
-    if (!permissions || !permissions['Staff List']) return false;
-    return !!permissions['Staff List'][action];
-  };
 
   // Permission-checked handlers
   const handleAddStaff = () => {
-    if (!hasPermission('add')) {
+    if (!can('add')) {
       setNotification("You don't have permission to add staff.");
       return;
     }
@@ -62,7 +62,7 @@ const ListPage = () => {
   };
 
   const handleEdit = (staff) => {
-    if (!hasPermission('edit')) {
+    if (!can('edit')) {
       setNotification("You don't have permission to edit staff.");
       return;
     }
@@ -71,7 +71,7 @@ const ListPage = () => {
   };
 
   const handleDelete = (staffId) => {
-    if (!hasPermission('delete')) {
+    if (!can('delete')) {
       setNotification("You don't have permission to delete staff.");
       return;
     }
@@ -81,7 +81,7 @@ const ListPage = () => {
   };
 
   const handlePrint = () => {
-    if (!hasPermission('print')) {
+    if (!can('print')) {
       setNotification("You don't have permission to print staff list.");
       return;
     }
@@ -181,14 +181,16 @@ const ListPage = () => {
             <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
             <p className="text-sm text-gray-600">Manage your staff members</p>
           </div>
-          <button
-            onClick={handleAddStaff}
-            className="flex items-center justify-center px-4 py-2 text-white bg-red-700 rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-700"
-            type="button"
-          >
-            <UserPlus size={18} className="mr-2" />
-            <span>Add Staff</span>
-          </button>
+          {can('add') && (
+            <button
+              onClick={handleAddStaff}
+              className="flex items-center justify-center px-4 py-2 text-white bg-red-700 rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-700"
+              type="button"
+            >
+              <UserPlus size={18} className="mr-2" />
+              <span>Add Staff</span>
+            </button>
+          )}
         </div>
         {/* Staff table */}
         {loading ? (
@@ -198,11 +200,12 @@ const ListPage = () => {
         ) : (
           <StaffTable
             staff={staff}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onViewDetails={handleViewDetails}
-            onPrint={handlePrint}
-            canPrint={hasPermission('print')}
+            onEdit={can('edit') ? handleEdit : undefined}
+            onDelete={can('delete') ? handleDelete : undefined}
+            onViewDetails={can('view') ? handleViewDetails : undefined}
+            onPrint={can('print') ? handlePrint : undefined}
+            canPrint={can('print')}
+            user={null}
           />
         )}
       </div>

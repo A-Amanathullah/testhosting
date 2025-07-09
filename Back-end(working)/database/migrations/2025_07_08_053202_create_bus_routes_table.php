@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
@@ -12,12 +13,14 @@ return new class extends Migration {
     {
         Schema::create('bus_routes', function (Blueprint $table) {
             $table->id();
-            $table->string('from');
-            $table->string('to');
-            $table->json('stops'); // stores stops as JSON
+            $table->string('route_code')->unique(); // e.g., 'R48', 'R102'
+            $table->string('route_name'); // e.g., 'Kalmunai-Colombo Express'
+            $table->string('start_location'); // Route origin
+            $table->string('end_location'); // Route destination
+            $table->text('description')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
-
     }
 
     /**
