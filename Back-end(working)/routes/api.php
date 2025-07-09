@@ -18,6 +18,8 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\CancellationController;
 use App\Http\Controllers\GuestBookingController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\BookingStatsController;
+use App\Http\Controllers\SriLankanLocationController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -37,14 +39,14 @@ Route::get('/locations', [LocationController::class, 'getAllLocations']);
 Route::get('/locations/major-stops', [LocationController::class, 'getMajorStops']);
 
 // Sri Lankan locations routes for advanced autocomplete
-Route::get('/sri-lankan-locations/search', [App\Http\Controllers\SriLankanLocationController::class, 'search']);
-Route::get('/sri-lankan-locations/districts', [App\Http\Controllers\SriLankanLocationController::class, 'getDistricts']);
-Route::get('/sri-lankan-locations/provinces', [App\Http\Controllers\SriLankanLocationController::class, 'getProvinces']);
-Route::get('/sri-lankan-locations/district/{district}', [App\Http\Controllers\SriLankanLocationController::class, 'getByDistrict']);
-Route::get('/sri-lankan-locations/major-stops', [App\Http\Controllers\SriLankanLocationController::class, 'getMajorStops']);
-Route::get('/sri-lankan-locations/sync-stats', [App\Http\Controllers\SriLankanLocationController::class, 'getSyncStats']);
-Route::post('/sri-lankan-locations/{id}/verify', [App\Http\Controllers\SriLankanLocationController::class, 'verify']);
-Route::apiResource('sri-lankan-locations', App\Http\Controllers\SriLankanLocationController::class)->only(['store', 'update']);
+Route::get('/sri-lankan-locations/search', [SriLankanLocationController::class, 'search']);
+Route::get('/sri-lankan-locations/districts', [SriLankanLocationController::class, 'getDistricts']);
+Route::get('/sri-lankan-locations/provinces', [SriLankanLocationController::class, 'getProvinces']);
+Route::get('/sri-lankan-locations/district/{district}', [SriLankanLocationController::class, 'getByDistrict']);
+Route::get('/sri-lankan-locations/major-stops', [SriLankanLocationController::class, 'getMajorStops']);
+Route::get('/sri-lankan-locations/sync-stats', [SriLankanLocationController::class, 'getSyncStats']);
+Route::post('/sri-lankan-locations/{id}/verify', [SriLankanLocationController::class, 'verify']);
+Route::apiResource('sri-lankan-locations', SriLankanLocationController::class)->only(['store', 'update']);
 
 Route::post('/bus-reg', [BusRegController::class, 'store']);
 Route::get('/bus-reg', [BusRegController::class, 'index']);
@@ -89,6 +91,12 @@ Route::get('/bus-routes/{id}', [BusRouteController::class, 'show']);
 Route::post('/bus-routes', [BusRouteController::class, 'store']);
 Route::put('/bus-routes/{id}', [BusRouteController::class, 'update']);
 Route::delete('/bus-routes/{id}', [BusRouteController::class, 'destroy']);
+
+// Booking Statistics Routes
+Route::get('/booking-stats/monthly', [BookingStatsController::class, 'getMonthlyStats']);
+Route::get('/booking-stats/yearly', [BookingStatsController::class, 'getYearlyStats']);
+Route::get('/booking-stats/daily', [BookingStatsController::class, 'getDailyStats']);
+Route::get('/booking-stats/summary', [BookingStatsController::class, 'getBookingSummary']);
 
 // Fallback for unknown API routes to return JSON 404
 Route::fallback(function() {

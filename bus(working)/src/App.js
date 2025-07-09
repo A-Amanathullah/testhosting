@@ -34,6 +34,7 @@ import SmsTemplatePage from "./admin/pages/SmsTemplatePage";
 import ProfilePage from "./admin/pages/ProfilePage";
 import RoleAccessPage from "./admin/pages/staff/RoleAccessPage";
 import StaffDashboard from "./pages/StaffDashboard";
+import EnhancedBusSearch from "./pages/EnhancedBusSearch";
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { PermissionsProvider } from './context/PermissionsContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -82,6 +83,7 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/busList" element={<BusList />} />
         <Route path="/busSearch" element={<BusCard />} />
+        <Route path="/bus-search" element={<EnhancedBusSearch />} />
         <Route path="/seatPlan" element={<SeatBooking />} />
         <Route path="/passengerdash" element={<PrivateRoute><PassengerDashboard /></PrivateRoute>} />
         <Route path="/complete-profile" element={<PrivateRoute><CompleteProfile /></PrivateRoute>} />

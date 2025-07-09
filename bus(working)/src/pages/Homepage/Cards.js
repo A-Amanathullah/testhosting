@@ -9,7 +9,7 @@ const Cards = () => {
     const navigate = useNavigate();
 
     const handleSearch = () => {
-        navigate('/busSearch');
+        navigate('/bus-search');
         
     };
 
@@ -25,7 +25,7 @@ const Cards = () => {
                         Reserve your tickets in 3 steps...
                     </div>
 
-                    <div className="py-5">
+                    <div className="py-4">
                         <button className="bg-white  text-3xl border border-primary 
                              py-3 px-5 rounded-full
                         hover:bg-primary duration-200
