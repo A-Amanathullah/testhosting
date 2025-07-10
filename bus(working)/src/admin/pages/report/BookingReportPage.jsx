@@ -125,9 +125,9 @@ const BookingReportPage = () => {
   };
 
   const handlePrint = () => {
-    console.log('Permissions:', permissions);
-    console.log('Bus Booking Report permissions:', permissions?.['Bus Booking Report']);
-    console.log('Has print permission:', hasPermission('print'));
+    // console.log('Permissions:', permissions);
+    // console.log('Bus Booking Report permissions:', permissions?.['Bus Booking Report']);
+    // console.log('Has print permission:', hasPermission('print'));
     
     if (!hasPermission('print')) {
       setNotification("You don't have permission to print booking reports.");

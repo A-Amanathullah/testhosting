@@ -1,6 +1,6 @@
 import { usePermissions } from '../../context/PermissionsContext';
-import { useState, useEffect, useContext } from 'react';
-import { AuthContext } from '../../context/AuthContext';
+import { useState, useEffect, /*useContext*/ } from 'react';
+// import { AuthContext } from '../../context/AuthContext';
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react';
 import {
   AddScheduleModal,
@@ -27,13 +27,13 @@ const BusSchedulePage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const { permissions } = usePermissions();
-  const { user } = useContext(AuthContext);
-  const role = user?.role;
+  // const { user } = useContext(AuthContext);
+  // const role = user?.role;
   const [notification, setNotification] = useState("");
 
   // Debug: Log role and permissions
-  console.log('DEBUG: role', role);
-  console.log('DEBUG: permissions', permissions);
+  // console.log('DEBUG: role', role);
+  // console.log('DEBUG: permissions', permissions);
 
   // Sample bus data - this would come from your API or context
   const [buses, setBuses] = useState([]);

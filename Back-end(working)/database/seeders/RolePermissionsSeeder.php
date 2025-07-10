@@ -32,6 +32,7 @@ class RolePermissionsSeeder extends Seeder
             ['name' => 'Bus Tracking', 'actions' => ['view']],
             ['name' => 'Loyalty Management', 'submodules' => [
                 ['name' => 'Loyalty Card', 'actions' => ['view', 'add', 'edit', 'delete']],
+                ['name' => 'Loyalty Members', 'actions' => ['view', 'delete']],
                 ['name' => 'Loyalty Report', 'actions' => ['view', 'print']],
             ]],
             ['name' => 'User Management', 'actions' => ['view', 'add', 'edit', 'delete']],

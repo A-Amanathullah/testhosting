@@ -36,12 +36,17 @@ const EnhancedBusSearch = () => {
         loadLocations();
     }, []);
 
-    // Initialize with all trips
+    // Initialize with all current and future trips
     useEffect(() => {
         console.log('Buses loaded:', buses);
         console.log('Trips loaded:', trips);
         if (trips && trips.length > 0) {
-            setFilteredTrips(trips);
+            const currentAndFutureTrips = trips.filter(trip => {
+                return isDateCurrentOrFuture(trip.departure_date);
+            });
+            
+            console.log(`Filtered out ${trips.length - currentAndFutureTrips.length} past trips`);
+            setFilteredTrips(currentAndFutureTrips);
         }
     }, [buses, trips]);
 
@@ -81,14 +86,38 @@ const EnhancedBusSearch = () => {
         setShowToSuggestions(false);
     };
 
+    // Helper function to ensure correct date comparison
+    const isDateCurrentOrFuture = (dateStr) => {
+        if (!dateStr) return false;
+        
+        // Get today's date at the beginning of the day
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Parse the trip date correctly
+        const tripDate = new Date(dateStr);
+        // For comparison purposes, remove time component
+        tripDate.setHours(0, 0, 0, 0);
+        
+        console.log(`Date comparison: ${dateStr} (${tripDate}) vs Today (${today}) = ${tripDate >= today}`);
+        
+        // Compare dates
+        return tripDate >= today;
+    };
+
     // Filter trips based on search criteria
     const handleSearch = () => {
         console.log('Search triggered with filters:', searchFilters);
         console.log('Available trips:', trips);
         console.log('Available buses:', buses);
         
+        // If no specific filters, show all current and future trips
         if (!searchFilters.from && !searchFilters.to && !searchFilters.departureDate) {
-            setFilteredTrips(trips);
+            const currentAndFutureTrips = trips.filter(trip => {
+                return isDateCurrentOrFuture(trip.departure_date);
+            });
+            
+            setFilteredTrips(currentAndFutureTrips);
             setShowAll(true);
             return;
         }
@@ -99,6 +128,11 @@ const EnhancedBusSearch = () => {
         }
 
         const filtered = trips.filter(trip => {
+            // Only include current and future trips using our helper function
+            const isCurrentOrFuture = isDateCurrentOrFuture(trip.departure_date);
+            
+            if (!isCurrentOrFuture) return false;
+            
             // More flexible matching for locations
             const matchesFrom = !searchFilters.from || 
                 (trip.departure_location && trip.departure_location.toLowerCase().includes(searchFilters.from.toLowerCase())) ||
@@ -117,6 +151,7 @@ const EnhancedBusSearch = () => {
                 from: trip.departure_location || trip.start_point,
                 to: trip.arrival_location || trip.end_point,
                 date: trip.departure_date,
+                isCurrentOrFuture,
                 matchesFrom,
                 matchesTo,
                 matchesDate
@@ -130,14 +165,20 @@ const EnhancedBusSearch = () => {
         setShowAll(false);
     };
 
-    // Clear filters
+    // Clear filters and show only current & future trips
     const handleClear = () => {
         setSearchFilters({
             from: '',
             to: '',
             departureDate: ''
         });
-        setFilteredTrips(trips);
+        
+        // Filter for current and future trips only using our helper function
+        const currentAndFutureTrips = trips.filter(trip => {
+            return isDateCurrentOrFuture(trip.departure_date);
+        });
+        
+        setFilteredTrips(currentAndFutureTrips);
         setShowAll(true);
         setShowFromSuggestions(false);
         setShowToSuggestions(false);
@@ -254,7 +295,10 @@ const EnhancedBusSearch = () => {
                     {/* Results Summary */}
                     <div className="text-center text-gray-600">
                         {showAll ? (
-                            <p>Showing all available trips ({filteredTrips.length} found)</p>
+                            <>
+                                <p>Showing all available trips ({filteredTrips.length} found)</p>
+                                <p className="text-sm text-blue-600 mt-1">Only showing current and future schedules</p>
+                            </>
                         ) : (
                             <p>Found {filteredTrips.length} trips for your search</p>
                         )}

@@ -1,13 +1,23 @@
 import React, { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 
-const ConfirmBooking = ({ selectedSeats, onClose, onConfirm, trip, onAgentBookForPassenger, isLoading = false }) => {
+const ConfirmBooking = ({ selectedSeats, onClose, onConfirm, trip, onAgentBookForPassenger, isLoading = false, userRole }) => {
   const { user } = useContext(AuthContext);
   const seatPrice = trip?.price || 0; // Use trip price if available, otherwise default to 0
   const totalAmount = selectedSeats.length * seatPrice;
-
-  const handleConfirm = () => {
+  
+  // Log role information for debugging
+  console.log("ConfirmBooking - User role from context:", user?.role);
+  console.log("ConfirmBooking - User role from props:", userRole);    const handleConfirm = () => {
+    console.log("ConfirmBooking: handleConfirm called");
     onConfirm();
+  };
+  
+  const handleBookForPassenger = () => {
+    console.log("ConfirmBooking: handleBookForPassenger called");
+    if (onAgentBookForPassenger) {
+      onAgentBookForPassenger();
+    }
   };
 
   // Get today's date in YYYY-MM-DD format
@@ -66,7 +76,7 @@ const ConfirmBooking = ({ selectedSeats, onClose, onConfirm, trip, onAgentBookFo
             Cancel Booking
           </button>
           
-          {user?.role === 'agent' ? (
+          {(user?.role?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'agent') ? (
             <div className="flex flex-col sm:flex-row gap-1">
               <button
                 onClick={onConfirm}
@@ -76,17 +86,14 @@ const ConfirmBooking = ({ selectedSeats, onClose, onConfirm, trip, onAgentBookFo
                 {isLoading ? "Processing..." : "Confirm (Agent)"}
               </button>
               <button
-                onClick={() => {
-                  onClose();
-                  if (onAgentBookForPassenger) onAgentBookForPassenger();
-                }}
+                onClick={handleBookForPassenger}
                 className="w-full sm:w-auto px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
               >
                 {isLoading ? "Processing..." : "Book for Passenger"}
               </button>
             </div>
-          ) : user?.role === 'admin' ? (
+          ) : (user?.role?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'admin') ? (
             <button
               onClick={handleConfirm}
               className="w-full sm:w-auto px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"

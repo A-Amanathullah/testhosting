@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePermissions } from '../../../context/PermissionsContext';
 import { PrintButton, ReportPrintLayout } from '../../components/bus-booking';
 import useBusHook from '../../../hooks/useBusHook';
 import useBookings from '../../../hooks/useBookings';
@@ -11,6 +12,7 @@ const RevenueReportPage = () => {
   const [selectedBusNo, setSelectedBusNo] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [availableDates, setAvailableDates] = useState([]);
+  const [notification, setNotification] = useState("");
   const printReportRef = useRef(null);
 
   // Data
@@ -18,6 +20,7 @@ const RevenueReportPage = () => {
   const { bookings: allBookings, loading: bookingsLoading } = useBookings();
   const { guestBookings: allGuestBookings, loading: guestBookingsLoading } = useAdminGuestBookings();
   const { cancellations, loading: cancellationsLoading } = useAdminCancellations();
+  const { permissions } = usePermissions();
   const isLoading = busesLoading || bookingsLoading || cancellationsLoading || guestBookingsLoading;
 
   // Generate available dates from allBookings
@@ -152,8 +155,19 @@ const RevenueReportPage = () => {
   const totalCancelRevenue = mappedCancelBookings.reduce((sum, b) => sum + Number(b.price || 0), 0);
   const totalProfit = totalRevenue - totalCancelRevenue;
 
+  // Helper to check permission for Revenue Report
+  const hasPermission = (action) => {
+    if (!permissions || !permissions['Revenue Report']) return false;
+    return !!permissions['Revenue Report'][action];
+  };
+
   // Print
   const handlePrint = () => {
+    if (!hasPermission('print')) {
+      setNotification("You don't have permission to print revenue reports.");
+      return;
+    }
+    
     if (mappedTableBookings.length) {
       if (printReportRef.current) {
         printReportRef.current.focus();
@@ -169,6 +183,12 @@ const RevenueReportPage = () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
+      {notification && (
+        <div className="fixed top-6 right-6 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow">
+          {notification}
+          <button className="ml-3 text-red-700 font-bold" onClick={() => setNotification("")}>×</button>
+        </div>
+      )}
       <div className="flex-grow p-6 overflow-auto">
         {/* Page Header */}
         <div className="mb-6">
@@ -205,7 +225,7 @@ const RevenueReportPage = () => {
           <div className="ml-auto">
             <PrintButton 
               onClick={handlePrint}
-              disabled={!mappedTableBookings.length}
+              disabled={!mappedTableBookings.length || !hasPermission('print')}
             />
           </div>
         </div>

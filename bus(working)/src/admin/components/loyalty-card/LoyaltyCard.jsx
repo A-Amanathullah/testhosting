@@ -9,7 +9,8 @@ const LoyaltyCard = ({
   customers, 
   color = '#C0C0C0',
   cardNo = '0000 0000 0000 0000',
-  onEdit 
+  onEdit,
+  canEdit = true
 }) => {
   // Use custom colors passed from props
   const hexToRgb = (hex) => {
@@ -112,7 +113,13 @@ const LoyaltyCard = ({
       {/* Edit button */}
       <button 
         onClick={onEdit}
-        className="absolute top-2 right-2 p-1.5 rounded-full bg-white/50 hover:bg-white/80 transition-colors"
+        disabled={!canEdit}
+        className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors ${
+          canEdit 
+            ? 'bg-white/50 hover:bg-white/80' 
+            : 'bg-gray-300/50 cursor-not-allowed'
+        }`}
+        title={canEdit ? "Edit Card" : "No permission to edit"}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />

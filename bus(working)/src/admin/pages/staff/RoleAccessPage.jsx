@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { usePermissions } from '../../../context/PermissionsContext';
 
 // Define modules, submodules, and actions
@@ -40,7 +40,6 @@ const modules = [
 			{ name: 'Cancellation Report', actions: ['view', 'print'] },
 			{ name: 'Agentwise Report', actions: ['view', 'print'] },
 			{ name: 'Revenue Report', actions: ['view', 'print'] },
-			{ name: 'Loyalty Report', actions: ['view', 'print'] },
 		],
 	},
 	{
@@ -51,7 +50,7 @@ const modules = [
 		name: 'Loyalty Management',
 		submodules: [
 			{ name: 'Loyalty Card', actions: ['view', 'add', 'edit', 'delete'] },
-			{ name: 'Loyalty Members', actions: ['view', 'add', 'edit', 'delete'] },
+			{ name: 'Loyalty Members', actions: ['view','delete'] },
 			{ name: 'Loyalty Report', actions: ['view', 'print'] },
 		],
 	},
@@ -119,10 +118,27 @@ const BusRoleAccessManagement = () => {
 	const [permissions, setPermissions] = useState({});
 	const [openRole, setOpenRole] = useState(null); // Track which role's modules are open
 	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState(false); // Track loading errors
 	const [saving, setSaving] = useState(false);
 	const [newRole, setNewRole] = useState(""); // New role input
 	const [adding, setAdding] = useState(false); // Add role loading
 	const [addError, setAddError] = useState("");
+	const [notification, setNotification] = useState({ message: "", type: "error" });
+
+	// Show notification helper
+	const showNotification = useCallback((message, type = "error") => {
+		setNotification({ message, type });
+	}, []);
+
+	// Hide notification after 3 seconds
+	useEffect(() => {
+		if (notification.message) {
+			const timer = setTimeout(() => {
+				setNotification({ message: "", type: "error" });
+			}, 3000);
+			return () => clearTimeout(timer);
+		}
+	}, [notification]);
 
 	const { permissions: userPerms } = usePermissions();
 
@@ -137,10 +153,12 @@ const BusRoleAccessManagement = () => {
 		e.preventDefault();
 		if (!newRole.trim()) {
 			setAddError("Role name cannot be empty");
+			showNotification("Role name cannot be empty", "error");
 			return;
 		}
 		if (roles.includes(newRole.trim())) {
 			setAddError("Role already exists");
+			showNotification("Role already exists", "error");
 			return;
 		}
 		setAdding(true);
@@ -157,35 +175,68 @@ const BusRoleAccessManagement = () => {
 					setRoles(updatedRoles);
 					setPermissions(perms => ({ ...perms, [data.data.name]: generateInitialPermissions([data.data.name])[data.data.name] }));
 					setNewRole("");
+					showNotification(`Role "${data.data.name}" added successfully`, "success");
 				} else {
-					setAddError(data?.message || "Failed to add role");
+					const errorMessage = data?.message || "Failed to add role";
+					setAddError(errorMessage);
+					showNotification(errorMessage, "error");
 				}
 				setAdding(false);
 			})
-			.catch(() => {
+			.catch((err) => {
+				console.error("Error adding role:", err);
 				setAddError("Failed to add role");
+				showNotification("Failed to add role. Please try again.", "error");
 				setAdding(false);
 			});
 	};
 
-	// Fetch roles from backend on mount
-	useEffect(() => {
+	// Function to fetch roles that can be called for initial load and retries
+	const fetchRoles = useCallback(() => {
+		setLoading(true);
+		setLoadError(false);
+		
 		fetch('http://localhost:8000/api/roles')
-			.then(res => res.json())
+			.then(res => {
+				if (!res.ok) {
+					throw new Error(`Failed to fetch roles: ${res.status} ${res.statusText}`);
+				}
+				return res.json();
+			})
 			.then(data => {
 				if (data && data.status === 'success' && Array.isArray(data.data)) {
 					const roleNames = data.data.map(r => r.name);
 					setRoles(roleNames);
 					setPermissions(perms => setSuperadminPermissions(Object.keys(perms).length ? perms : generateInitialPermissions(roleNames)));
+				} else {
+					throw new Error('Invalid role data format received');
 				}
+			})
+			.catch(err => {
+				console.error('Error fetching roles:', err);
+				showNotification('Failed to load roles. Please try again.', 'error');
+				setLoadError(true);
+				setLoading(false);
 			});
-	}, []);
-
-	// Fetch permissions from backend on mount
+	}, [setLoading, setLoadError, setRoles, setPermissions, showNotification]);
+	
+	// Fetch roles on component mount
 	useEffect(() => {
+		fetchRoles();
+	}, [fetchRoles]);
+
+	// Function to fetch permissions that can be called for initial load and retries
+	const fetchPermissions = useCallback(() => {
 		setLoading(true);
+		setLoadError(false);
+		
 		fetch('http://localhost:8000/api/role-permissions')
-			.then(res => res.json())
+			.then(res => {
+				if (!res.ok) {
+					throw new Error(`Failed to fetch permissions: ${res.status} ${res.statusText}`);
+				}
+				return res.json();
+			})
 			.then(data => {
 				if (data && data.status === 'success' && data.data && Object.keys(data.data).length) {
 					setPermissions(setSuperadminPermissions(data.data));
@@ -193,9 +244,21 @@ const BusRoleAccessManagement = () => {
 					setPermissions(setSuperadminPermissions(generateInitialPermissions(roles)));
 				}
 				setLoading(false);
+			})
+			.catch(err => {
+				console.error('Error fetching permissions:', err);
+				showNotification('Failed to load permissions. Please try again.', 'error');
+				setLoading(false);
+				setLoadError(true);
 			});
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [roles]);
+	}, [roles, setLoading, setLoadError, setPermissions, showNotification]);
+	
+	// Fetch permissions from backend when roles change
+	useEffect(() => {
+		if (roles.length > 0) {
+			fetchPermissions();
+		}
+	}, [roles, fetchPermissions]);
 
 	const handleModuleChange = (role, module) => {
 		if (role === 'Superadmin') return; // Superadmin permissions can't be edited
@@ -255,7 +318,12 @@ const BusRoleAccessManagement = () => {
 			.then(() => {
 				setSaving(false);
 				setPermissions(setSuperadminPermissions(updatedPermissions));
-				alert('Permissions saved successfully!');
+				showNotification('Permissions saved successfully!', 'success');
+			})
+			.catch(err => {
+				setSaving(false);
+				console.error("Error saving permissions:", err);
+				showNotification('Failed to save permissions. Please try again.', 'error');
 			});
 	};
 
@@ -294,12 +362,54 @@ const BusRoleAccessManagement = () => {
 		);
 	};
 
-	if (loading) {
-		return <div className="flex items-center justify-center min-h-screen text-lg text-gray-600">Loading permissions...</div>;
+	// Handle loading and error states
+	if (loading || loadError) {
+		return (
+			<div className="flex flex-col items-center justify-center w-full min-h-screen bg-gray-50">
+				{loading ? (
+					<>
+						<div className="w-16 h-16 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
+						<div className="flex flex-col items-center">
+							<h3 className="text-xl font-semibold text-gray-700 mb-2">Loading Permissions</h3>
+							<p className="text-gray-500">Please wait while we fetch role access data...</p>
+						</div>
+					</>
+				) : loadError ? (
+					<div className="text-center p-6 bg-white rounded-lg shadow-md">
+						<svg className="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						</svg>
+						<h3 className="text-xl font-bold text-gray-800 mb-2">Failed to Load Data</h3>
+						<p className="text-gray-600 mb-4">We encountered a problem while loading the permissions.</p>
+						<button
+							onClick={fetchPermissions}
+							className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+						>
+							Try Again
+						</button>
+					</div>
+				) : null}
+			</div>
+		);
 	}
 
 	return (
 		<div className="min-h-screen w-full p-0 m-0 bg-gray-100 flex flex-col">
+			{notification.message && (
+				<div className={`fixed top-6 right-6 z-50 px-4 py-2 rounded shadow flex items-center ${
+					notification.type === "success" 
+						? "bg-green-100 border border-green-400 text-green-700" 
+						: "bg-red-100 border border-red-400 text-red-700"
+				}`}>
+					<span>{notification.message}</span>
+					<button 
+						className={`ml-3 font-bold ${notification.type === "success" ? "text-green-700" : "text-red-700"}`} 
+						onClick={() => setNotification({ message: "", type: "error" })}
+					>
+						×
+					</button>
+				</div>
+			)}
 			<div className="flex-grow flex flex-col justify-center overflow-auto pb-8">
 				<div className="p-6 max-w-6xl w-full mx-auto bg-white rounded-lg shadow-md overflow-x-auto">
 					<h2 className="text-2xl font-bold mb-4 text-gray-800">Role Access Management - Bus Booking</h2>

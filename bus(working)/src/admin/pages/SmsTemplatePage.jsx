@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getToken } from '../../utils/auth';
 import { FaEdit, FaTrash, FaEye } from 'react-icons/fa';
+import { usePermissions } from '../../context/PermissionsContext';
 
 const API_URL = 'http://localhost:8000/api/sms-templates';
 
@@ -13,6 +14,30 @@ const SmsTemplatePage = () => {
   const [form, setForm] = useState({ name: '', content: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState({ message: '', type: '' });
+
+  // Get permissions
+  const { permissions } = usePermissions();
+
+  // Helper functions to check permissions
+  const hasPermission = (action) => {
+    if (!permissions || !permissions['SMS Template']) return false;
+    return !!permissions['SMS Template'][action];
+  };
+
+  const canAdd = () => hasPermission('add');
+  const canEdit = () => hasPermission('edit');
+  const canDelete = () => hasPermission('delete');
+
+  // Hide notification after 3 seconds
+  useEffect(() => {
+    if (notification.message) {
+      const timer = setTimeout(() => {
+        setNotification({ message: '', type: '' });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // Fetch templates from backend
   useEffect(() => {
@@ -31,11 +56,26 @@ const SmsTemplatePage = () => {
   }, []);
 
   const openAdd = () => {
+    if (!canAdd()) {
+      setNotification({
+        message: 'You do not have permission to add SMS templates.',
+        type: 'error'
+      });
+      return;
+    }
     setEditing(null);
     setForm({ name: '', content: '' });
     setModalOpen(true);
   };
+  
   const openEdit = (tpl) => {
+    if (!canEdit()) {
+      setNotification({
+        message: 'You do not have permission to edit SMS templates.',
+        type: 'error'
+      });
+      return;
+    }
     setEditing(tpl);
     setForm({ name: tpl.name, content: tpl.content });
     setModalOpen(true);
@@ -48,31 +88,76 @@ const SmsTemplatePage = () => {
 
   const handleSave = async () => {
     try {
+      // Double-check permissions before saving
+      if (editing && !canEdit()) {
+        setNotification({
+          message: 'You do not have permission to edit SMS templates.',
+          type: 'error'
+        });
+        return;
+      }
+      
+      if (!editing && !canAdd()) {
+        setNotification({
+          message: 'You do not have permission to add SMS templates.',
+          type: 'error'
+        });
+        return;
+      }
+      
       if (editing) {
         const res = await axios.put(`${API_URL}/${editing.id}`, form, {
           headers: { Authorization: `Bearer ${getToken()}` },
         });
         setTemplates(templates.map(t => t.id === editing.id ? res.data : t));
+        setNotification({
+          message: 'Template updated successfully.',
+          type: 'success'
+        });
       } else {
         const res = await axios.post(API_URL, form, {
           headers: { Authorization: `Bearer ${getToken()}` },
         });
         setTemplates([...templates, res.data]);
+        setNotification({
+          message: 'Template created successfully.',
+          type: 'success'
+        });
       }
       setModalOpen(false);
     } catch (err) {
       setError('Failed to save template');
+      setNotification({
+        message: 'Failed to save template.',
+        type: 'error'
+      });
     }
   };
   const handleDelete = async (id) => {
+    if (!canDelete()) {
+      setNotification({
+        message: 'You do not have permission to delete SMS templates.',
+        type: 'error'
+      });
+      return;
+    }
+    
     if (window.confirm('Delete this template?')) {
       try {
         await axios.delete(`${API_URL}/${id}`, {
           headers: { Authorization: `Bearer ${getToken()}` },
         });
         setTemplates(templates.filter(t => t.id !== id));
+        setNotification({
+          message: 'Template deleted successfully.',
+          type: 'success'
+        });
       } catch (err) {
         setError('Failed to delete template');
+        setNotification({
+          message: 'Failed to delete template.',
+          type: 'error'
+        });
       }
     }
   };
@@ -106,9 +191,30 @@ const SmsTemplatePage = () => {
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
       <div className="flex-grow p-6 overflow-auto">
+        {/* Notification */}
+        {notification.message && (
+          <div className={`mb-4 p-4 rounded-md ${
+            notification.type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700'
+          }`}>
+            <div className="whitespace-pre-line">{notification.message}</div>
+          </div>
+        )}
+        
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">SMS Templates</h1>
-          <button onClick={openAdd} className="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800">Add Template</button>
+          {canAdd() ? (
+            <button onClick={openAdd} className="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800">Add Template</button>
+          ) : (
+            <button 
+              onClick={() => setNotification({
+                message: 'You do not have permission to add SMS templates.',
+                type: 'error'
+              })}
+              className="px-4 py-2 bg-gray-400 text-white rounded cursor-not-allowed"
+            >
+              Add Template
+            </button>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           {loading ? (
@@ -130,15 +236,41 @@ const SmsTemplatePage = () => {
                     <td className="px-4 py-2 font-medium">{tpl.name}</td>
                     <td className="px-4 py-2 text-sm text-gray-700">{tpl.content}</td>
                     <td className="px-4 py-2 flex items-center">
-                      <button onClick={() => setViewing(tpl)} className="mr-2 px-3 py-1 rounded  flex items-center" title="View">
+                      <button onClick={() => setViewing(tpl)} className="mr-2 px-3 py-1 rounded flex items-center" title="View">
                         <FaEye className='text-blue-500'/>
                       </button>
-                      <button onClick={() => openEdit(tpl)} className="mr-2 px-3 py-1 rounded  flex items-center" title="Edit">
-                        <FaEdit className='text-yellow-500'/>
-                      </button>
-                      <button onClick={() => handleDelete(tpl.id)} className="px-3 py-1  rounded flex items-center" title="Delete">
-                        <FaTrash className='text-red-600'/>
-                      </button>
+                      {canEdit() ? (
+                        <button onClick={() => openEdit(tpl)} className="mr-2 px-3 py-1 rounded flex items-center" title="Edit">
+                          <FaEdit className='text-yellow-500'/>
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => setNotification({
+                            message: 'You do not have permission to edit SMS templates.',
+                            type: 'error'
+                          })}
+                          className="mr-2 px-3 py-1 rounded flex items-center opacity-50 cursor-not-allowed" 
+                          title="Edit not permitted"
+                        >
+                          <FaEdit className='text-gray-400'/>
+                        </button>
+                      )}
+                      {canDelete() ? (
+                        <button onClick={() => handleDelete(tpl.id)} className="px-3 py-1 rounded flex items-center" title="Delete">
+                          <FaTrash className='text-red-600'/>
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => setNotification({
+                            message: 'You do not have permission to delete SMS templates.',
+                            type: 'error'
+                          })}
+                          className="px-3 py-1 rounded flex items-center opacity-50 cursor-not-allowed" 
+                          title="Delete not permitted"
+                        >
+                          <FaTrash className='text-gray-400'/>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -184,7 +316,17 @@ const SmsTemplatePage = () => {
               </div>
               <div className="flex gap-3 justify-end">
                 <button onClick={closeModal} className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancel</button>
-                <button onClick={handleSave} className="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800">Save</button>
+                <button 
+                  onClick={handleSave} 
+                  className={`px-4 py-2 ${
+                    (editing && !canEdit()) || (!editing && !canAdd())
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-700 hover:bg-blue-800'
+                  } text-white rounded`}
+                  disabled={(editing && !canEdit()) || (!editing && !canAdd())}
+                >
+                  Save
+                </button>
               </div>
             </div>
           </div>

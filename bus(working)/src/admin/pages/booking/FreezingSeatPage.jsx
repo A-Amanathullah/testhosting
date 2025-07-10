@@ -10,8 +10,30 @@ import useBusHook from '../../../hooks/useBusHook';
 import useBookings from '../../../hooks/useBookings';
 import useAdminGuestBookings from '../../hooks/useAdminGuestBookings';
 import { usePermissions } from '../../../context/PermissionsContext';
+import { normalizeToYYYYMMDD } from '../../../utils/dateUtils';
 import axios from 'axios';
 const API_URL = "http://localhost:8000/api";
+
+// Helper function to parse seat numbers from any format (string, array, comma-separated)
+const parseSeatNumbers = (seatData) => {
+  if (!seatData) return [];
+  
+  if (Array.isArray(seatData)) {
+    return seatData.map(seat => {
+      const num = parseInt(String(seat).replace(/[^0-9]/g, ''), 10);
+      return isNaN(num) ? null : num;
+    }).filter(Boolean);
+  } 
+  
+  if (typeof seatData === "string") {
+    return seatData.split(",").map(seat => {
+      const num = parseInt(seat.replace(/[^0-9]/g, ''), 10);
+      return isNaN(num) ? null : num;
+    }).filter(Boolean);
+  }
+  
+  return [];
+};
 
 const FreezingSeatPage = () => {
   const [selectedBusNo, setselectedBusNo] = useState("");
@@ -24,109 +46,198 @@ const FreezingSeatPage = () => {
   const [seatsToUnfreeze, setSeatsToUnfreeze] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [notification, setNotification] = useState({ message: '', type: '' });
 
   const { user } = useContext(AuthContext);
   const { permissions } = usePermissions();
-  const { buses, trips: schedules } = useBusHook();
+
+  // Hide notification after 3 seconds
+  useEffect(() => {
+    if (notification.message) {
+      const timer = setTimeout(() => {
+        setNotification({ message: '', type: '' });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  const { buses, trips: schedules, loading: busHookLoading } = useBusHook();
   const selectedBusObj = buses.find(bus => String(bus.bus_no) === String(selectedBusNo));
   const selectedBusId = selectedBusObj?.id;
   const { bookings, frozenSeats, loading: bookingsLoading } = useBookings(selectedBusId, selectedDate, refreshKey);
-  const { guestBookings } = useAdminGuestBookings(selectedBusNo, selectedDate);
+  const { guestBookings, loading: guestBookingsLoading } = useAdminGuestBookings(selectedBusNo, selectedDate);
+  
+  // Filter buses to only show those that have scheduled trips
+  const busesWithTrips = buses.filter(bus => {
+    return schedules.some(schedule => String(schedule.bus_no) === String(bus.bus_no));
+  });
+  
+  // Reset selected bus if it's not available in the filtered buses list
+  useEffect(() => {
+    if (selectedBusNo && busesWithTrips.length > 0) {
+      const isSelectedBusAvailable = busesWithTrips.some(bus => String(bus.bus_no) === String(selectedBusNo));
+      if (!isSelectedBusAvailable) {
+        setselectedBusNo('');
+        setSelectedDate('');
+        setSelectedSeats([]);
+      }
+    }
+  }, [selectedBusNo, busesWithTrips]);
 
 
   
   useEffect(() => {
-    const busInfo = buses.find((bus) => bus.bus_no === selectedBusNo);
+    // Find bus info based on bus_no
+    const busInfo = buses.find(bus => String(bus.bus_no) === String(selectedBusNo));
     const selectedBusId = busInfo?.id;
 
     if (selectedBusNo && selectedDate && busInfo) {
+      setIsLoading(true);
+      
+      // Generate seat status map
       const seatStatusMap = {};
-      for (let i = 1; i <= busInfo.total_seats; i++) {
-        seatStatusMap[i] = "available";
+      for (let i = 1; i <= (busInfo?.total_seats || 0); i++) {
+        seatStatusMap[i] = 'available';
       }
 
-      // Defensive filtering: only use frozenSeats for selected bus and date
-      const filteredFrozenSeats = (frozenSeats || []).filter(
-        f => String(f.bus_no) === String(selectedBusNo) &&
-             String(f.departure_date || f.departureDate) === String(selectedDate)
-      );
+      // Use normalized date for comparisons
+      const normalizedSelectedDate = normalizeToYYYYMMDD(selectedDate);
 
-      filteredFrozenSeats.forEach(frozen => {
-        // seat_no is now always an array
-        const seatArr = (Array.isArray(frozen.seat_no)
-          ? frozen.seat_no.map(s => {
-              const num = parseInt(String(s).replace(/[^0-9]/g, ''), 10);
-              return isNaN(num) ? null : num;
-            }).filter(n => n !== null)
-          : []);
-        seatArr.forEach(seat => {
-          seatStatusMap[seat] = 'freezed';
-        });
+      // Filter frozen seats
+      const filteredFrozenSeats = (frozenSeats || []).filter(f => {
+        const normalizedFrozenDate = normalizeToYYYYMMDD(f.departure_date || f.departureDate);
+        const busMatch = String(f.bus_no) === String(selectedBusNo) || 
+                       (busInfo && String(f.bus_id) === String(busInfo.id));
+        const dateMatch = normalizedFrozenDate === normalizedSelectedDate;
+        return busMatch && dateMatch;
       });
 
-      // Defensive filtering: only use bookings for selected bus and date
-      const filteredBookings = (bookings || []).filter(booking => {
-        return String(booking.bus_id) === String(selectedBusId) && String(booking.departure_date) === String(selectedDate);
-      });
-      filteredBookings.forEach(booking => {
-        let seats = [];
-        if (Array.isArray(booking.seat_no)) {
-          seats = booking.seat_no.map(s => parseInt(String(s).replace(/[^0-9]/g, ""), 10)).filter(n => !isNaN(n));
-        } else if (typeof booking.seat_no === "string") {
-          seats = booking.seat_no.split(',').map(s => parseInt(s.replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n));
-        }
-        seats.forEach(seat => {
-          if (String(booking.status).toLowerCase() === 'confirmed') {
-            seatStatusMap[seat] = 'reserved';
-          } else if (String(booking.status).toLowerCase() === 'processing') {
-            seatStatusMap[seat] = 'processing';
-          } else if (String(booking.status).toLowerCase() === 'cancelled') {
-            seatStatusMap[seat] = 'cancelled';
+      // Process frozen seats first (lowest priority)
+      filteredFrozenSeats.forEach((frozen) => {
+        const seatNumbers = parseSeatNumbers(frozen.seat_no);
+        
+        seatNumbers.forEach((seatNum) => {
+          if (seatNum && seatStatusMap[seatNum]) {
+            seatStatusMap[seatNum] = 'freezed';
           }
         });
       });
 
-      // Process guest bookings
-      const filteredGuestBookings = (guestBookings || []).filter(booking => {
-        return String(booking.bus_no) === String(selectedBusNo) && String(booking.departure_date) === String(selectedDate);
+      // Filter bookings by bus and date
+      const filteredBookings = (bookings || []).filter(b => {
+        const normalizedBookingDate = normalizeToYYYYMMDD(b.departure_date || b.departureDate);
+        const busMatch = String(b.bus_id) === String(selectedBusId) || String(b.bus_no) === String(selectedBusNo);
+        const dateMatch = normalizedBookingDate === normalizedSelectedDate;
+        return busMatch && dateMatch;
       });
-      filteredGuestBookings.forEach(booking => {
-        let seats = [];
-        if (Array.isArray(booking.seat_no)) {
-          seats = booking.seat_no.map(s => parseInt(String(s).replace(/[^0-9]/g, ""), 10)).filter(n => !isNaN(n));
-        } else if (typeof booking.seat_no === "string") {
-          seats = booking.seat_no.split(',').map(s => parseInt(s.replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n));
+      
+      // Process regular bookings (higher priority than frozen seats)
+      filteredBookings.forEach((booking) => {
+        // Skip cancelled bookings in the seat layout visualization
+        if (String(booking.status).toLowerCase() === 'cancelled') {
+          return;
         }
-        seats.forEach(seat => {
-          if (String(booking.status).toLowerCase() === 'confirmed') {
-            seatStatusMap[seat] = 'reserved';
-          } else if (String(booking.status).toLowerCase() === 'processing') {
-            seatStatusMap[seat] = 'processing';
-          } else if (String(booking.status).toLowerCase() === 'cancelled') {
-            seatStatusMap[seat] = 'cancelled';
+        
+        const seatNumbers = parseSeatNumbers(booking.seat_no);
+        
+        seatNumbers.forEach((seatNum) => {
+          if (seatNum && seatStatusMap[seatNum]) {
+            // Apply status based on booking status
+            if (String(booking.status).toLowerCase() === 'confirmed') {
+              seatStatusMap[seatNum] = 'reserved';
+            } else if (String(booking.status).toLowerCase() === 'processing') {
+              seatStatusMap[seatNum] = 'processing';
+            }
           }
         });
       });
 
+      // Filter guest bookings
+      const filteredGuestBookings = (guestBookings || []).filter(g => {
+        if (!g) return false;
+        
+        const normalizedGuestDate = normalizeToYYYYMMDD(g.departure_date);
+        const busMatch = String(g.bus_no) === String(selectedBusNo) || 
+                       (busInfo && String(g.bus_id) === String(busInfo.id));
+        const dateMatch = normalizedGuestDate === normalizedSelectedDate;
+        
+        return busMatch && dateMatch;
+      });
+      
+      // Process guest bookings (highest priority)
+      filteredGuestBookings.forEach((guestBooking) => {
+        // Skip cancelled guest bookings in the seat layout visualization
+        if (String(guestBooking.status).toLowerCase() === 'cancelled') {
+          return;
+        }
+        
+        const seatNumbers = parseSeatNumbers(guestBooking.seat_no);
+        
+        seatNumbers.forEach((seatNum) => {
+          if (seatNum && seatStatusMap[seatNum]) {
+            // Apply status based on guest booking status
+            if (String(guestBooking.status).toLowerCase() === 'processing') {
+              // Guest processing bookings use the same color as regular processing
+              seatStatusMap[seatNum] = 'processing';
+            } else {
+              // Confirmed or other guest bookings use guest color
+              seatStatusMap[seatNum] = 'guest';
+            }
+          }
+        });
+      });
+
+      // Update the state
       setSeatStatus(seatStatusMap);
+      setIsLoading(false);
     } else {
       setSeatStatus({});
     }
   }, [selectedBusNo, selectedDate, schedules, buses, bookings, frozenSeats, guestBookings]);
 
   // Filter dates by selected bus and prioritize current/future dates
+  // Helper function to validate date strings
+  const isValidDateStr = (dateStr) => {
+    if (!dateStr) return false;
+    
+    // Check if it's a properly formatted date string (yyyy-MM-dd)
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateStr)) return false;
+    
+    // Split the date string and check components
+    const [year, month, day] = dateStr.split('-').map(Number);
+    
+    // Basic validation for month and day ranges
+    if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+    
+    // Verify it's a valid date (not like 2023-02-31)
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && 
+           date.getMonth() === month - 1 && 
+           date.getDate() === day;
+  };
+
+  // Filter dates by selected bus and prioritize current/future dates
   const getAvailableDates = () => {
-    if (!selectedBusNo) return [];
+    if (!selectedBusNo) {
+      return [];
+    }
     
     const availableDates = schedules
-      .filter((schedule) => schedule.bus_no === selectedBusNo)  
-      .map((schedule) => schedule.departure_date)
-      .filter((date) => date); // Remove null/undefined dates
+      .filter((schedule) => String(schedule.bus_no) === String(selectedBusNo))
+      .map((schedule) => {
+        const normalizedDate = normalizeToYYYYMMDD(schedule.departure_date);
+        if (normalizedDate) {
+          return normalizedDate;
+        }
+        return null;
+      })
+      .filter(date => date !== null); // Remove null/undefined dates
     
-    // Remove duplicates and prioritize dates
+    // Remove duplicates
     const uniqueDates = [...new Set(availableDates)];
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
     
     // Separate dates into categories
     const currentDate = [];
@@ -134,24 +245,38 @@ const FreezingSeatPage = () => {
     const pastDates = [];
     
     uniqueDates.forEach(dateStr => {
-      const date = new Date(dateStr);
-      date.setHours(0, 0, 0, 0);
-      
-      if (date.getTime() === today.getTime()) {
-        currentDate.push(dateStr);
-      } else if (date > today) {
-        futureDates.push(dateStr);
-      } else {
-        pastDates.push(dateStr);
+      try {
+        if (!isValidDateStr(dateStr)) {
+          return; // Skip this iteration
+        }
+        
+        // Parse date components manually for better validation
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        date.setHours(0, 0, 0, 0);
+        
+        const todayTime = today.getTime();
+        const dateTime = date.getTime();
+        
+        if (dateTime === todayTime) {
+          currentDate.push(dateStr);
+        } else if (date > today) {
+          futureDates.push(dateStr);
+        } else {
+          pastDates.push(dateStr);
+        }
+      } catch (error) {
+        // Skip this date if it causes an error
       }
     });
     
     // Sort future and past dates
-    futureDates.sort(); // Future dates in ascending order
-    pastDates.sort().reverse(); // Past dates in descending order
+    futureDates.sort(); // Future dates in ascending order (nearest first)
+    pastDates.sort().reverse(); // Past dates in descending order (most recent first)
     
     // Combine in priority order: current, future, past
-    return [...currentDate, ...futureDates, ...pastDates];
+    const prioritizedDates = [...currentDate, ...futureDates, ...pastDates];
+    return prioritizedDates;
   };
 
   // Handle bus selection and auto-select appropriate date
@@ -160,20 +285,21 @@ const FreezingSeatPage = () => {
     setSelectedDate(""); // Reset date first
     setSelectedSeats([]); // Clear selected seats
     
-    // Auto-select the best available date
+    // Auto-select the best available date after a short delay to ensure getAvailableDates has updated data
     setTimeout(() => {
       const availableDates = schedules
-        .filter((schedule) => schedule.bus_no === bus_no)  
-        .map((schedule) => schedule.departure_date)
-        .filter((date) => date);
+        .filter((schedule) => String(schedule.bus_no) === String(bus_no))
+        .map((schedule) => normalizeToYYYYMMDD(schedule.departure_date))
+        .filter(date => date !== null); // Remove null/undefined dates
       
       if (availableDates.length > 0) {
         const uniqueDates = [...new Set(availableDates)];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        // Find current date
-        const todayStr = today.toISOString().split('T')[0];
+        // Find current date - use our manual date formatting
+        const todayMonth = today.getMonth() + 1; // getMonth() is 0-based
+        const todayStr = `${today.getFullYear()}-${todayMonth < 10 ? '0' + todayMonth : todayMonth}-${today.getDate() < 10 ? '0' + today.getDate() : today.getDate()}`;
         const currentDate = uniqueDates.find(dateStr => dateStr === todayStr);
         
         if (currentDate) {
@@ -184,9 +310,16 @@ const FreezingSeatPage = () => {
         // Find nearest future date
         const futureDates = uniqueDates
           .filter(dateStr => {
-            const date = new Date(dateStr);
-            date.setHours(0, 0, 0, 0);
-            return date > today;
+            if (!isValidDateStr(dateStr)) return false;
+            try {
+              // Parse date components manually for better validation
+              const [year, month, day] = dateStr.split('-').map(Number);
+              const date = new Date(year, month - 1, day);
+              date.setHours(0, 0, 0, 0);
+              return date > today;
+            } catch {
+              return false;
+            }
           })
           .sort();
         
@@ -198,9 +331,16 @@ const FreezingSeatPage = () => {
         // Fallback to most recent past date
         const pastDates = uniqueDates
           .filter(dateStr => {
-            const date = new Date(dateStr);
-            date.setHours(0, 0, 0, 0);
-            return date < today;
+            if (!isValidDateStr(dateStr)) return false;
+            try {
+              // Parse date components manually for better validation
+              const [year, month, day] = dateStr.split('-').map(Number);
+              const date = new Date(year, month - 1, day);
+              date.setHours(0, 0, 0, 0);
+              return date < today;
+            } catch {
+              return false;
+            }
           })
           .sort()
           .reverse();
@@ -246,22 +386,34 @@ const FreezingSeatPage = () => {
   // Handle form submission for freezing seats
   const handleFreezeSubmit = async (formData) => {
     if (!can('add')) {
-      alert('You do not have permission to freeze seats.');
+      setNotification({
+        message: 'You do not have permission to freeze seats.',
+        type: 'error'
+      });
       return;
     }
     if (selectedSeats.length === 0) return;
     // Prevent freezing already frozen seats
     const alreadyFrozen = selectedSeats.filter(seat => seatStatus[seat] === "freezed");
     if (alreadyFrozen.length > 0) {
-      alert(`Seat(s) ${alreadyFrozen.join(', ')} already frozen. Unfreeze first if needed.`);
+      setNotification({
+        message: `Seat(s) ${alreadyFrozen.join(', ')} already frozen. Unfreeze first if needed.`,
+        type: 'error'
+      });
       return;
     }
     if (!user) {
-      alert('User not authenticated');
+      setNotification({
+        message: 'User not authenticated',
+        type: 'error'
+      });
       return;
     }
     if (!selectedBusObj || !selectedDate) {
-      alert('Please select bus and date');
+      setNotification({
+        message: 'Please select bus and date',
+        type: 'error'
+      });
       return;
     }
     setIsLoading(true);
@@ -303,8 +455,15 @@ const FreezingSeatPage = () => {
       setSelectedSeats([]);
       setIsLoading(false);
       setRefreshKey((k) => k + 1); // Trigger reload for table
+      setNotification({
+        message: `Successfully frozen ${selectedSeats.length} seat(s).`,
+        type: 'success'
+      });
     } catch (err) {
-      alert("Freezing failed: " + (err.response?.data?.message || err.message));
+      setNotification({
+        message: "Freezing failed: " + (err.response?.data?.message || err.message),
+        type: 'error'
+      });
       setIsLoading(false);
     }
   };
@@ -312,7 +471,10 @@ const FreezingSeatPage = () => {
   // Handle unfreeze request from form button
   const handleUnfreezeRequest = (seatsToUnfreeze) => {
     if (!can('edit')) {
-      alert('You do not have permission to unfreeze seats.');
+      setNotification({
+        message: 'You do not have permission to unfreeze seats.',
+        type: 'error'
+      });
       return;
     }
     // Check if any of the selected seats are actually frozen
@@ -322,7 +484,10 @@ const FreezingSeatPage = () => {
     
     if (frozenSelectedSeats.length === 0) {
       // If no frozen seats are selected, show a message or alert
-      alert("None of the selected seats are frozen. Please select frozen seats to unfreeze.");
+      setNotification({
+        message: "None of the selected seats are frozen. Please select frozen seats to unfreeze.",
+        type: 'error'
+      });
       return;
     }
     
@@ -340,23 +505,14 @@ const FreezingSeatPage = () => {
       for (const seat of seatNumbers) {
         const booking = frozenSeats.find(b => {
           if (!b.seat_no) return false;
-          let seatArr = [];
-          if (Array.isArray(b.seat_no)) {
-            seatArr = b.seat_no.map(s => {
-              const sStr = String(s).trim();
-              return sStr.startsWith('S') ? sStr : `S${sStr}`;
-            });
-          } else if (typeof b.seat_no === 'string') {
-            seatArr = b.seat_no.split(',').map(s => {
-              const sStr = s.trim();
-              return sStr.startsWith('S') ? sStr : `S${sStr}`;
-            });
-          }
-          // Also S-prefix the seat being searched
-          const seatStr = String(seat).trim();
-          const searchSeat = seatStr.startsWith('S') ? seatStr : `S${seatStr}`;
-          return seatArr.includes(searchSeat);
+          
+          // Convert seat numbers to a standard format for comparison
+          const bookingSeatNumbers = parseSeatNumbers(b.seat_no);
+          const searchSeatNumber = parseInt(String(seat).replace(/[^0-9]/g, ''), 10);
+          
+          return bookingSeatNumbers.includes(searchSeatNumber);
         });
+        
         if (booking) {
           if (!seatToBookingMap[booking.id]) seatToBookingMap[booking.id] = { booking, seats: [] };
           // Always push S-prefixed seat
@@ -366,6 +522,7 @@ const FreezingSeatPage = () => {
       }
       // For each booking, remove all selected seats at once
       for (const { booking, seats } of Object.values(seatToBookingMap)) {
+        // Get all seat numbers as strings with 'S' prefix
         let seatArr = [];
         if (Array.isArray(booking.seat_no)) {
           seatArr = booking.seat_no.map(s => {
@@ -378,6 +535,7 @@ const FreezingSeatPage = () => {
             return sStr.startsWith('S') ? sStr : `S${sStr}`;
           });
         }
+        
         // Ensure seatsToRemove are also S-prefixed
         const seatsToRemove = seats.map(s => {
           const sStr = String(s).trim();
@@ -410,8 +568,15 @@ const FreezingSeatPage = () => {
       setSelectedSeats([]);
       setIsUnfreezeModalOpen(false);
       setSeatsToUnfreeze([]);
+      setNotification({
+        message: `Successfully unfrozen ${seatNumbers.length} seat(s).`,
+        type: 'success'
+      });
     } catch (err) {
-      alert('Unfreeze failed: ' + (err.response?.data?.message || err.message));
+      setNotification({
+        message: 'Unfreeze failed: ' + (err.response?.data?.message || err.message),
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -425,13 +590,23 @@ const FreezingSeatPage = () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
+      {/* Notification */}
+      {notification.message && (
+        <div className={`mx-6 mt-4 p-4 rounded-md ${
+          notification.type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700'
+        }`}>
+          {notification.message}
+        </div>
+      )}
+      
       <div className="flex-grow p-6 overflow-auto">
         {/* Control panel - Replace DateSelector with DateCalendarSelector */}
         <div className="flex flex-wrap items-center gap-4 mb-6">
           <BusSelector
-            buses={buses}
+            buses={busesWithTrips}
             selectedBusNo={selectedBusNo}
             onChange={handleBusChange}
+            value={selectedBusNo}
           />
           <DateCalendarSelector
             dates={getAvailableDates()}
@@ -450,7 +625,7 @@ const FreezingSeatPage = () => {
               selectedSeats={selectedSeats}
               onSubmit={handleFreezeSubmit}
               onUnfreeze={handleUnfreezeRequest}
-              isSubmitting={isLoading || bookingsLoading}
+              isSubmitting={isLoading || bookingsLoading || busHookLoading || guestBookingsLoading}
               disabled={
                 !selectedBusNo || !selectedDate || selectedSeats.length === 0
               }
@@ -460,7 +635,7 @@ const FreezingSeatPage = () => {
             <FreezingTable
               key={selectedBusId + '-' + selectedDate + '-' + refreshKey}
               frozenSeats={frozenSeats}
-              isLoading={isLoading || bookingsLoading}
+              isLoading={isLoading || bookingsLoading || busHookLoading || guestBookingsLoading}
               busId={selectedBusId}
               date={selectedDate}
             />
@@ -472,7 +647,7 @@ const FreezingSeatPage = () => {
               seatStatus={seatStatus}
               selectedSeats={selectedSeats}
               onSeatSelect={handleSeatSelect}
-              isLoading={isLoading || bookingsLoading}
+              isLoading={isLoading || bookingsLoading || busHookLoading || guestBookingsLoading}
               disabled={!selectedBusNo || !selectedDate}
               totalSeats={selectedBusObj?.total_seats || 44}
             />

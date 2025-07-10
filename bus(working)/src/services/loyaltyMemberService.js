@@ -55,3 +55,8 @@ export const deleteLoyaltyMember = async (id) => {
   const res = await axios.delete(`${API_URL}/loyalty-members/${id}`);
   return res.data;
 };
+
+export const removeAgentMembers = async () => {
+  const res = await axios.post(`${API_URL}/loyalty-members/remove-agents`);
+  return res.data;
+};

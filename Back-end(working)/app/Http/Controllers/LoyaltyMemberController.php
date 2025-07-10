@@ -28,13 +28,13 @@ class LoyaltyMemberController extends Controller
         return response()->json($member);
     }
 
-    // Create loyalty members for all users with role "user"
+    // Create loyalty members for all users with role "user" (excluding agents)
     public function createMembersForAllUsers()
     {
         try {
             DB::beginTransaction();
 
-            // Get all users with role "user" (check both role_id and string role for compatibility)
+            // Get all users with role "user" and explicitly exclude users with role "agent"
             $users = User::where(function($query) {
                 // Check if user has role_id pointing to 'user' role
                 $query->whereHas('roleModel', function($subQuery) {
@@ -47,6 +47,23 @@ class LoyaltyMemberController extends Controller
                 // OR check direct role string (fallback)
                 ->orWhere('role', 'user');
             })
+            // Explicitly exclude users with role "agent" (in any of the three places)
+            ->where(function($query) {
+                // Not in roleModel
+                $query->whereDoesntHave('roleModel', function($subQuery) {
+                    $subQuery->where('name', 'agent');
+                })
+                // AND not in user_details
+                ->whereDoesntHave('userDetail', function($subQuery) {
+                    $subQuery->where('role', 'agent');
+                })
+                // AND not in direct role
+                ->where(function($q) {
+                    $q->where('role', '!=', 'agent')
+                      ->orWhereNull('role');
+                });
+            })
+            // And not already in loyalty_members
             ->whereNotIn('id', function($query) {
                 $query->select('user_id')->from('loyalty_members');
             })
@@ -309,6 +326,44 @@ class LoyaltyMemberController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to delete loyalty member',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Remove any existing agents from loyalty members table
+    public function removeAgentMembers()
+    {
+        try {
+            // Find all loyalty members that belong to users with role 'agent'
+            $agentMembers = LoyaltyMember::whereHas('user', function($query) {
+                $query->where(function($q) {
+                    // Check all three possible places where role can be stored
+                    $q->whereHas('roleModel', function($subQuery) {
+                        $subQuery->where('name', 'agent');
+                    })
+                    ->orWhereHas('userDetail', function($subQuery) {
+                        $subQuery->where('role', 'agent');
+                    })
+                    ->orWhere('role', 'agent');
+                });
+            })->get();
+            
+            $count = $agentMembers->count();
+            
+            // Delete all agent members
+            foreach ($agentMembers as $member) {
+                $member->delete();
+            }
+            
+            return response()->json([
+                'message' => 'Successfully removed agents from loyalty program',
+                'removed_count' => $count
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to remove agent members',
                 'message' => $e->getMessage()
             ], 500);
         }

@@ -1,7 +1,18 @@
-import React from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, X, Loader } from 'lucide-react';
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, staffName }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -46,9 +57,15 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, staffName }) => {
             <button
               type="button"
               className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
-              onClick={onConfirm}
+              onClick={handleConfirm}
+              disabled={isDeleting}
             >
-              Delete
+              {isDeleting ? (
+                <>
+                  <Loader className="animate-spin h-4 w-4 mr-2" />
+                  Deleting...
+                </>
+              ) : "Delete"}
             </button>
             <button
               type="button"

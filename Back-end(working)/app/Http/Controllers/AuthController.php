@@ -34,6 +34,12 @@ class AuthController extends Controller
         $user->role_id = $role ? $role->id : null; // Set role_id if role exists
         $user->save();
 
+        // Automatically create loyalty membership for regular users (not agents)
+        if ($validatedData['role'] === 'user') {
+            // Create loyalty membership
+            \App\Models\LoyaltyMember::createForUser($user->id);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -226,15 +232,15 @@ class AuthController extends Controller
         }
 
         // Update staff table if user is a staff (only if role is provided)
-        if (isset($validatedData['role'])) {
-            $staff = \App\Models\Staff::where('user_id', $validatedData['user_id'])->first();
-            if ($staff) {
-                $staff->email = $validatedData['email'];
-                $staff->role = $validatedData['role'];
-                $staff->contact_number = $validatedData['phone_no'];
-                $staff->save();
-            }
-        }
+        // if (isset($validatedData['role'])) {
+        //     $staff = \App\Models\Staff::where('user_id', $validatedData['user_id'])->first();
+        //     if ($staff) {
+        //         $staff->email = $validatedData['email'];
+        //         $staff->role = $validatedData['role'];
+        //         $staff->contact_number = $validatedData['phone_no'];
+        //         $staff->save();
+        //     }
+        // }
 
         return response()->json([
             'message' => 'User details saved successfully',
@@ -303,16 +309,60 @@ public function changePassword(Request $request)
 // Delete user and related user_details
 public function destroyUser($id)
 {
-    $user = User::find($id);
-    if (!$user) {
-        return response()->json(['message' => 'User not found'], 404);
+    try {
+        // Wrap entire operation in transaction
+        \DB::beginTransaction();
+        
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+        
+        \Log::info("Starting deletion of user ID {$id}");
+        
+        // First delete related records from user_details table
+        $userDetails = UserDetail::where('user_id', $id)->first();
+        if ($userDetails) {
+            \Log::info("Deleting user_details for user ID {$id}");
+            $userDetails->delete();
+        } else {
+            \Log::info("No user_details found for user ID {$id}");
+        }
+        
+        // Check and handle loyalty member relationship
+        if (\Schema::hasTable('loyalty_members')) {
+            $loyaltyMember = \App\Models\LoyaltyMember::where('user_id', $id)->first();
+            if ($loyaltyMember) {
+                \Log::info("Deleting loyalty_member for user ID {$id}");
+                $loyaltyMember->delete();
+            }
+        }
+        
+        // Check if any guest bookings use this user as agent and update them
+        if (\Schema::hasTable('guest_bookings')) {
+            $count = \DB::table('guest_bookings')->where('agent_id', $id)->update(['agent_id' => null]);
+            \Log::info("Updated {$count} guest bookings for agent ID {$id}");
+        }
+        
+        // Handle bookings - anonymize them instead of deleting
+        if (\Schema::hasTable('bookings')) {
+            $count = \DB::table('bookings')->where('user_id', $id)->update(['user_id' => null]);
+            \Log::info("Anonymized {$count} bookings for user ID {$id}");
+        }
+        
+        // Finally delete the user
+        \Log::info("Deleting user record for ID {$id}");
+        $user->delete();
+        
+        \DB::commit();
+        \Log::info("Successfully deleted user ID {$id} and related records");
+        return response()->json(['message' => 'User and related details deleted successfully']);
+    } catch (\Exception $e) {
+        \DB::rollBack();
+        \Log::error('Error deleting user: ' . $e->getMessage());
+        \Log::error($e->getTraceAsString());
+        return response()->json(['message' => 'Error deleting user: ' . $e->getMessage()], 500);
     }
-    // Delete user details
-    UserDetail::where('user_id', $id)->delete();
-    // Optionally, delete from staff table if exists
-    \App\Models\Staff::where('user_id', $id)->delete();
-    $user->delete();
-    return response()->json(['message' => 'User and related details deleted successfully']);
 }
 
 public function googleLogin(Request $request)

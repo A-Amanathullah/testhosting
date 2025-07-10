@@ -69,6 +69,7 @@ Route::apiResource('loyalty-cards', LoyaltyCardController::class);
 Route::post('/loyalty-members/create-all', [LoyaltyMemberController::class, 'createMembersForAllUsers']);
 Route::post('/loyalty-members/create-for-user', [LoyaltyMemberController::class, 'createMemberForUser']);
 Route::post('/loyalty-members/refresh-all', [LoyaltyMemberController::class, 'refreshAllMembersData']);
+Route::post('/loyalty-members/remove-agents', [LoyaltyMemberController::class, 'removeAgentMembers']);
 Route::post('/loyalty-members/{id}/refresh', [LoyaltyMemberController::class, 'refreshMemberData']);
 Route::patch('/loyalty-members/{id}/status', [LoyaltyMemberController::class, 'updateStatus']);
 Route::get('/loyalty-members/statistics', [LoyaltyMemberController::class, 'getStatistics']);

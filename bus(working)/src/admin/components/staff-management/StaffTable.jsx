@@ -79,15 +79,17 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
         
         {/* Action buttons */}
         <div className="flex gap-2">
-          <button 
-            onClick={onPrint} 
-            className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
-            disabled={!canPrint}
-            style={!canPrint ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-          >
-            <Printer size={18} className="mr-2" />
-            Print
-          </button>
+          {onPrint && (
+            <button 
+              onClick={onPrint} 
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+              disabled={!canPrint}
+              style={!canPrint ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            >
+              <Printer size={18} className="mr-2" />
+              Print
+            </button>
+          )}
         </div>
       </div>
       
@@ -224,24 +226,30 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
                     {person.phone_no || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => onViewDetails(person)}
-                      className="text-gray-600 hover:text-gray-900 mr-3"
-                    >
-                      <Eye size={18} />
-                    </button>
-                    <button
-                      onClick={() => onEdit(person)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      <Edit size={18} />
-                    </button>
-                    <button
-                      onClick={() => onDelete(person.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash size={18} />
-                    </button>
+                    {onViewDetails && (
+                      <button
+                        onClick={() => onViewDetails(person)}
+                        className="text-gray-600 hover:text-gray-900 mr-3"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    )}
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(person)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        <Edit size={18} />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        onClick={() => onDelete(person.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

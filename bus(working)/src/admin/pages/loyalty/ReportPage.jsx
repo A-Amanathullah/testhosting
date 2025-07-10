@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { usePermissions } from '../../../context/PermissionsContext';
 import { Search } from 'lucide-react';
 import { PrintReportButton } from '../../components/loyalty-card';
 import { getLoyaltyReport } from '../../../services/loyaltyMemberService';
@@ -9,10 +10,13 @@ const ReportPage = () => {
   const [customerReports, setCustomerReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState("");
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState('All');
+
+  const { permissions } = usePermissions();
 
   // Fetch loyalty report data on component mount
   useEffect(() => {
@@ -50,14 +54,25 @@ const ReportPage = () => {
   const totalBookings = filteredReports.reduce((sum, customer) => sum + customer.total_bookings, 0);
   const totalPointsEarned = filteredReports.reduce((sum, customer) => sum + customer.points_earned, 0);
   const totalAmount = filteredReports.reduce((sum, customer) => sum + customer.total_amount, 0);
-    const currentDate = new Date().toLocaleDateString('en-US', {
+  const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
   
+  // Helper to check permission for Loyalty Report
+  const hasPermission = (action) => {
+    if (!permissions || !permissions['Loyalty Report']) return false;
+    return !!permissions['Loyalty Report'][action];
+  };
+  
   // Function to handle print button click
   const handlePrint = () => {
+    if (!hasPermission('print')) {
+      setNotification("You don't have permission to print loyalty reports.");
+      return;
+    }
+    
     // Add current date as data attribute for the footer
     const reportElement = document.querySelector('.loyalty-report-print');
     if (reportElement) {
@@ -70,6 +85,12 @@ const ReportPage = () => {
   
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
+      {notification && (
+        <div className="fixed top-6 right-6 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow">
+          {notification}
+          <button className="ml-3 text-red-700 font-bold" onClick={() => setNotification("")}>×</button>
+        </div>
+      )}
       <div className="flex-grow p-6 overflow-auto">
         {/* Header with title */}
         <div className="flex items-center justify-between mb-6">
@@ -88,7 +109,7 @@ const ReportPage = () => {
             </button>
             <PrintReportButton 
               onClick={handlePrint}
-              disabled={customerReports.length === 0}
+              disabled={customerReports.length === 0 || !hasPermission('print')}
             />
           </div>
         </div>

@@ -43,6 +43,9 @@ import AboutUs from './pages/AboutUs';
 import Gallery from './pages/Gallery';
 import Career from './pages/Career';
 import Contact from './pages/Contact';
+import PrivacyPolicy from './pages/Policies/PrivacyPolicy';
+import TermsConditions from './pages/Policies/TermsConditions';
+import TicketPolicy from './pages/Policies/TicketPolicy';
 import React, { useContext } from 'react';
 import { usePermissions } from './context/PermissionsContext';
 import { Navigate } from 'react-router-dom';
@@ -79,6 +82,9 @@ function App() {
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/career" element={<Career />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-conditions" element={<TermsConditions />} />
+        <Route path="/ticket-policy" element={<TicketPolicy />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/busList" element={<BusList />} />

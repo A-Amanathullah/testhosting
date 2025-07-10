@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
@@ -7,6 +7,7 @@ import useCancellations from '../../hooks/useCancellations';
 import useAgentGuestBookings from '../../hooks/useAgentGuestBookings';
 import BookingQRCode from '../SeatBooking/BookingQRCode';
 import { RiQrCodeFill } from 'react-icons/ri';
+import LoyaltyCard from '../../admin/components/loyalty-card/LoyaltyCard';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
@@ -14,9 +15,59 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 const PassengerDashboard = () => {
   const { user } = useContext(AuthContext);
   const [qrModal, setQrModal] = useState({ open: false, details: null });
+  const [loyaltyMember, setLoyaltyMember] = useState(null);
+  const [loyaltyCard, setLoyaltyCard] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const passengerName = user.name;
+  const passengerName = user?.name;
   const isAgent = user?.role === 'agent';
+
+  // Fetch loyalty member data for the user
+  useEffect(() => {
+    const fetchLoyaltyData = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+        
+        // Headers for authenticated requests
+        const headers = {};
+        if (user.token) {
+          headers.Authorization = `Bearer ${user.token}`;
+        }
+        
+        // Fetch all loyalty members and find the one matching this user
+        const loyaltyResponse = await axios.get(`${API_URL}/loyalty-members`, { headers });
+        
+        // Handle different response formats from the API
+        let memberData = null;
+        if (loyaltyResponse.data && loyaltyResponse.data.data) {
+          // Paginated response
+          memberData = loyaltyResponse.data.data.find(m => Number(m.user_id) === Number(user.id));
+        } else if (loyaltyResponse.data && Array.isArray(loyaltyResponse.data)) {
+          // Direct array response
+          memberData = loyaltyResponse.data.find(m => Number(m.user_id) === Number(user.id));
+        }
+        
+        if (memberData) {
+          setLoyaltyMember(memberData);
+          
+          // If we have a loyalty card ID, fetch the card details
+          if (memberData.loyalty_card_id) {
+            const cardResponse = await axios.get(`${API_URL}/loyalty-cards/${memberData.loyalty_card_id}`, { headers });
+            setLoyaltyCard(cardResponse.data);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching loyalty data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchLoyaltyData();
+  }, [user]);
 
   // Fetch bookings for this user
   const { bookings = [] } = useBookings(undefined, undefined, user?.id);
@@ -251,7 +302,66 @@ const PassengerDashboard = () => {
 
   return (
     <div className="p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 flex-col h-full w-full max-w-full overflow-x-auto">
-      <h2 className="text-2xl sm:text-4xl md:text-6xl p-2 sm:p-5 text-center font-bold break-words">Welcome Back, {passengerName}</h2>
+      {/* Loyalty Card Section */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          {/* Loyalty Card Display - More Prominent Position */}
+          <div className="w-full md:w-1/2 max-w-md order-2 md:order-1">
+            {loading ? (
+              <div className="animate-pulse bg-gray-200 h-64 w-full rounded-lg"></div>
+            ) : loyaltyMember && loyaltyCard ? (
+              <LoyaltyCard 
+                tier={loyaltyMember.card_type || loyaltyCard.tier}
+                points={loyaltyMember.total_points}
+                customers={passengerName}
+                color={loyaltyCard.color || '#1976D2'}
+                cardNo={loyaltyMember.card_number || '0000 0000 0000 0000'}
+                canEdit={false}
+              />
+            ) : (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                <h3 className="text-lg font-semibold mb-2">Join Our Loyalty Program!</h3>
+                <p className="text-gray-600">Get exclusive benefits and earn points with every trip</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Loyalty Member Details */}
+          <div className="w-full md:w-1/2 order-1 md:order-2">
+            {loading ? (
+              <div className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
+            ) : loyaltyMember ? (
+              <div className="p-6 bg-white rounded-lg shadow-md">
+                <h3 className="font-bold text-xl mb-4 text-blue-800">Your Loyalty Profile</h3>
+                <div className="space-y-3">
+                  <p className="flex justify-between border-b pb-2">
+                    <span className="font-medium text-gray-600">Member Name:</span> 
+                    <span className="font-semibold">{passengerName}</span>
+                  </p>
+                  <p className="flex justify-between border-b pb-2">
+                    <span className="font-medium text-gray-600">Member Since:</span> 
+                    <span>{new Date(loyaltyMember.member_since).toLocaleDateString()}</span>
+                  </p>
+                  <p className="flex justify-between border-b pb-2">
+                    <span className="font-medium text-gray-600">Total Points:</span> 
+                    <span className="font-bold text-blue-700">{loyaltyMember.total_points}</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="font-medium text-gray-600">Status:</span> 
+                    <span className={`font-medium px-3 py-1 rounded-full ${loyaltyMember.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {loyaltyMember.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-gray-500 text-center">No loyalty membership found</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 pb-4 sm:pb-10 w-full">

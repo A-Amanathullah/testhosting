@@ -324,8 +324,9 @@ const SeatPlanning = ({ pickup, drop }) => {
                 const rand = Math.floor(100 + Math.random() * 900);
                 const serialNo = `BK-${yymmdd}-${rand}`;
                 
+                // Create booking data with special handling for agent bookings
                 const bookingData = {
-                    ...guestForm, // This now contains status, payment_status and agent_id from the form
+                    ...guestForm, // Contains name, phone, email
                     bus_id: trip.bus_id,
                     bus_no: trip.bus_no,
                     serial_no: serialNo,
@@ -336,12 +337,17 @@ const SeatPlanning = ({ pickup, drop }) => {
                     departure_date: formattedDepartureDate,
                     reason: null,
                     price: totalPrice,
-                    // If agent booking, set confirmed status and not applicable payment
+                    
+                    // Special handling for agent bookings - always bypass payment API
                     ...(guestForm.agent_id && {
-                        status: "Confirmed",
-                        payment_status: "Not Applicable"
+                        status: "Confirmed", // Auto-confirm agent bookings
+                        payment_status: "Not Applicable" // No payment required for agent bookings
                     })
                 };
+                
+                // Log for debugging
+                console.log("GUEST BOOKING DATA:", bookingData);
+                console.log("IS AGENT BOOKING:", !!guestForm.agent_id);
                 
                 // Use createGuestBooking service instead of direct axios call
                 const response = await createGuestBooking(bookingData);
@@ -455,12 +461,13 @@ const SeatPlanning = ({ pickup, drop }) => {
         }
     };
 
-    // New function to create initial booking with Processing status
+    // Function to create initial booking with appropriate status based on user role
     const createInitialBooking = async () => {
         if (isLoading) return; // Prevent multiple submissions
         
         if (!user) {
             // For guest users, create temporary booking to protect seats
+            console.log("Guest user - creating temporary booking");
             createTemporaryGuestBooking();
             return;
         }
@@ -480,6 +487,7 @@ const SeatPlanning = ({ pickup, drop }) => {
         }
 
         try {
+            console.log(`Creating booking as ${user.role} user`);
             const now = new Date();
             const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, "");
             const rand = Math.floor(100 + Math.random() * 900);
@@ -489,6 +497,8 @@ const SeatPlanning = ({ pickup, drop }) => {
             // Use the robust function to ensure MySQL-compatible date format
             const formattedDepartureDate = formatDateForMySQL(trip.departure_date);
 
+            // For all users, initial status is "Processing"
+            // The status will be updated to "Confirmed" for admin/agent users after they confirm
             const bookingData = {
                 user_id: user.id,
                 bus_id: trip.bus_id,
@@ -509,6 +519,8 @@ const SeatPlanning = ({ pickup, drop }) => {
             const response = await createBooking(bookingData, user.token);
             setProcessingBookingId(response?.data?.id);
             setBookingId(response?.data?.id);
+            
+            // All user types see the ConfirmBooking modal
             setShowModal(true);
         } catch (err) {
             toast.error("Failed to create booking: " + (err.response?.data?.message || err.message));
@@ -518,7 +530,7 @@ const SeatPlanning = ({ pickup, drop }) => {
     };
 
     const handleBooking = async () => {
-        // This function now only handles the confirmation logic after initial booking is created
+        // This function handles the confirmation logic after initial booking is created
         if (isLoading) return; // Prevent multiple submissions
         
         if (!user) {
@@ -537,18 +549,23 @@ const SeatPlanning = ({ pickup, drop }) => {
             // For display purposes, keep original format
             const displayDate = trip.departure_date;
             
-            if (user.role === "agent" || user.role === "admin") {
-                // For agents and admins, directly confirm the booking
+            if (user.role?.toLowerCase() === "admin" || user.role?.toLowerCase() === "agent") {
+                // For admin and agent users, bypass payment API completely
+                console.log(`${user.role.toUpperCase()} BOOKING - BYPASSING PAYMENT API`);
+                console.log(`Setting payment_status to "Not Applicable" and status to "Confirmed"`);
+                
+                // Direct confirmation without payment
                 await updateBookingStatus({
                     id: processingBookingId,
-                    payment_status: "Not Applicable",
+                    payment_status: "Not Applicable", // Important: Set payment status to Not Applicable
                     status: "Confirmed",
                 }, user.token);
                 
                 setSelectedSeats([]);
                 setShowModal(false);
-                toast.success("Booking confirmed successfully!");
+                toast.success(`${user.role.charAt(0).toUpperCase() + user.role.slice(1)} booking confirmed successfully!`);
                 
+                // Generate QR code for the confirmed booking
                 const busInfo = buses.find(bus => String(bus.bus_no) === String(trip.bus_no));
                 setQrBookingDetails({
                     busName: busInfo?.bus_name || trip.bus_no,
@@ -561,11 +578,13 @@ const SeatPlanning = ({ pickup, drop }) => {
                 });
                 setShowQRCode(true);
             } else {
-                // For regular users, proceed to payment
+                // For regular users, proceed to payment API
+                console.log("REGULAR USER BOOKING - PROCEEDING TO PAYMENT API");
                 setShowModal(false);
                 setShowPayment(true);
             }
         } catch (err) {
+            console.error("Booking confirmation failed:", err);
             toast.error("Booking confirmation failed: " + (err.response?.data?.message || err.message));
         } finally {
             setIsLoading(false);
@@ -752,35 +771,44 @@ const SeatPlanning = ({ pickup, drop }) => {
                 {showModal && (
                     <ConfirmBooking
                         selectedSeats={selectedSeats}
-                        onClose={cancelProcessingBooking} // Changed to cancel function
+                        onClose={cancelProcessingBooking}
                         trip={trip}
                         isLoading={isLoading}
+                        userRole={user?.role} // Pass user role to control UI elements in ConfirmBooking
                         onConfirm={async () => {
+                            console.log("ConfirmBooking: onConfirm called");
+                            
+                            // Handle confirmation based on user type
                             if (!user && !guestDetails) {
+                                console.log("No user or guest details found, showing guest form");
                                 setShowModal(false);
                                 setShowGuestForm(true);
+                            } else if (guestDetails) {
+                                console.log("Using existing guest details:", guestDetails);
+                                // This case handles when we already have guest details
+                                setShowModal(false);
+                                // Process the booking with existing guest details
+                                await handleGuestBooking(guestDetails);
                             } else {
+                                console.log(`Confirming booking for ${user.role} user`);
+                                
+                                // For all user types, this confirms their booking
+                                // For admins/agents: Updates to Confirmed + Not Applicable (bypassing payment)
+                                // For regular users: Shows payment API
                                 await handleBooking();
                             }
                         }}
                         onAgentBookForPassenger={async () => {
-                            if (isLoading) return; // Prevent multiple submissions
+                            // This is only shown to agents who want to book for a passenger
+                            if (isLoading) return;
                             
-                            // Delete the processing booking from bookings table first
-                            if (processingBookingId) {
-                                setIsLoading(true);
-                                try {
-                                    await deleteBooking(processingBookingId, user?.token);
-                                    setProcessingBookingId(null);
-                                    setBookingId(null);
-                                } catch (err) {
-                                    console.error("Failed to delete processing booking:", err);
-                                    toast.error("Failed to cancel current booking.");
-                                    return;
-                                } finally {
-                                    setIsLoading(false);
-                                }
-                            }
+                            console.log("AGENT BOOKING FOR PASSENGER");
+                            console.log("Showing guest form while keeping agent's processing booking");
+                            
+                            // We no longer delete the agent's booking here
+                            // Instead, we just show the guest form and keep the processingBookingId for later deletion
+                            
+                            // Show guest form for agent to enter passenger details
                             setShowModal(false);
                             setShowGuestForm(true);
                         }}
@@ -792,9 +820,33 @@ const SeatPlanning = ({ pickup, drop }) => {
                         <GuestBookingForm
                             onSubmit={async (guestForm) => {
                                 console.log("Parent onSubmit called with:", guestForm, "Processing ID:", guestProcessingBookingId);
-                                await handleGuestBooking(guestForm);
-                                // Close the form without cancelling the booking
-                                closeGuestForm();
+                                
+                                try {
+                                    // First, create/update the guest booking
+                                    await handleGuestBooking(guestForm);
+                                    
+                                    // After successful guest booking, delete the agent's original booking if it exists
+                                    if (processingBookingId && user?.role?.toLowerCase() === 'agent') {
+                                        console.log("Deleting agent's original booking after successful guest booking:", processingBookingId);
+                                        try {
+                                            await deleteBooking(processingBookingId, user?.token);
+                                            console.log("Successfully deleted agent's booking after creating guest booking");
+                                        } catch (deleteErr) {
+                                            console.error("Failed to delete agent's booking:", deleteErr);
+                                            toast.warning("Guest booking created, but failed to clean up agent booking record.");
+                                        }
+                                    }
+                                    
+                                    // Clear the booking IDs
+                                    setProcessingBookingId(null);
+                                    setBookingId(null);
+                                    
+                                    // Close the form without cancelling the guest booking
+                                    closeGuestForm();
+                                } catch (err) {
+                                    console.error("Failed to complete guest booking:", err);
+                                    // If guest booking fails, keep the form open and don't delete the agent's booking
+                                }
                             }}
                             onLogin={() => { 
                                 forceCancelGuestProcessingBooking(); // Force cancel guest booking before login
@@ -806,8 +858,8 @@ const SeatPlanning = ({ pickup, drop }) => {
                             }}
                             onClose={forceCancelGuestProcessingBooking} // Use force cancel function for close button
                             totalAmount={Number(trip.price) * selectedSeats.length}
-                            agentId={user?.role === 'agent' ? user.id : null}
-                            isAgentBooking={user?.role === 'agent'}
+                            agentId={user?.role?.toLowerCase() === 'agent' ? user.id : null}
+                            isAgentBooking={user?.role?.toLowerCase() === 'agent'}
                             processingBookingId={guestProcessingBookingId} // Pass processing booking ID for reference
                             onRefresh={() => setRefreshTrigger(prev => prev + 1)} // Pass refresh callback
                         />

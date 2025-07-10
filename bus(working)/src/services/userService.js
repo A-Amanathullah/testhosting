@@ -3,6 +3,9 @@ import { getToken } from "../utils/auth";
 
 const API_URL = "http://localhost:8000/api";
 
+// Helper for error handling
+// Helper for error handling (used in the service functions)
+
 export const fetchUsers = async () => {
   const response = await axios.get(`${API_URL}/users`, {
     headers: { Authorization: `Bearer ${getToken()}` },
@@ -79,9 +82,15 @@ export const updateUser = async (id, user, userDetails) => {
 };
 
 export const deleteUser = async (id) => {
-  // Delete user by ID
-  const response = await axios.delete(`${API_URL}/user/${id}`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  });
-  return response.data;
+  try {
+    // Delete user by ID
+    const response = await axios.delete(`${API_URL}/user/${id}`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || "Failed to delete user.";
+    console.error(`Delete user error (ID: ${id}):`, errorMessage, error);
+    throw error; // Re-throw for component-level handling
+  }
 };

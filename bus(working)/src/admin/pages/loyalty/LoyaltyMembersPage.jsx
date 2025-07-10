@@ -9,6 +9,7 @@ import {
   deleteLoyaltyMember,
   refreshMemberData
 } from '../../../services/loyaltyMemberService';
+import { usePermissions } from '../../../context/PermissionsContext';
 
 const LoyaltyMembersPage = () => {
   const [members, setMembers] = useState([]);
@@ -16,20 +17,68 @@ const LoyaltyMembersPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState(null);
+  const [notification, setNotification] = useState({ message: '', type: '' });
+
+  const { permissions } = usePermissions();
+
+  // Helper to check permission for Loyalty Members
+  const hasPermission = (action) => {
+    if (!permissions) {
+      console.log('No permissions object available');
+      return false;
+    }
+    
+    // console.log('All permissions:', permissions);
+    // console.log('Checking for module:', 'Loyalty Members');
+    
+    if (!permissions['Loyalty Members']) {
+      console.log('Loyalty Members module not found in permissions');
+      return false;
+    }
+    
+    // console.log('Loyalty Members permissions:', permissions['Loyalty Members']);
+    // console.log(`Checking for action: ${action}, result:`, !!permissions['Loyalty Members'][action]);
+    
+    return !!permissions['Loyalty Members'][action];
+  };
+
+  // Hide notification after 3 seconds
+  useEffect(() => {
+    if (notification.message) {
+      const timer = setTimeout(() => {
+        setNotification({ message: '', type: '' });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     fetchMembers();
     fetchStatistics();
+    // console.log('LoyaltyMembersPage - Permissions:', permissions); // Debug permissions
   }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchMembers = async () => {
     try {
       setIsLoading(true);
       const data = await getLoyaltyMembers(currentPage);
-      setMembers(data.data || []);
+      
+      // Filter out members with role 'agent' - only display users with role 'user' or similar
+      const filteredMembers = (data.data || []).filter(member => {
+        // Skip members where user isn't defined
+        if (!member.user) return true;
+        
+        // Check if user role is NOT 'agent' (case-insensitive)
+        return !member.user.role || member.user.role.toLowerCase() !== 'agent';
+      });
+      
+      setMembers(filteredMembers);
       setPagination(data);
     } catch (err) {
-      alert('Failed to fetch loyalty members.');
+      setNotification({
+        message: 'Failed to fetch loyalty members.',
+        type: 'error'
+      });
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -46,16 +95,22 @@ const LoyaltyMembersPage = () => {
   };
 
   const handleCreateAllMembers = async () => {
-    if (!window.confirm('Create loyalty memberships for all eligible users?')) return;
+    if (!window.confirm('Create loyalty memberships for all eligible regular users? (Agents will be excluded)')) return;
     
     try {
       setIsLoading(true);
       const result = await createMembersForAllUsers();
-      alert(`Successfully created ${result.created_count} loyalty memberships.`);
+      setNotification({
+        message: `Successfully created ${result.created_count} loyalty memberships for regular users.`,
+        type: 'success'
+      });
       await fetchMembers();
       await fetchStatistics();
     } catch (err) {
-      alert('Failed to create loyalty memberships.');
+      setNotification({
+        message: 'Failed to create loyalty memberships.',
+        type: 'error'
+      });
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -68,25 +123,39 @@ const LoyaltyMembersPage = () => {
     try {
       setIsLoading(true);
       const result = await refreshAllMembersData();
-      alert(`Successfully refreshed data for ${result.updated_count} members.`);
+      setNotification({
+        message: `Successfully refreshed data for ${result.updated_count} members.`,
+        type: 'success'
+      });
       await fetchMembers();
       await fetchStatistics();
     } catch (err) {
-      alert('Failed to refresh loyalty data.');
+      setNotification({
+        message: 'Failed to refresh loyalty data.',
+        type: 'error'
+      });
       console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
+  
+
 
   const handleRefreshMemberData = async (memberId) => {
     try {
       const result = await refreshMemberData(memberId);
-      alert(`Points updated: ${result.changes.points.old} → ${result.changes.points.new}\nCard type: ${result.changes.card_type.old} → ${result.changes.card_type.new}`);
+      setNotification({
+        message: `Points updated: ${result.changes.points.old} → ${result.changes.points.new}\nCard type: ${result.changes.card_type.old} → ${result.changes.card_type.new}`,
+        type: 'success'
+      });
       await fetchMembers();
       await fetchStatistics();
     } catch (err) {
-      alert('Failed to refresh member data.');
+      setNotification({
+        message: 'Failed to refresh member data.',
+        type: 'error'
+      });
       console.error(err);
     }
   };
@@ -96,22 +165,43 @@ const LoyaltyMembersPage = () => {
       await updateMemberStatus(memberId, !currentStatus);
       await fetchMembers();
       await fetchStatistics();
+      setNotification({
+        message: `Member status ${!currentStatus ? 'activated' : 'deactivated'} successfully.`,
+        type: 'success'
+      });
     } catch (err) {
-      alert('Failed to update member status.');
+      setNotification({
+        message: 'Failed to update member status.',
+        type: 'error'
+      });
       console.error(err);
     }
   };
 
   const handleDeleteMember = async (memberId, memberName) => {
+    if (!hasPermission('delete')) {
+      setNotification({
+        message: 'You do not have permission to delete loyalty members.',
+        type: 'error'
+      });
+      return;
+    }
+    
     if (!window.confirm(`Are you sure you want to delete loyalty membership for ${memberName}?`)) return;
     
     try {
       await deleteLoyaltyMember(memberId);
-      alert('Loyalty member deleted successfully.');
+      setNotification({
+        message: 'Loyalty member deleted successfully.',
+        type: 'success'
+      });
       await fetchMembers();
       await fetchStatistics();
     } catch (err) {
-      alert('Failed to delete loyalty member.');
+      setNotification({
+        message: 'Failed to delete loyalty member.',
+        type: 'error'
+      });
       console.error(err);
     }
   };
@@ -128,12 +218,29 @@ const LoyaltyMembersPage = () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
+      {/* Notification */}
+      {notification.message && (
+        <div className={`mx-6 mt-4 p-4 rounded-md ${
+          notification.type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700'
+        }`}>
+          <div className="whitespace-pre-line">{notification.message}</div>
+        </div>
+      )}
+
+      {/* Debug Button - Remove in production */}
+      <button 
+        onClick={() => console.log('Delete permission check:', hasPermission('delete'), permissions)} 
+        className="mx-6 mt-2 px-2 py-1 bg-gray-200 text-xs rounded"
+      >
+        Debug Permissions
+      </button>
+      
       <div className="flex-grow p-6 overflow-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Loyalty Members Management</h1>
-            <p className="text-sm text-gray-600">Manage loyalty program memberships and track member progress</p>
+            <p className="text-sm text-gray-600">Manage loyalty program memberships for regular users (agents excluded)</p>
           </div>
           
           <div className="flex space-x-3">
@@ -325,13 +432,15 @@ const LoyaltyMembersPage = () => {
                           >
                             <RefreshCw size={16} />
                           </button>
-                          <button
-                            onClick={() => handleDeleteMember(member.id, member.member_name)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Member"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {hasPermission('delete') && (
+                            <button
+                              onClick={() => handleDeleteMember(member.id, member.member_name)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete Member"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchUsers, createUser, updateUser, deleteUser } from '../../services/userService';
 import { getRoles } from '../../services/roleService';
 import { FaEdit, FaTrash, FaEye, FaEyeSlash } from '../components/Icons';
+import { usePermissions } from '../../context/PermissionsContext';
 
 // Import auth service to get current user info
 import { getToken } from '../../utils/auth';
@@ -33,6 +34,20 @@ const UsersPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [search, setSearch] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [notification, setNotification] = useState({ message: '', type: '' });
+  
+  // Get permissions
+  const { permissions } = usePermissions();
+
+  // Helper functions to check permissions
+  const hasPermission = (action) => {
+    if (!permissions || !permissions['User Management']) return false;
+    return !!permissions['User Management'][action];
+  };
+  
+  const canAdd = () => hasPermission('add');
+  const canEdit = () => hasPermission('edit');
+  const canDelete = () => hasPermission('delete');
 
   useEffect(() => {
     // Fetch current user info first
@@ -58,9 +73,9 @@ const UsersPage = () => {
           getRoles()
         ]);
         
-        console.log('All users from API:', userData);
-        console.log('Roles from API:', rolesData);
-        console.log('Users with role "User":', userData.filter(u => u.role === 'User'));
+        // console.log('All users from API:', userData);
+        // console.log('Roles from API:', rolesData);
+        // console.log('Users with role "User":', userData.filter(u => u.role === 'User'));
         
         setUsers(userData.filter(u => u.role === 'User'));
         // Ensure roles is always an array
@@ -90,6 +105,14 @@ const UsersPage = () => {
   }, []);
 
   const handleEdit = (user) => {
+    if (!canEdit()) {
+      setNotification({
+        message: 'You do not have permission to edit users.',
+        type: 'error'
+      });
+      return;
+    }
+    
     setEditingUser(user);
     setForm({
       name: user.name,
@@ -106,12 +129,27 @@ const UsersPage = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!canDelete()) {
+      setNotification({
+        message: 'You do not have permission to delete users.',
+        type: 'error'
+      });
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
         await deleteUser(id);
         setUsers(users.filter(u => u.id !== id));
+        setNotification({
+          message: 'User deleted successfully.',
+          type: 'success'
+        });
       } catch (err) {
-        setFormError('Failed to delete user.');
+        setNotification({
+          message: 'Failed to delete user.',
+          type: 'error'
+        });
       }
     }
   };
@@ -121,6 +159,20 @@ const UsersPage = () => {
     if (submitting) return;
     setFormError(null);
     setSubmitting(true);
+    
+    // Check permissions before submission
+    if (editingUser && !canEdit()) {
+      setFormError('You do not have permission to edit users.');
+      setSubmitting(false);
+      return;
+    }
+    
+    if (!editingUser && !canAdd()) {
+      setFormError('You do not have permission to add users.');
+      setSubmitting(false);
+      return;
+    }
+    
     if (!editingUser && form.password !== form.confirm_password) {
       setFormError('Passwords do not match.');
       setSubmitting(false);
@@ -141,12 +193,26 @@ const UsersPage = () => {
       role: form.role.toLowerCase(), // Convert to lowercase for backend validation
     };
     try {
+      // Permission check for edit/add
+      if (editingUser && !canEdit()) {
+        setFormError('You do not have permission to edit users.');
+        setSubmitting(false);
+        return;
+      }
+      if (!editingUser && !canAdd()) {
+        setFormError('You do not have permission to add users.');
+        setSubmitting(false);
+        return;
+      }
+      
       if (editingUser) {
         const updated = await updateUser(editingUser.id, userPayload, userDetailsPayload);
         setUsers(users.map(u => (u.id === editingUser.id ? updated : u)));
+        setNotification({ message: 'User updated successfully.', type: 'success' });
       } else {
         const created = await createUser(userPayload, userDetailsPayload);
         setUsers([...users, created]);
+        setNotification({ message: 'User created successfully.', type: 'success' });
       }
       setShowForm(false);
       setEditingUser(null);
@@ -174,6 +240,16 @@ const UsersPage = () => {
     );
   });
 
+  // Hide notification after 3 seconds
+  useEffect(() => {
+    if (notification.message) {
+      const timer = setTimeout(() => {
+        setNotification({ message: '', type: '' });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   if (loading) return <div className="p-6">Loading...</div>;
   if (error) return (
     <div className="p-6">
@@ -195,7 +271,17 @@ const UsersPage = () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
-      <div className="flex-grow p-6 overflow-auto">          <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex-grow p-6 overflow-auto">
+        {/* Notification */}
+        {notification.message && (
+          <div className={`mb-4 p-4 rounded-md ${
+            notification.type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700'
+          }`}>
+            <div className="whitespace-pre-line">{notification.message}</div>
+          </div>
+        )}
+          
+        <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h1 className="text-2xl font-bold">User Management</h1>
@@ -213,7 +299,9 @@ const UsersPage = () => {
               onChange={e => setSearch(e.target.value)}
               className="border rounded px-3 py-2 mr-4 w-60"
             />
-            <button className="px-4 py-2 bg-blue-700 text-white rounded" onClick={() => { setShowForm(true); setEditingUser(null); setForm(initialForm); }}>Add User</button>
+            {canAdd() && (
+              <button className="px-4 py-2 bg-blue-700 text-white rounded" onClick={() => { setShowForm(true); setEditingUser(null); setForm(initialForm); }}>Add User</button>
+            )}
           </div>
           <table className="min-w-full mb-6">
             <thead>
@@ -239,8 +327,12 @@ const UsersPage = () => {
                   <td className="py-2">{user.phone_no}</td>
                   <td className="py-2">{user.gender}</td>
                   <td className="py-2 flex gap-2">
-                    <button title="Edit" className="p-2 bg-yellow-500 text-white rounded-full" onClick={() => handleEdit(user)}><FaEdit /></button>
-                    <button title="Delete" className="p-2 bg-red-600 text-white rounded-full" onClick={() => handleDelete(user.id)}><FaTrash /></button>
+                    {canEdit() && (
+                      <button title="Edit" className="p-2 bg-yellow-500 text-white rounded-full" onClick={() => handleEdit(user)}><FaEdit /></button>
+                    )}
+                    {canDelete() && (
+                      <button title="Delete" className="p-2 bg-red-600 text-white rounded-full" onClick={() => handleDelete(user.id)}><FaTrash /></button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -252,12 +344,18 @@ const UsersPage = () => {
               <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-lg relative max-h-[90vh] overflow-y-auto">
                 <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl" onClick={() => { setShowForm(false); setEditingUser(null); setForm(initialForm); }}>&times;</button>
                 <h2 className="text-xl font-bold mb-4">{editingUser ? 'Edit User' : 'Add User'}</h2>
+                
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {formError && <div className="text-red-600 text-sm font-medium">{formError}</div>}
-                  <div>
-                    <label className="block text-sm font-medium">Name</label>
-                    <input type="text" className="w-full border rounded px-3 py-2" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
-                  </div>
+                  {(editingUser && !canEdit()) || (!editingUser && !canAdd()) ? (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                      You do not have permission to {editingUser ? 'edit' : 'add'} users.
+                    </div>
+                  ) : null}
+                    <div>
+                      <label className="block text-sm font-medium">Name</label>
+                      <input type="text" className="w-full border rounded px-3 py-2" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+                    </div>
                   <div>
                     <label className="block text-sm font-medium">Email</label>
                     <input type="email" className="w-full border rounded px-3 py-2" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
@@ -335,7 +433,15 @@ const UsersPage = () => {
                     </select>
                   </div>
                   <div className="flex gap-2 justify-end">
-                    <button type="submit" className={`px-4 py-2 bg-blue-700 text-white rounded${submitting ? ' opacity-50 cursor-not-allowed' : ''}`} disabled={submitting}>{submitting ? (editingUser ? 'Updating...' : 'Creating...') : (editingUser ? 'Update' : 'Create')}</button>
+                    <button 
+                      type="submit" 
+                      className={`px-4 py-2 bg-blue-700 text-white rounded${submitting ? ' opacity-50 cursor-not-allowed' : ''}${
+                        (editingUser && !canEdit()) || (!editingUser && !canAdd()) ? ' opacity-50 cursor-not-allowed' : ''
+                      }`} 
+                      disabled={submitting || (editingUser && !canEdit()) || (!editingUser && !canAdd())}
+                    >
+                      {submitting ? (editingUser ? 'Updating...' : 'Creating...') : (editingUser ? 'Update' : 'Create')}
+                    </button>
                     <button type="button" className="px-4 py-2 bg-gray-300 text-gray-700 rounded" onClick={() => { setShowForm(false); setEditingUser(null); setForm(initialForm); }}>Cancel</button>
                   </div>
                 </form>

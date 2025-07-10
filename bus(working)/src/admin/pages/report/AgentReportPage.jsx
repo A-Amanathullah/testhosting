@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePermissions } from '../../../context/PermissionsContext';
 import {
   BusSelector,
   DateSelector,
@@ -19,6 +20,7 @@ const AgentReportPage = () => {
   const [agents, setAgents] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
+  const [notification, setNotification] = useState("");
 
   const { users } = useUsers(); // Get user context
   // Fetch bookings with null parameters initially to get all bookings
@@ -28,6 +30,7 @@ const AgentReportPage = () => {
     selectedAgent || null
   );
   const { buses } = useBusHook();
+  const { permissions } = usePermissions();
 
   // Reference to the table for printing
   const printTableRef = useRef(null);
@@ -107,8 +110,19 @@ const AgentReportPage = () => {
     setSelectedAgent(e.target.value);
   };
 
+  // Helper to check permission for Agentwise Report
+  const hasPermission = (action) => {
+    if (!permissions || !permissions['Agentwise Report']) return false;
+    return !!permissions['Agentwise Report'][action];
+  };
+
   // Handle print action
   const handlePrint = () => {
+    if (!hasPermission('print')) {
+      setNotification("You don't have permission to print agent reports.");
+      return;
+    }
+    
     if (bookings.length) {
       if (printTableRef.current) {
         printTableRef.current.focus();
@@ -133,6 +147,12 @@ const AgentReportPage = () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
+      {notification && (
+        <div className="fixed top-6 right-6 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow">
+          {notification}
+          <button className="ml-3 text-red-700 font-bold" onClick={() => setNotification("")}>×</button>
+        </div>
+      )}
       <div className="flex-grow p-6 overflow-auto">
         {/* Page Header */}
         <div className="mb-6">
@@ -177,7 +197,7 @@ const AgentReportPage = () => {
           <div className="ml-auto">
             <PrintButton
               onClick={handlePrint}
-              disabled={!bookings.length}
+              disabled={!bookings.length || !hasPermission('print')}
             />
           </div>
         </div>

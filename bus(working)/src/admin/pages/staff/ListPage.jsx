@@ -49,12 +49,27 @@ const ListPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
 
-  const [notification, setNotification] = useState("");
+  const [notification, setNotification] = useState({ message: "", type: "error" });
+
+  // Set notification with proper format
+  const showNotification = (message, type = "error") => {
+    setNotification({ message, type });
+  };
+
+  // Hide notification after 3 seconds
+  React.useEffect(() => {
+    if (notification.message) {
+      const timer = setTimeout(() => {
+        setNotification({ message: "", type: "error" });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // Permission-checked handlers
   const handleAddStaff = () => {
     if (!can('add')) {
-      setNotification("You don't have permission to add staff.");
+      showNotification("You don't have permission to add staff.", "error");
       return;
     }
     setSelectedStaff(null);
@@ -63,7 +78,7 @@ const ListPage = () => {
 
   const handleEdit = (staff) => {
     if (!can('edit')) {
-      setNotification("You don't have permission to edit staff.");
+      showNotification("You don't have permission to edit staff.", "error");
       return;
     }
     setSelectedStaff(staff);
@@ -72,7 +87,7 @@ const ListPage = () => {
 
   const handleDelete = (staffId) => {
     if (!can('delete')) {
-      setNotification("You don't have permission to delete staff.");
+      showNotification("You don't have permission to delete staff.", "error");
       return;
     }
     const staffMember = staff.find(s => s.id === staffId);
@@ -82,7 +97,7 @@ const ListPage = () => {
 
   const handlePrint = () => {
     if (!can('print')) {
-      setNotification("You don't have permission to print staff list.");
+      showNotification("You don't have permission to print staff list.", "error");
       return;
     }
     // The actual print logic should be in StaffTable, so you may want to pass this handler down
@@ -94,16 +109,45 @@ const ListPage = () => {
   };
 
   const confirmDelete = async () => {
-    if (selectedStaff) {
-      try {
-        await deleteUser(selectedStaff.id);
-        setRefreshKey(prev => prev + 1); // Refetch staff after delete
-      } catch (err) {
-        alert('Failed to delete staff member.');
-      }
+    if (!selectedStaff) {
+      setDeleteModalOpen(false);
+      return false;
     }
-    setDeleteModalOpen(false);
-    setSelectedStaff(null);
+    
+    try {
+      // Log the staff member being deleted for debugging
+      console.log("Attempting to delete staff member:", selectedStaff);
+      
+      // Call the API to delete the user
+      const response = await deleteUser(selectedStaff.id);
+      console.log("Delete response:", response);
+      
+      // Refresh the staff list
+      setRefreshKey(prev => prev + 1);
+      
+      // Show success message
+      showNotification("Staff member deleted successfully.", "success");
+      
+      // Close modal and reset selection
+      setDeleteModalOpen(false);
+      setSelectedStaff(null);
+      return true;
+    } catch (err) {
+      console.error("Delete error:", err);
+      
+      // Extract error message from response if available
+      let errorMessage = "Failed to delete staff member.";
+      if (err.response) {
+        errorMessage = err.response.data?.message || errorMessage;
+        console.error("Server response:", err.response.data);
+      }
+      
+      // Show error notification
+      showNotification(errorMessage, "error");
+      
+      // Don't close modal on error so user can try again
+      return false;
+    }
   };
 
   const handleUpdateStaff = async (updatedStaffData) => {
@@ -131,8 +175,9 @@ const ListPage = () => {
 
         await createUser(userPayload, userDetailsPayload);
         setRefreshKey(prev => prev + 1);
+        showNotification("Staff member created successfully.", "success");
       } catch (err) {
-        alert('Failed to create staff member.');
+        showNotification("Failed to create staff member.", "error");
       }
     } else if (selectedStaff) {
       // Updating existing staff member
@@ -158,8 +203,9 @@ const ListPage = () => {
 
         await updateUser(selectedStaff.id, userPayload, userDetailsPayload);
         setRefreshKey(prev => prev + 1);
+        showNotification("Staff member updated successfully.", "success");
       } catch (err) {
-        alert('Failed to update staff member.');
+        showNotification("Failed to update staff member.", "error");
       }
     }
     setEditModalOpen(false);
@@ -168,10 +214,19 @@ const ListPage = () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
-      {notification && (
-        <div className="fixed top-6 right-6 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow">
-          {notification}
-          <button className="ml-3 text-red-700 font-bold" onClick={() => setNotification("")}>×</button>
+      {notification.message && (
+        <div className={`fixed top-6 right-6 z-50 px-4 py-2 rounded shadow flex items-center ${
+          notification.type === "success" 
+            ? "bg-green-100 border border-green-400 text-green-700" 
+            : "bg-red-100 border border-red-400 text-red-700"
+        }`}>
+          <span>{notification.message}</span>
+          <button 
+            className={`ml-3 font-bold ${notification.type === "success" ? "text-green-700" : "text-red-700"}`} 
+            onClick={() => setNotification({ message: "", type: "error" })}
+          >
+            ×
+          </button>
         </div>
       )}
       <div className="flex-grow p-6 overflow-auto">

@@ -151,170 +151,219 @@ const Form = () => {
     };
 
     return (
-        <div>
-            <div className="justify-self-center  translate-y-[-10vh] w-4/5 h-1/4 rounded-3xl bg-white shadow-md">
+        <div className="px-4 sm:px-6 md:px-0">
+            <div className="justify-self-center transform translate-y-[-10vh] w-full sm:w-11/12 md:w-10/12 lg:w-4/5 mx-auto rounded-3xl bg-white shadow-md overflow-hidden">
                 {/* top buttons */}
 
-                <button className="bg-white w-1/2 p-2 rounded-tl-3xl
-                  duration-200  text-primary"
-                    onClick={handleBus}
-                    id="bus">
-                    <div className="flex gap-3 justify-center items-center">
-                        <RiBusWifiFill className="inline-block text-2xl " />
-                        <div className="text-lg font-semibold"> Book a bus</div>
-                    </div>
-                </button>
+                <div className="flex">
+                    <button className="bg-white w-1/2 p-2 rounded-tl-3xl
+                      duration-200 text-primary"
+                        onClick={handleBus}
+                        id="bus">
+                        <div className="flex gap-1 sm:gap-3 justify-center items-center">
+                            <RiBusWifiFill className="inline-block text-xl sm:text-2xl" />
+                            <div className="text-sm sm:text-lg font-semibold">Book a bus</div>
+                        </div>
+                    </button>
 
-                <button className="bg-slate-200 w-1/2 p-2 rounded-tr-3xl
-                  duration-200 text-primary"
-                    onClick={handleStatus}
-                    id="status">
-                    <div className="flex gap-3 justify-center items-center">
-                        <FaSearchLocation className="inline-block text-2xl " />
-                        <div className="text-lg font-semibold"> Bus status</div>
-                    </div>
-                </button>
+                    <button className="bg-slate-200 w-1/2 p-2 rounded-tr-3xl
+                      duration-200 text-primary"
+                        onClick={handleStatus}
+                        id="status">
+                        <div className="flex gap-1 sm:gap-3 justify-center items-center">
+                            <FaSearchLocation className="inline-block text-xl sm:text-2xl" />
+                            <div className="text-sm sm:text-lg font-semibold">Bus status</div>
+                        </div>
+                    </button>
+                </div>
                 {showBus &&
-                    <div>
+                    <div className="py-3 px-2 sm:px-4">
                         {/* radio buttons */}
-                        <div className=" flex items-center flex-wrap">
-                            <div className="flex items-center gap-4 p-5">
+                        <div className="flex items-center flex-wrap justify-center sm:justify-start">
+                            <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-5">
                                 <input
                                     type="radio"
                                     name="options"
                                     value="bus"
                                     checked={selectedView === "bus"}
                                     onChange={(e) => setSelectedView(e.target.value)}
-                                    className="form-input p-3 rounded-full" />
-                                <label className="text-lg">Return</label>
+                                    className="form-input p-2 sm:p-3 rounded-full" />
+                                <label className="text-base sm:text-lg">Return</label>
                             </div>
 
-                            <div className="flex items-center gap-4 p-5">
+                            <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-5">
                                 <input
                                     type="radio"
                                     name="options"
                                     value="status"
                                     checked={selectedView === "status"}
                                     onChange={(e) => setSelectedView(e.target.value)}
-                                    className="form-input p-3 rounded-full" />
-                                <label className="text-lg">One way</label>
+                                    className="form-input p-2 sm:p-3 rounded-full" />
+                                <label className="text-base sm:text-lg">One way</label>
                             </div>
                         </div>
 
                         {/* input items */}
-                        <div>
-                            <div className="flex border border-black gap-3 items-center p-2 grow shrink mx-4 rounded-2xl">
+                        <div className="px-2 sm:px-4">
+                            <div className="flex flex-col md:flex-row border border-black gap-3 items-center p-2 rounded-2xl">
                                 {!isSwapped ? (
-                                    <div className="flex grow shrink  gap-2  border border-primary transition-all duration-300 rounded-md">
-                                        <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
-                                            placeholder="From" value={fromCityBus} setValue={setFromCityBus} />
-                                        <button className="transition-transform duration-300 active:rotate-180"
-                                            onClick={handleSwap}>
+                                    <div className="flex flex-col sm:flex-row w-full grow shrink gap-2 border border-primary transition-all duration-300 rounded-md p-1">
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <AutocompleteInput 
+                                                className="input-form flex transition-all duration-300 rounded-lg text-md border-none w-full" 
+                                                placeholder="From" value={fromCityBus} setValue={setFromCityBus} 
+                                            />
+                                        </div>
+                                        <button 
+                                            className="transition-transform duration-300 active:rotate-180 mx-auto my-1 sm:mx-1 sm:my-auto"
+                                            onClick={handleSwap}
+                                        >
                                             <LuArrowLeftRight className="inline-block text-xl" />
                                         </button>
-                                        <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
-                                            placeholder="To" value={toCityBus} setValue={setToCityBus} />
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <AutocompleteInput 
+                                                className="input-form flex transition-all duration-300 rounded-lg text-md border-none w-full" 
+                                                placeholder="To" value={toCityBus} setValue={setToCityBus} 
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="flex grow shrink  gap-2  border border-primary transition-all duration-300 rounded-md">
-                                        <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
-                                            placeholder="To" value={toCityBus} setValue={setToCityBus} />
-                                        <button className="transition-transform duration-300 active:rotate-180"
-                                            onClick={handleSwap}>
+                                    <div className="flex flex-col sm:flex-row w-full grow shrink gap-2 border border-primary transition-all duration-300 rounded-md p-1">
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <AutocompleteInput 
+                                                className="input-form flex transition-all duration-300 rounded-lg text-md border-none w-full" 
+                                                placeholder="To" value={toCityBus} setValue={setToCityBus} 
+                                            />
+                                        </div>
+                                        <button 
+                                            className="transition-transform duration-300 active:rotate-180 mx-auto my-1 sm:mx-1 sm:my-auto"
+                                            onClick={handleSwap}
+                                        >
                                             <LuArrowLeftRight className="inline-block text-xl" />
                                         </button>
-                                        <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
-                                            placeholder="From" value={fromCityBus} setValue={setFromCityBus} />
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <AutocompleteInput 
+                                                className="input-form flex transition-all duration-300 rounded-lg text-md border-none w-full" 
+                                                placeholder="From" value={fromCityBus} setValue={setFromCityBus} 
+                                            />
+                                        </div>
                                     </div>
                                 )}
-                                <PiLineVertical className="inline-block text-xl opacity-10" />
-                                <div className="flex gap-2 border border-primary rounded-md">
-                                    <DatePickerInput 
-                                    className="input-form flex justify-self-center  rounded-lg text-md border-none"
-                                    selectedDate={startDate} setSelectedDate={setStartDate} placeholder="Departure Date" />
-
-                                    {selectedView === "bus" &&
-                                        <DatePickerInput
-                                        className="input-form flex justify-self-center  rounded-lg text-md border-none"
-                                        selectedDate={returnDate} setSelectedDate={setReturnDate} placeholder="Return Date" />
-                                    }
+                                
+                                <div className="hidden md:block">
+                                    <PiLineVertical className="inline-block text-xl opacity-10" />
                                 </div>
+                                
+                                <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 border border-primary rounded-md p-1">
+                                    <div className={`w-full ${selectedView === "bus" ? "sm:w-1/2" : "sm:w-full"}`}>
+                                        <DatePickerInput 
+                                            className="input-form flex justify-self-center rounded-lg text-md border-none w-full"
+                                            selectedDate={startDate} setSelectedDate={setStartDate} placeholder="Departure Date" 
+                                        />
+                                    </div>
 
+                                    {selectedView === "bus" && (
+                                        <div className="w-full sm:w-1/2">
+                                            <DatePickerInput
+                                                className="input-form flex justify-self-center rounded-lg text-md border-none w-full"
+                                                selectedDate={returnDate} setSelectedDate={setReturnDate} placeholder="Return Date" 
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-
                         </div>
 
                         {/* search button */}
-
-                        <div className="flex justify-center m-4 p-4">
+                        <div className="flex justify-center m-2 sm:m-4 p-2 sm:p-4">
                             <button 
                                 onClick={handleSearch}
                                 disabled={searching}
-                                className="bg-transparent border border-primary py-3 px-10 rounded-full
-                        hover:bg-primary duration-200 hover:text-white text-primary disabled:opacity-50 disabled:cursor-not-allowed">
-                                <div className="flex gap-3 justify-center items-center">
-                                    <FaSearch className="inline-block text-2xl " />
-                                    <div className="text-lg font-semibold">
+                                className="bg-transparent border border-primary py-2 sm:py-3 px-6 sm:px-10 rounded-full
+                                    hover:bg-primary duration-200 hover:text-white text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <div className="flex gap-2 sm:gap-3 justify-center items-center">
+                                    <FaSearch className="inline-block text-xl sm:text-2xl" />
+                                    <div className="text-base sm:text-lg font-semibold">
                                         {searching ? 'Searching...' : 'Search'}
                                     </div>
                                 </div>
                             </button>
                         </div>
-
                     </div>
                 }
 
                 {showStatus &&
-                    <div>
-                        <div className=' py-4 '>
-                            <div className="flex px-5 py-5 pt-9 bg-white gap-3 items-center p-2 flex-wrap grow shrink  rounded-2xl">
+                    <div className="py-3 px-2 sm:px-4">
+                        <div className="py-2 sm:py-4">
+                            <div className="flex flex-col md:flex-row gap-3 items-center p-2 rounded-2xl">
                                 {!isSwapped ? (
-                                    <div className="flex grow shrink  gap-2  border border-primary transition-all duration-300 rounded-md">
-                                        <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
-                                            placeholder="From" value={fromCityStatus} setValue={setFromCityStatus} />
-                                        <button className="transition-transform duration-300 active:rotate-180"
-                                            onClick={handleSwap}>
+                                    <div className="flex flex-col sm:flex-row w-full grow shrink gap-2 border border-primary transition-all duration-300 rounded-md p-1">
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <AutocompleteInput 
+                                                className="input-form flex transition-all duration-300 rounded-lg text-md border-none w-full"
+                                                placeholder="From" value={fromCityStatus} setValue={setFromCityStatus} 
+                                            />
+                                        </div>
+                                        <button 
+                                            className="transition-transform duration-300 active:rotate-180 mx-auto my-1 sm:mx-1 sm:my-auto"
+                                            onClick={handleSwap}
+                                        >
                                             <LuArrowLeftRight className="inline-block text-xl" />
                                         </button>
-                                        <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
-                                            placeholder="To" value={toCityStatus} setValue={setToCityStatus} />
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <AutocompleteInput 
+                                                className="input-form flex transition-all duration-300 rounded-lg text-md border-none w-full"
+                                                placeholder="To" value={toCityStatus} setValue={setToCityStatus} 
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="flex grow shrink  gap-2  border border-primary transition-all duration-300 rounded-md">
-                                        <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
-                                            placeholder="To" value={toCityStatus} setValue={setToCityStatus} />
-                                        <button className="transition-transform duration-300 active:rotate-180"
-                                            onClick={handleSwap}>
+                                    <div className="flex flex-col sm:flex-row w-full grow shrink gap-2 border border-primary transition-all duration-300 rounded-md p-1">
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <AutocompleteInput 
+                                                className="input-form flex transition-all duration-300 rounded-lg text-md border-none w-full"
+                                                placeholder="To" value={toCityStatus} setValue={setToCityStatus} 
+                                            />
+                                        </div>
+                                        <button 
+                                            className="transition-transform duration-300 active:rotate-180 mx-auto my-1 sm:mx-1 sm:my-auto"
+                                            onClick={handleSwap}
+                                        >
                                             <LuArrowLeftRight className="inline-block text-xl" />
                                         </button>
-                                        <AutocompleteInput className="input-form flex transition-all duration-300 rounded-lg text-md border-none"
-                                            placeholder="From" value={fromCityStatus} setValue={setFromCityStatus} />
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <AutocompleteInput 
+                                                className="input-form flex transition-all duration-300 rounded-lg text-md border-none w-full"
+                                                placeholder="From" value={fromCityStatus} setValue={setFromCityStatus} 
+                                            />
+                                        </div>
                                     </div>
                                 )}
 
-                                <div><PiLineVertical className="inline-block text-xl opacity-10" /></div>
-                                <div className="flex gap-2 border border-primary rounded-md">
+                                <div className="hidden md:block">
+                                    <PiLineVertical className="inline-block text-xl opacity-10" />
+                                </div>
+                                
+                                <div className="w-full md:w-auto md:min-w-[200px] flex gap-2 border border-primary rounded-md p-1">
                                     <DatePickerInput 
-                                    className="input-form flex justify-self-center  rounded-lg text-md border-none"
-                                    selectedDate={startDateStatus} setSelectedDate={setStartDateStatus} placeholder="Date" />
+                                        className="input-form flex justify-self-center rounded-lg text-md border-none w-full"
+                                        selectedDate={startDateStatus} setSelectedDate={setStartDateStatus} placeholder="Date" 
+                                    />
                                 </div>
 
-
-                                <div className="flex justify-center">
-                                    <Link to="/buslist">
-                                        <button className="bg-primary border border-primary py-2 px-10 rounded-full
+                                <div className="flex justify-center w-full md:w-auto mt-4 md:mt-0">
+                                    <Link to="/buslist" className="w-full md:w-auto">
+                                        <button className="w-full md:w-auto bg-primary border border-primary py-2 px-6 sm:px-10 rounded-full
                                                 hover:bg-transparent duration-200 hover:text-primary text-white">
-                                            <div className="flex gap-3 justify-center items-center">
-                                                <FaSearch className="inline-block text-2xl " />
-                                                <div className="text-lg font-semibold"> Search</div>
+                                            <div className="flex gap-2 sm:gap-3 justify-center items-center">
+                                                <FaSearch className="inline-block text-xl sm:text-2xl" />
+                                                <div className="text-base sm:text-lg font-semibold">Search</div>
                                             </div>
                                         </button>
                                     </Link>
                                 </div>
-
-
                             </div>
-
                         </div>
                     </div>
                 }
