@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -7,27 +7,56 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts";
 import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
-
-// Sample data - replace with your actual data
-const yearlyRevenueData = [
-  { name: "2019", revenue: 540000, target: 500000 },
-  { name: "2020", revenue: 480000, target: 550000 },
-  { name: "2021", revenue: 630000, target: 600000 },
-  { name: "2022", revenue: 750000, target: 700000 },
-  { name: "2023", revenue: 860000, target: 800000 },
-  { name: "2024", revenue: 710000, target: 900000, projected: true }, // Current year (projected)
-];
-
-// Calculate year-over-year growth
-const currentYearProjected = yearlyRevenueData[yearlyRevenueData.length - 1].revenue;
-const previousYear = yearlyRevenueData[yearlyRevenueData.length - 2].revenue;
-const growthPercent = ((currentYearProjected - previousYear) / previousYear * 100).toFixed(1);
+import { getYearlyRevenue } from "../../../../services/dashboardService";
 
 const YearwiseRevenueGraph = () => {
+  const [revenueData, setRevenueData] = useState({
+    yearlyData: [],
+    currentYearRevenue: 0,
+    previousYearRevenue: 0,
+    growthPercent: 0,
+    loading: true,
+    error: null
+  });
+
+  useEffect(() => {
+    const fetchYearlyRevenue = async () => {
+      try {
+        setRevenueData(prev => ({ ...prev, loading: true, error: null }));
+        const response = await getYearlyRevenue();
+        
+        if (response.success) {
+          setRevenueData({
+            yearlyData: response.data.yearly_data,
+            currentYearRevenue: response.data.current_year_revenue,
+            previousYearRevenue: response.data.previous_year_revenue,
+            growthPercent: response.data.growth_percent,
+            loading: false,
+            error: null
+          });
+        } else {
+          throw new Error(response.message || 'Failed to fetch yearly revenue data');
+        }
+      } catch (error) {
+        console.error("Error fetching yearly revenue:", error);
+        setRevenueData({
+          yearlyData: [],
+          currentYearRevenue: 0,
+          previousYearRevenue: 0,
+          growthPercent: 0,
+          loading: false,
+          error: 'Failed to load revenue data'
+        });
+      }
+    };
+
+    fetchYearlyRevenue();
+  }, []);
+
+  const { yearlyData, currentYearRevenue, growthPercent, loading, error } = revenueData;
   return (
     <motion.div
       className="w-full p-4 bg-white border border-gray-100 shadow-sm rounded-xl"
@@ -44,12 +73,20 @@ const YearwiseRevenueGraph = () => {
           <div>
             <p className="text-sm font-medium text-gray-500">{new Date().getFullYear()} Projected</p>
             <h3 className="text-xl font-bold text-gray-800">
-              ${(currentYearProjected / 1000000).toFixed(1)}M
-              <span className={`ml-2 text-sm font-medium ${
-                parseFloat(growthPercent) >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {parseFloat(growthPercent) >= 0 ? '+' : ''}{growthPercent}%
-              </span>
+              {loading ? (
+                'Loading...'
+              ) : error ? (
+                'Error'
+              ) : (
+                <>
+                  Rs.{(currentYearRevenue / 1000000).toFixed(1)}M
+                  <span className={`ml-2 text-sm font-medium ${
+                    growthPercent >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {growthPercent >= 0 ? '+' : ''}{growthPercent}%
+                  </span>
+                </>
+              )}
             </h3>
           </div>
         </div>
@@ -59,7 +96,7 @@ const YearwiseRevenueGraph = () => {
       <div className="-mx-2 h-72">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={yearlyRevenueData}
+            data={loading ? [] : yearlyData}
             margin={{
               top: 10,
               right: 10,
@@ -80,7 +117,7 @@ const YearwiseRevenueGraph = () => {
               axisLine={{ stroke: '#E5E7EB' }}
               tickLine={{ stroke: '#E5E7EB' }}
               width={45}
-              tickFormatter={(value) => `$${value / 1000000}M`}
+              tickFormatter={(value) => `Rs.${value / 1000000}M`}
             />
             <Tooltip
               contentStyle={{
@@ -89,21 +126,11 @@ const YearwiseRevenueGraph = () => {
                 borderRadius: "6px",
                 boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
               }}
-              formatter={(value) => [`$${value.toLocaleString()}`, ""]}
+              formatter={(value) => [`Rs.${value.toLocaleString()}`, ""]}
               labelStyle={{ color: "#111827", fontWeight: "500" }}
               itemStyle={{ color: "#374151" }}
             />
-            <ReferenceLine
-              y={yearlyRevenueData[0].target}
-              stroke="#94A3B8"
-              strokeDasharray="3 3"
-              label={{
-                position: 'right',
-                value: 'Target',
-                fill: '#94A3B8',
-                fontSize: 12,
-              }}
-            />
+            {/* Remove ReferenceLine since we don't have target data */}
             <Line 
               type="monotone" 
               dataKey="revenue" 

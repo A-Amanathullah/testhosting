@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -10,42 +10,53 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 import { DollarSign } from "lucide-react";
-
-// Generate last 30 days data
-const generateDailyRevenueData = () => {
-  const data = [];
-  const today = new Date();
-  
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(today.getDate() - i);
-    
-    // Generate random but realistic revenue data
-    // Base value plus random variation with weekend boost
-    const dayOfWeek = date.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    const baseValue = isWeekend ? 3000 : 2000;
-    const variance = Math.random() * 1000;
-    
-    data.push({
-      name: date.getDate().toString(),
-      revenue: Math.floor(baseValue + variance),
-      // Add the full date for tooltip
-      fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    });
-  }
-  
-  return data;
-};
-
-const dailyRevenueData = generateDailyRevenueData();
-
-// Calculate today's revenue and comparison with yesterday
-const todayRevenue = dailyRevenueData[dailyRevenueData.length - 1].revenue;
-const yesterdayRevenue = dailyRevenueData[dailyRevenueData.length - 2].revenue;
-const changePercent = ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100).toFixed(1);
+import { getDailyRevenue } from "../../../../services/dashboardService";
 
 const DaywiseRevenueGraph = () => {
+  const [revenueData, setRevenueData] = useState({
+    dailyData: [],
+    todayRevenue: 0,
+    yesterdayRevenue: 0,
+    changePercent: 0,
+    loading: true,
+    error: null
+  });
+
+  useEffect(() => {
+    const fetchDailyRevenue = async () => {
+      try {
+        setRevenueData(prev => ({ ...prev, loading: true, error: null }));
+        const response = await getDailyRevenue();
+        
+        if (response.success) {
+          setRevenueData({
+            dailyData: response.data.daily_data,
+            todayRevenue: response.data.today_revenue,
+            yesterdayRevenue: response.data.yesterday_revenue,
+            changePercent: response.data.change_percent,
+            loading: false,
+            error: null
+          });
+        } else {
+          throw new Error(response.message || 'Failed to fetch daily revenue data');
+        }
+      } catch (error) {
+        console.error("Error fetching daily revenue:", error);
+        setRevenueData({
+          dailyData: [],
+          todayRevenue: 0,
+          yesterdayRevenue: 0,
+          changePercent: 0,
+          loading: false,
+          error: 'Failed to load revenue data'
+        });
+      }
+    };
+
+    fetchDailyRevenue();
+  }, []);
+
+  const { dailyData, todayRevenue, changePercent, loading, error } = revenueData;
   return (
     <motion.div
       className="w-full p-4 bg-white border border-gray-100 shadow-sm rounded-xl"
@@ -62,12 +73,20 @@ const DaywiseRevenueGraph = () => {
           <div>
             <p className="text-sm font-medium text-gray-500">Today's Revenue</p>
             <h3 className="text-xl font-bold text-gray-800">
-              ${todayRevenue.toLocaleString()}
-              <span className={`ml-2 text-sm font-medium ${
-                parseFloat(changePercent) >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {parseFloat(changePercent) >= 0 ? '+' : ''}{changePercent}%
-              </span>
+              {loading ? (
+                'Loading...'
+              ) : error ? (
+                'Error'
+              ) : (
+                <>
+                  Rs.{todayRevenue.toLocaleString()}
+                  <span className={`ml-2 text-sm font-medium ${
+                    changePercent >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {changePercent >= 0 ? '+' : ''}{changePercent}%
+                  </span>
+                </>
+              )}
             </h3>
           </div>
         </div>
@@ -77,7 +96,7 @@ const DaywiseRevenueGraph = () => {
       <div className="-mx-2 h-72">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
-            data={dailyRevenueData}
+            data={loading ? [] : dailyData}
             margin={{
               top: 10,
               right: 10,
@@ -99,7 +118,7 @@ const DaywiseRevenueGraph = () => {
               axisLine={{ stroke: '#E5E7EB' }}
               tickLine={{ stroke: '#E5E7EB' }}
               width={45}
-              tickFormatter={(value) => `$${value / 1000}K`}
+              tickFormatter={(value) => `Rs.${value / 1000}K`}
             />
             <Tooltip
               contentStyle={{
@@ -108,10 +127,10 @@ const DaywiseRevenueGraph = () => {
                 borderRadius: "6px",
                 boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
               }}
-              formatter={(value) => [`$${value.toLocaleString()}`, "Revenue"]}
+              formatter={(value) => [`Rs.${value.toLocaleString()}`, "Revenue"]}
               labelFormatter={(label, items) => {
                 const dataItem = items[0]?.payload;
-                return dataItem ? dataItem.fullDate : label;
+                return dataItem ? dataItem.full_date : label;
               }}
               labelStyle={{ color: "#111827", fontWeight: "500" }}
               itemStyle={{ color: "#374151" }}

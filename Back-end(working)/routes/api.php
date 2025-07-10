@@ -8,7 +8,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BusTripController;
 use App\Http\Controllers\GoogleMapsController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\StaffController;
+// use App\Http\Controllers\StaffController;
 use App\Http\Controllers\BusRouteController;
 use App\Http\Controllers\SmsTemplateController;
 use App\Http\Controllers\LoyaltyCardController;
@@ -20,6 +20,7 @@ use App\Http\Controllers\GuestBookingController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\BookingStatsController;
 use App\Http\Controllers\SriLankanLocationController;
+use App\Http\Controllers\DashboardStatsController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -55,7 +56,7 @@ Route::delete('/bus-reg/{id}', [BusRegController::class, 'destroy']);
 Route::get('/directions', [GoogleMapsController::class, 'getDirections']);
 Route::patch('/bookings/update-status', [BookingController::class, 'updateStatus']);
 Route::apiResource('bookings', BookingController::class);
-Route::apiResource('staffs', StaffController::class);
+// Route::apiResource('staffs', StaffController::class);
 Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 Route::post('/user-details', [AuthController::class, 'storeUserDetails'])->middleware('auth:sanctum');
@@ -97,6 +98,20 @@ Route::get('/booking-stats/monthly', [BookingStatsController::class, 'getMonthly
 Route::get('/booking-stats/yearly', [BookingStatsController::class, 'getYearlyStats']);
 Route::get('/booking-stats/daily', [BookingStatsController::class, 'getDailyStats']);
 Route::get('/booking-stats/summary', [BookingStatsController::class, 'getBookingSummary']);
+
+// Dashboard stats routes (protected by auth middleware)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/dashboard/stats/bookings', [DashboardStatsController::class, 'getTodayBookings']);
+    Route::get('/dashboard/stats/cancellations', [DashboardStatsController::class, 'getTodayCancellations']);
+    Route::get('/dashboard/stats/agents', [DashboardStatsController::class, 'getAgentBookingStats']);
+    Route::get('/dashboard/stats/staff', [DashboardStatsController::class, 'getStaffStats']);
+    Route::get('/dashboard/stats/all', [DashboardStatsController::class, 'getAllStats']);
+    
+    // Revenue statistics routes
+    Route::get('/dashboard/revenue/monthly', [DashboardStatsController::class, 'getMonthlyRevenue']);
+    Route::get('/dashboard/revenue/daily', [DashboardStatsController::class, 'getDailyRevenue']);
+    Route::get('/dashboard/revenue/yearly', [DashboardStatsController::class, 'getYearlyRevenue']);
+});
 
 // Fallback for unknown API routes to return JSON 404
 Route::fallback(function() {
