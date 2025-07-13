@@ -1,7 +1,7 @@
-import axios from "axios";
+import axios, { getCsrfToken } from "../utils/axiosConfig";
 import { getToken } from "../utils/auth";
 
-const API_URL = "http://localhost:8000/api";
+const API_URL = "/api";
 
 // Only set up the interceptor once
 let interceptorSet = false;
@@ -22,6 +22,10 @@ export function setupAxiosInterceptors(setUser, navigate) {
 }
 
 export const loginUser = async (email, password) => {
+  // Get CSRF token first
+  await getCsrfToken();
+  
+  // Then make the login request
   const response = await axios.post(`${API_URL}/login`, {
     email,
     password,
@@ -39,6 +43,9 @@ export const fetchUser = async () => {
 };
 
 export const signupUser = async (name, email, password, role) => {
+  // Get CSRF token first
+  await getCsrfToken();
+  
   const response = await axios.post(`${API_URL}/signup`, {
     name,
     email,

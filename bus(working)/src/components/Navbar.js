@@ -2,7 +2,7 @@ import React from "react";
 import ResponsiveMenu from "./Other/ResponsiveMenu";
 import UserProfileDropdown from "./UserProfileDropdown";
 import logo from "../assets/Side.png"
-import { FaHome } from "react-icons/fa";
+import { FaHome, FaUser } from "react-icons/fa";
 import { BsFillGrid1X2Fill } from "react-icons/bs";
 import { IoIosPersonAdd } from "react-icons/io";
 import { TiThMenu } from "react-icons/ti";
@@ -28,11 +28,8 @@ function Navbar() {
     const hasAnyAdminPermissions = useCallback(() => {
         if (!permissions || !user) return false;
         
-        // Check if user has any permissions at all (indicating admin access)
-        return Object.keys(permissions).length > 0 && 
-               Object.values(permissions).some(modulePermissions => 
-                   Object.values(modulePermissions).some(hasPermission => hasPermission)
-               );
+        // Simple check: if the permissions object has any keys at all, user has permissions
+        return Object.keys(permissions).length > 0;
     }, [permissions, user]);
 
     useEffect(() => {
@@ -82,11 +79,18 @@ function Navbar() {
                             <FaHome className="" />
                         </button>
                         {user && hasAnyAdminPermissions() ? (
-                            <Link to="/admin" onClick={handleMenuClick}>
-                                <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200">
-                                    <BsFillGrid1X2Fill className="p-0.5" />
-                                </button>
-                            </Link>
+                            <div className="flex items-center">
+                                <Link to="/admin" onClick={handleMenuClick}>
+                                    <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mr-1" title="Admin Dashboard">
+                                        <BsFillGrid1X2Fill className="p-0.5" />
+                                    </button>
+                                </Link>
+                                <Link to="/passengerdash" onClick={handleMenuClick}>
+                                    <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200" title="Passenger Dashboard">
+                                        <FaUser className="p-0.5" />
+                                    </button>
+                                </Link>
+                            </div>
                         ) : (
                             <Link to="/passengerdash" onClick={handleMenuClick}>
                                 <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200">

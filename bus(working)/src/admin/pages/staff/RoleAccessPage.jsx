@@ -62,10 +62,6 @@ const modules = [
 		name: 'SMS Template',
 		actions: ['view', 'add', 'edit', 'delete'],
 	},
-	{
-		name: 'Profile',
-		actions: ['view', 'edit'],
-	},
 ];
 
 // Generate initial permissions object

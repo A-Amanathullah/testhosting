@@ -5,16 +5,27 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\BusTrip;
 use App\Models\BusRoute;
+use App\Models\BusRegister;
 use Carbon\Carbon;
 
 class SampleBusTripSeeder extends Seeder
 {
     public function run(): void
     {
+        // Get routes
         $route48 = BusRoute::where('route_code', 'R48')->first();
         $route102 = BusRoute::where('route_code', 'R102')->first();
         $route1 = BusRoute::where('route_code', 'R1')->first();
         $route99 = BusRoute::where('route_code', 'R99')->first();
+
+        // Get available buses from the database
+        $buses = BusRegister::pluck('id')->toArray();
+        
+        // Check if we have enough buses
+        if (count($buses) < 5) {
+            $this->command->warn('Not enough buses in the database. Make sure BusRegSeeder has been run.');
+            return;
+        }
 
         $today = Carbon::today(); // 2025-07-08
         $tomorrow = Carbon::tomorrow(); // 2025-07-09
@@ -26,7 +37,7 @@ class SampleBusTripSeeder extends Seeder
         $sampleTrips = [
             // Route 48: Batticaloa to Colombo - July 9th, 2025
             [
-                'bus_id' => 4,
+                'bus_id' => $buses[0] ?? null,
                 'bus_no' => 'R48-001',
                 'bus_route_id' => $route48?->id,
                 'driver_name' => 'Mohamed Anwar',
@@ -46,7 +57,7 @@ class SampleBusTripSeeder extends Seeder
             
             // Route 48: Batticaloa to Colombo - July 9th, 2025 (Second trip)
             [
-                'bus_id' => 1,
+                'bus_id' => $buses[1] ?? null,
                 'bus_no' => 'R48-002',
                 'bus_route_id' => $route48?->id,
                 'driver_name' => 'Kamal Perera',
@@ -66,7 +77,7 @@ class SampleBusTripSeeder extends Seeder
 
             // Route 102: Colombo to Kandy - July 8th, 2025 (different date)
             [
-                'bus_id' => 3,
+                'bus_id' => $buses[2] ?? null,
                 'bus_no' => 'R102-001',
                 'bus_route_id' => $route102?->id,
                 'driver_name' => 'Sunil Fernando',
@@ -86,7 +97,7 @@ class SampleBusTripSeeder extends Seeder
 
             // Route 1: Colombo to Galle - July 8th, 2025 (different date)
             [
-                'bus_id' => 2,
+                'bus_id' => $buses[3] ?? null,
                 'bus_no' => 'R1-001',
                 'bus_route_id' => $route1?->id,
                 'driver_name' => 'Pradeep Jayawardana',
@@ -106,7 +117,7 @@ class SampleBusTripSeeder extends Seeder
 
             // Route 99: Colombo to Anuradhapura - July 10th, 2025 (different date)
             [
-                'bus_id' => 6,
+                'bus_id' => $buses[4] ?? null,
                 'bus_no' => 'R99-001',
                 'bus_route_id' => $route99?->id,
                 'driver_name' => 'Ajith Bandara',

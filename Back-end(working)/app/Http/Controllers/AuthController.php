@@ -37,7 +37,7 @@ class AuthController extends Controller
         // Automatically create loyalty membership for regular users (not agents)
         if ($validatedData['role'] === 'user') {
             // Create loyalty membership
-            \App\Models\LoyaltyMember::createForUser($user->id);
+            \App\Models\LoyaltyMember::createForUser($user->getAttribute('id'));
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;

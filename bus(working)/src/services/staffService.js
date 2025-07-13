@@ -1,7 +1,7 @@
-import axios from "axios";
+import axios from "../utils/axiosConfig";
 import { signupUser } from "./authService";
 
-const API_URL = "http://localhost:8000/api";
+const API_URL = "/api";
 
 // Create staff with user registration
 export const createStaffWithUser = async (staffData) => {

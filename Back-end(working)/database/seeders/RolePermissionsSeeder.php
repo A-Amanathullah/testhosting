@@ -37,7 +37,6 @@ class RolePermissionsSeeder extends Seeder
             ]],
             ['name' => 'User Management', 'actions' => ['view', 'add', 'edit', 'delete']],
             ['name' => 'SMS Template', 'actions' => ['view', 'add', 'edit', 'delete']],
-            ['name' => 'Profile', 'actions' => ['view', 'edit']],
         ];
 
         $roles = ['Superadmin', 'Admin', 'Manager', 'Storekeeper', 'Data Entry Operator'];

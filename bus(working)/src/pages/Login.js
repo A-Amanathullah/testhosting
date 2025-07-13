@@ -21,13 +21,8 @@ const Login = () => {
 
   // Helper function to check if user has any admin permissions
   const hasAnyAdminPermissions = useCallback((userPermissions = permissions) => {
-    if (!userPermissions) return false;
-    
-    // Check if user has any permissions at all (indicating admin access)
-    return Object.keys(userPermissions).length > 0 && 
-           Object.values(userPermissions).some(modulePermissions => 
-               Object.values(modulePermissions).some(hasPermission => hasPermission)
-           );
+    // Simple check: if the permissions object has any keys at all, user has permissions
+    return userPermissions && Object.keys(userPermissions).length > 0;
   }, [permissions]);
 
   useEffect(() => {
@@ -51,9 +46,18 @@ const Login = () => {
           } else {
             // Load permissions for the user's role
             const userPermissions = await loadPermissions(userData.role);
+            
+            // Debug logging
+            console.log("USER ROLE:", userData.role);
+            console.log("PERMISSIONS OBJECT:", userPermissions);
+            console.log("HAS PERMISSIONS:", hasAnyAdminPermissions(userPermissions));
+            
+            // Simply check if the user has any permissions
             if (hasAnyAdminPermissions(userPermissions)) {
+              console.log("→ Redirecting to admin panel");
               navigate("/admin", { replace: true });
             } else {
+              console.log("→ Redirecting to regular dashboard");
               navigate(redirectTo, { replace: true });
             }
           }
@@ -86,9 +90,18 @@ const Login = () => {
       } else {
         // Load permissions for the user's role
         const userPermissions = await loadPermissions(userData.role);
+        
+        // Debug logging
+        console.log("USER ROLE:", userData.role);
+        console.log("PERMISSIONS OBJECT:", userPermissions);
+        console.log("HAS PERMISSIONS:", hasAnyAdminPermissions(userPermissions));
+        
+        // Simply check if the user has any permissions
         if (hasAnyAdminPermissions(userPermissions)) {
+          console.log("→ Redirecting to admin panel");
           navigate("/admin", { replace: true });
         } else {
+          console.log("→ Redirecting to regular dashboard");
           // Prevent redirecting back to /login
           const redirectTo = from === "/login" ? "/" : from;
           navigate(redirectTo, { replace: true });

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Booking;
 use App\Models\GuestBooking;
 use App\Models\Cancellation;
+use App\Models\BusTrip;
 use Carbon\Carbon;
 
 class DashboardTestDataSeeder extends Seeder
@@ -16,6 +17,21 @@ class DashboardTestDataSeeder extends Seeder
      */
     public function run(): void
     {
+        // Check if we have bus trips available
+        $busTrips = BusTrip::all();
+        if ($busTrips->isEmpty()) {
+            $this->command->error('No bus trips found in the database. Please run the BusRouteSeeder and SampleBusTripSeeder first.');
+            return;
+        }
+        
+        // Get random bus trip for bookings
+        $randomBusTrips = $busTrips->random(min(3, $busTrips->count()));
+        
+        // Prepare bus trips for different booking types
+        $busTrip1 = $randomBusTrips[0];
+        $busTrip2 = isset($randomBusTrips[1]) ? $randomBusTrips[1] : $randomBusTrips[0];
+        $busTrip3 = isset($randomBusTrips[2]) ? $randomBusTrips[2] : $randomBusTrips[0];
+        
         // Create some sample users with different roles
         $admin = User::firstOrCreate(
             ['email' => 'admin@test.com'],
@@ -78,41 +94,42 @@ class DashboardTestDataSeeder extends Seeder
         for ($i = 1; $i <= 8; $i++) {
             Booking::create([
                 'user_id' => $user->id,
-                'bus_id' => 1,
-                'bus_no' => 'BUS001',
+                'bus_id' => $busTrip1->bus_id,
+                'bus_no' => $busTrip1->bus_no,
                 'serial_no' => 'S' . str_pad($i, 3, '0', STR_PAD_LEFT),
                 'name' => 'Customer ' . $i,
                 'reserved_tickets' => rand(1, 4),
-                'seat_no' => 'A' . $i,
-                'pickup' => 'Colombo',
-                'drop' => 'Kandy',
+                'seat_no' => 'S' . $i,
+                'pickup' => $busTrip1->start_point,
+                'drop' => $busTrip1->end_point,
                 'role' => 'user',
                 'payment_status' => 'completed',
                 'status' => 'confirmed',
-                'departure_date' => $today->addDays(rand(1, 7)),
+                'departure_date' => $busTrip1->departure_date,
                 'booked_date' => $today,
-                'price' => rand(500, 2000),
+                'price' => $busTrip1->price,
             ]);
         }
 
         // Agent bookings for today
+        
         for ($i = 1; $i <= 12; $i++) {
             Booking::create([
                 'user_id' => $agent1->id,
-                'bus_id' => 1,
-                'bus_no' => 'BUS002',
+                'bus_id' => $busTrip3->bus_id,
+                'bus_no' => $busTrip3->bus_no,
                 'serial_no' => 'A' . str_pad($i, 3, '0', STR_PAD_LEFT),
                 'name' => 'Agent Customer ' . $i,
                 'reserved_tickets' => rand(1, 6),
-                'seat_no' => 'B' . $i,
-                'pickup' => 'Galle',
-                'drop' => 'Colombo',
+                'seat_no' => 'S' . ($i + 20),
+                'pickup' => $busTrip3->start_point,
+                'drop' => $busTrip3->end_point,
                 'role' => 'agent',
                 'payment_status' => 'completed',
                 'status' => 'confirmed',
                 'departure_date' => $today->addDays(rand(1, 7)),
                 'booked_date' => $today,
-                'price' => rand(800, 3000),
+                'price' => $busTrip3->price,
             ]);
         }
 
@@ -122,18 +139,18 @@ class DashboardTestDataSeeder extends Seeder
                 'name' => 'Guest Customer ' . $i,
                 'phone' => '077123456' . $i,
                 'email' => 'guest' . $i . '@test.com',
-                'bus_id' => 1,
-                'bus_no' => 'BUS003',
+                'bus_id' => $busTrip1->bus_id,
+                'bus_no' => $busTrip1->bus_no,
                 'serial_no' => 'G' . str_pad($i, 3, '0', STR_PAD_LEFT),
                 'reserved_tickets' => rand(1, 3),
-                'seat_no' => 'C' . $i,
-                'pickup' => 'Negombo',
-                'drop' => 'Kandy',
+                'seat_no' => 'S' . ($i + 35),
+                'pickup' => $busTrip1->start_point,
+                'drop' => $busTrip1->end_point,
                 'departure_date' => $today->addDays(rand(1, 5)),
                 'status' => 'confirmed',
                 'payment_status' => 'completed',
                 'agent_id' => $agent2->id,
-                'price' => rand(600, 2500),
+                'price' => $busTrip1->price,
                 'created_at' => $today,
                 'updated_at' => $today,
             ]);
@@ -145,20 +162,20 @@ class DashboardTestDataSeeder extends Seeder
         for ($i = 1; $i <= 5; $i++) {
             Booking::create([
                 'user_id' => $user->id,
-                'bus_id' => 1,
-                'bus_no' => 'BUS001',
+                'bus_id' => $busTrip2->bus_id,
+                'bus_no' => $busTrip2->bus_no,
                 'serial_no' => 'Y' . str_pad($i, 3, '0', STR_PAD_LEFT),
                 'name' => 'Yesterday Customer ' . $i,
                 'reserved_tickets' => rand(1, 4),
-                'seat_no' => 'D' . $i,
-                'pickup' => 'Colombo',
-                'drop' => 'Galle',
+                'seat_no' => 'S' . ($i + 15),
+                'pickup' => $busTrip2->start_point,
+                'drop' => $busTrip2->end_point,
                 'role' => 'user',
                 'payment_status' => 'completed',
                 'status' => 'confirmed',
                 'departure_date' => $yesterday->addDays(rand(1, 7)),
                 'booked_date' => $yesterday,
-                'price' => rand(500, 2000),
+                'price' => $busTrip2->price,
             ]);
         }
 
@@ -166,24 +183,23 @@ class DashboardTestDataSeeder extends Seeder
         for ($i = 1; $i <= 3; $i++) {
             Cancellation::create([
                 'user_id' => $user->id,
-                'bus_id' => 1,
-                'bus_no' => 'BUS001',
+                'bus_id' => $busTrip2->bus_id,
+                'bus_no' => $busTrip2->bus_no,
                 'serial_no' => 'C' . str_pad($i, 3, '0', STR_PAD_LEFT),
                 'name' => 'Cancelled Customer ' . $i,
                 'phone' => '077999888' . $i,
                 'email' => 'cancel' . $i . '@test.com',
                 'reserved_tickets' => rand(1, 2),
-                'seat_no' => 'E' . $i,
-                'pickup' => 'Colombo',
-                'drop' => 'Kandy',
+                'seat_no' => 'S' . ($i + 40),
+                'pickup' => $busTrip2->start_point,
+                'drop' => $busTrip2->end_point,
                 'role' => 'user',
                 'payment_status' => 'refunded',
                 'status' => 'cancelled',
-                'booking_type' => 'regular',
                 'departure_date' => $today->addDays(rand(1, 5)),
                 'booked_date' => $today->subDays(rand(1, 3)),
                 'reason' => 'Customer request',
-                'price' => rand(500, 1500),
+                'price' => $busTrip2->price,
                 'created_at' => $today,
                 'updated_at' => $today,
             ]);
@@ -193,24 +209,23 @@ class DashboardTestDataSeeder extends Seeder
         for ($i = 1; $i <= 5; $i++) {
             Cancellation::create([
                 'user_id' => $user->id,
-                'bus_id' => 1,
-                'bus_no' => 'BUS001',
+                'bus_id' => $busTrip3->bus_id,
+                'bus_no' => $busTrip3->bus_no,
                 'serial_no' => 'YC' . str_pad($i, 3, '0', STR_PAD_LEFT),
                 'name' => 'Yesterday Cancelled ' . $i,
                 'phone' => '077888777' . $i,
                 'email' => 'ycancel' . $i . '@test.com',
                 'reserved_tickets' => rand(1, 2),
-                'seat_no' => 'F' . $i,
-                'pickup' => 'Galle',
-                'drop' => 'Colombo',
+                'seat_no' => 'S' . ($i + 45),
+                'pickup' => $busTrip3->start_point,
+                'drop' => $busTrip3->end_point,
                 'role' => 'user',
                 'payment_status' => 'refunded',
                 'status' => 'cancelled',
-                'booking_type' => 'regular',
                 'departure_date' => $yesterday->addDays(rand(1, 5)),
                 'booked_date' => $yesterday->subDays(rand(1, 3)),
                 'reason' => 'Weather conditions',
-                'price' => rand(500, 1500),
+                'price' => $busTrip3->price,
                 'created_at' => $yesterday,
                 'updated_at' => $yesterday,
             ]);

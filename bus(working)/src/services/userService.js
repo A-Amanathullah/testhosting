@@ -1,7 +1,7 @@
-import axios from "axios";
+import axios from "../utils/axiosConfig";
 import { getToken } from "../utils/auth";
 
-const API_URL = "http://localhost:8000/api";
+const API_URL = "/api";
 
 // Helper for error handling
 // Helper for error handling (used in the service functions)
