@@ -62,6 +62,8 @@ class AuthController extends Controller
             }
 
             $user = Auth::user();
+            // Delete all previous tokens for this user (enforce single session)
+            $user->tokens()->delete();
             $token = $user->createToken('auth_token')->plainTextToken;
             // Store the new token in current_token (invalidate previous sessions)
             $user->current_token = $token;

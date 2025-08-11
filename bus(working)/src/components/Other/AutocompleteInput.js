@@ -1,55 +1,64 @@
 import React, { useState, useRef, useEffect } from "react";
 import locationService from "../../services/locationService";
+import { createPortal } from "react-dom";
 
 const AutocompleteInput = ({ placeholder, value, setValue, className = '' }) => {
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [allLocations, setAllLocations] = useState([]);
     const inputRef = useRef();
 
-    // Load major stops on component mount
+    // Load all locations on component mount
     useEffect(() => {
-        const loadMajorStops = async () => {
+        const loadAllLocations = async () => {
+            setLoading(true);
             try {
-                const majorStops = await locationService.getMajorStops();
-                // Store major stops for quick access
-                window.majorStops = majorStops;
+                // You can replace getAllLocations with your actual service method
+                const locations = await locationService.getAllLocations();
+                setAllLocations(locations);
+                setSuggestions(locations);
             } catch (error) {
-                console.error('Error loading major stops:', error);
+                console.error('Error loading locations:', error);
+                setAllLocations([]);
+                setSuggestions([]);
+            } finally {
+                setLoading(false);
             }
         };
-        loadMajorStops();
+        loadAllLocations();
     }, []);
 
-    const searchLocations = async (query) => {
-        if (!query || query.trim() === "") {
-            // Show major stops when no query
-            setSuggestions(window.majorStops || []);
+    const filterLocations = (query) => {
+        const normalizedQuery = (query || "").trim().toLowerCase();
+        if (!normalizedQuery) {
+            setSuggestions(allLocations);
             return;
         }
-
-        setLoading(true);
-        try {
-            const results = await locationService.searchLocations(query, 15);
-            setSuggestions(results);
-        } catch (error) {
-            console.error('Error searching locations:', error);
-            setSuggestions([]);
-        } finally {
-            setLoading(false);
-        }
+        const filtered = allLocations.filter(loc => {
+            if (typeof loc === 'string') {
+                return loc.toLowerCase().includes(normalizedQuery);
+            }
+            // Check all relevant fields for a match
+            const name = (loc.name || "").toLowerCase();
+            const district = (loc.district || "").toLowerCase();
+            const province = (loc.province || "").toLowerCase();
+            const type = (loc.type || "").toLowerCase();
+            return (
+                name.includes(normalizedQuery) ||
+                district.includes(normalizedQuery) ||
+                province.includes(normalizedQuery) ||
+                type.includes(normalizedQuery)
+            );
+        });
+        setSuggestions(filtered);
     };
 
     const handleChange = (e) => {
         const userInput = e.target.value;
         setValue(userInput);
         setShowSuggestions(true);
-        
-        // Debounce the search
-        clearTimeout(window.searchTimeout);
-        window.searchTimeout = setTimeout(() => {
-            searchLocations(userInput);
-        }, 300);
+        filterLocations(userInput);
     };
 
     const handleSelect = (location) => {
@@ -62,11 +71,7 @@ const AutocompleteInput = ({ placeholder, value, setValue, className = '' }) => 
 
     const handleFocus = () => {
         setShowSuggestions(true);
-        if (value.trim() === "") {
-            setSuggestions(window.majorStops || []);
-        } else {
-            searchLocations(value);
-        }
+        filterLocations(value);
     };
 
     const handleBlur = () => {
@@ -87,6 +92,21 @@ const AutocompleteInput = ({ placeholder, value, setValue, className = '' }) => 
         );
     };
 
+    // Calculate dropdown position for portal
+    const [dropdownStyle, setDropdownStyle] = useState({});
+    useEffect(() => {
+        if (showSuggestions && inputRef.current) {
+            const rect = inputRef.current.getBoundingClientRect();
+            setDropdownStyle({
+                position: "absolute",
+                left: rect.left + window.scrollX,
+                top: rect.bottom + window.scrollY,
+                width: rect.width,
+                zIndex: 9999
+            });
+        }
+    }, [showSuggestions]);
+
     return (
         <div className="relative w-full">
             <input
@@ -99,8 +119,8 @@ const AutocompleteInput = ({ placeholder, value, setValue, className = '' }) => 
                 onFocus={handleFocus}
                 onBlur={handleBlur}
             />
-            {showSuggestions && (
-                <div className="absolute z-10 bg-white border border-gray-300 w-full rounded-md shadow-md mt-1 max-h-60 overflow-y-auto">
+            {showSuggestions && createPortal(
+                <div style={dropdownStyle} className="bg-white border border-gray-300 rounded-md shadow-md mt-1 max-h-60 overflow-y-auto">
                     {loading ? (
                         <div className="px-4 py-2 text-gray-500 text-center">
                             Searching...
@@ -120,7 +140,8 @@ const AutocompleteInput = ({ placeholder, value, setValue, className = '' }) => 
                             No locations found
                         </div>
                     )}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
