@@ -37,6 +37,8 @@ RS-Express Bus Booking System is a comprehensive online platform for booking bus
 - **Database**: MySQL
 - **ORM**: Eloquent
 
+<div style="page-break-before: always;"></div>
+
 ### Frontend:
 - **Framework**: React 18
 - **State Management**: Context API
@@ -77,6 +79,8 @@ The RS-Express Bus Booking System follows a client-server architecture with a RE
 - **Database**: MySQL storing application data
 - **Authentication**: Token-based authentication using Laravel Sanctum
 
+<div style="page-break-before: always;"></div>
+
 ## Backend Structure
 
 The backend follows Laravel's MVC architecture with additional service layers.
@@ -113,6 +117,8 @@ The backend uses Laravel Sanctum for authentication:
 4. Client stores token and uses it for subsequent API requests
 5. Sanctum middleware validates the token for protected routes
 
+<div style="page-break-before: always;"></div>
+
 ## Frontend Structure
 
 The frontend is a React SPA with multiple modules.
@@ -126,6 +132,7 @@ The frontend is a React SPA with multiple modules.
 - `src/services/`: API service functions
 - `src/utils/`: Utility functions
 - `src/assets/`: Static assets like images
+
 
 ### Key Components:
 
@@ -151,6 +158,8 @@ The frontend is a React SPA with multiple modules.
 4. User data is fetched and stored in AuthContext
 5. Permissions are loaded based on user role
 6. User is redirected to appropriate dashboard
+
+<div style="page-break-before: always;"></div>
 
 ## Database Schema
 
@@ -187,6 +196,8 @@ The frontend is a React SPA with multiple modules.
 - BusRoutes have many BusTrips (one-to-many)
 - Users can have one LoyaltyMember record (one-to-one)
 
+<div style="page-break-before: always;"></div>
+
 ## Authentication & Authorization
 
 ### Authentication:
@@ -201,6 +212,8 @@ The frontend is a React SPA with multiple modules.
 - Permissions are loaded upon login and stored in context
 - Admin panel access is restricted based on permissions
 - UI elements are conditionally rendered based on permissions
+
+
 
 ### Permission Structure:
 Permissions are organized by modules, with each module having specific actions:
@@ -217,6 +230,8 @@ Permissions are organized by modules, with each module having specific actions:
   }
 }
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## Key Features
 
@@ -256,6 +271,8 @@ Permissions are organized by modules, with each module having specific actions:
 - Special discounts for loyalty members
 - Membership tiers with different benefits
 
+<div style="page-break-before: always;"></div>
+
 ## API Endpoints
 
 ### Authentication:
@@ -291,6 +308,8 @@ Permissions are organized by modules, with each module having specific actions:
 - `PUT /api/trips/{id}`: Update trip
 - `DELETE /api/trips/{id}`: Delete trip
 
+<div style="page-break-before: always;"></div>
+
 ### Bookings:
 - `GET /api/bookings`: List all bookings
 - `POST /api/bookings`: Create new booking
@@ -300,6 +319,7 @@ Permissions are organized by modules, with each module having specific actions:
 
 ### Permissions:
 - `GET /api/role-permissions/{role}`: Get permissions for a role
+
 
 ## Component Hierarchy
 
@@ -337,6 +357,7 @@ App
     ├── FormComponents
     └── DataTables
 ```
+<div style="page-break-before: always;"></div>
 
 ### Key Component Interactions:
 
@@ -351,6 +372,7 @@ App
 
 4. **User Management Flow**:
    - Admin panel → User listing → User creation/editing → Update database
+
 
 ## Workflow Diagrams
 
@@ -370,6 +392,8 @@ App
 4. Admin can manage buses, routes, bookings, and users
 5. Changes are saved to the database
 6. System logs administrative actions
+
+<div style="page-break-before: always;"></div>
 
 ## Deployment Guide
 

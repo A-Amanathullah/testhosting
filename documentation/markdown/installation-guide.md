@@ -31,6 +31,8 @@ cd rs-express/Back-end(working)
 composer install --no-dev --optimize-autoloader
 ```
 
+<div style="page-break-before: always;"></div>
+
 #### 3. Environment Configuration
 ```bash
 cp .env.example .env
@@ -77,6 +79,8 @@ GRANT ALL ON rs_express.* TO 'your_db_username'@'localhost' IDENTIFIED BY 'your_
 FLUSH PRIVILEGES;
 ```
 
+<div style="page-break-before: always;"></div>
+
 #### 6. Run Database Migrations and Seed Data
 ```bash
 php artisan migrate --seed
@@ -117,6 +121,8 @@ npm install
 npm run build
 ```
 
+<div style="page-break-before: always;"></div>
+
 ## Web Server Configuration
 
 ### Apache Configuration
@@ -145,6 +151,8 @@ Enable the virtual host and restart Apache:
 a2ensite rs-express.conf
 systemctl restart apache2
 ```
+
+<div style="page-break-before: always;"></div>
 
 ### Nginx Configuration
 
@@ -190,6 +198,8 @@ nginx -t
 systemctl restart nginx
 ```
 
+<div style="page-break-before: always;"></div>
+
 ### Frontend Deployment
 
 #### Option 1: Serve from the same domain (subfolder)
@@ -223,6 +233,8 @@ server {
     }
 }
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## SSL Configuration (Recommended)
 
@@ -268,6 +280,8 @@ exit
 2. Access the frontend at: `https://your-domain.com` (or the configured subdomain)
 3. Log in with the admin user created above
 
+<div style="page-break-before: always;"></div>
+
 ## Troubleshooting
 
 ### Common Issues
@@ -307,11 +321,14 @@ exit
    php artisan config:clear
    php artisan view:clear
    ```
+<div style="page-break-before: always;"></div>
 
 3. Database backups:
    ```bash
    mysqldump -u username -p rs_express > backup_$(date +%Y%m%d).sql
    ```
+
+
 
 ### Automatic Backups (Optional)
 Set up a cron job for regular backups:
@@ -344,6 +361,8 @@ npm install
 npm run build
 # Copy the build files to their deployment location
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## Security Recommendations
 

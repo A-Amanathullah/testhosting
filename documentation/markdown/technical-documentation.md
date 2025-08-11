@@ -80,6 +80,8 @@
 - `SampleBusTripSeeder.php` - Creates sample bus trips
 - `DashboardTestDataSeeder.php` - Creates test data for dashboard
 
+<div style="page-break-before: always;"></div>
+
 ##### Route Files (`routes/`)
 - `api.php` - API endpoints
 - `admin_menu_api.php` - Admin panel API routes
@@ -114,6 +116,8 @@
 - `SignUp.js` - User registration
 - `AgentPanel.js` - Agent dashboard
 - `CompleteProfile.js` - Profile completion form
+
+<div style="page-break-before: always;"></div>
 
 **Components (`src/components/`)**
 - `Navbar.js` - Navigation header
@@ -161,6 +165,8 @@
 - `loyaltyService.js` - Loyalty program API calls
 - `staffService.js` - Staff management API calls
 
+<div style="page-break-before: always;"></div>
+
 **Utilities (`src/utils/`)**
 - `auth.js` - Token management
   - Methods: getToken, setToken, removeToken
@@ -196,6 +202,8 @@
 3. `AdminRoutes.js` checks permissions before rendering admin pages
 4. `Navbar.js` shows/hides admin panel link based on permissions
 
+<div style="page-break-before: always;"></div>
+
 ### Data Flow Between Components
 1. **Global State**: Managed by Context providers
    - `AuthContext.js` - User authentication state
@@ -207,6 +215,7 @@
 
 3. **Props Passing**: For parent-child communication
    - E.g., `BusList.js` passes bus data to `BusCard.js`
+
 
 ## Database Relationships
 
@@ -230,6 +239,8 @@
    - User can have one loyalty membership
    - Defined in `User.php` and `LoyaltyMember.php`
 
+<div style="page-break-before: always;"></div>
+
 ## Total File Count
 - **Backend Files**: ~120 files
   - Controllers: 10
@@ -249,6 +260,7 @@
   - Context: 4
   - Utilities: 8
   - Assets: 9+
+
 
 ## Technical Challenges and Solutions
 
@@ -274,12 +286,15 @@
 - Transaction-based booking process in backend
 - Real-time seat status updates
 
+<div style="page-break-before: always;"></div>
+
 ### 4. Loyalty Program
 **Challenge**: Calculating and managing loyalty points.
 **Solution**:
 - Point accrual on successful bookings via observers
 - Tier calculations in `LoyaltyService.php`
 - Automatic membership creation for eligible users
+
 
 ## Key Code Snippets
 
@@ -320,6 +335,8 @@ useEffect(() => {
 }, [user, permissions, hasAnyAdminPermissions]);
 ```
 
+<div style="page-break-before: always;"></div>
+
 ### API Service (busService.js)
 ```javascript
 export const searchBuses = async (from, to, date) => {
@@ -334,6 +351,7 @@ export const searchBuses = async (from, to, date) => {
   }
 };
 ```
+
 
 ### Database Model (BusTrip.php)
 ```php
@@ -360,6 +378,8 @@ class BusTrip extends Model
     }
 }
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## Conclusion
 

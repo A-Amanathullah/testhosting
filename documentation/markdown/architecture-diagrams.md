@@ -18,6 +18,9 @@
 +---------------------+       +---------------------+
 ```
 
+
+<div style="page-break-before: always;"></div>
+
 ## Frontend Component Hierarchy
 ```
 App.js
@@ -55,6 +58,8 @@ App.js
             └── UserListPage
 ```
 
+<div style="page-break-before: always;"></div>
+
 ## Backend Structure
 ```
 Laravel Application
@@ -80,6 +85,8 @@ Laravel Application
     ├── BookingService
     └── LoyaltyService
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## Database Schema
 ```
@@ -128,6 +135,7 @@ Laravel Application
                       | distance       |
                       +----------------+
 ```
+<div style="page-break-before: always;"></div>
 
 ## Authentication Flow
 ```
@@ -147,6 +155,8 @@ Laravel Application
 |          |                        |          |
 +----------+                        +----------+
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## Booking Process Flow
 ```
@@ -194,6 +204,8 @@ User                  Frontend                Backend                Database
  |---------------------> |                       |                       |
  |                       |                       |                       |
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## Permission System
 ```

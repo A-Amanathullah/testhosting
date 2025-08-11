@@ -38,6 +38,8 @@
    cp .env.example .env
    ```
 
+<div style="page-break-before: always;"></div>
+
 4. Configure database connection in `.env`:
    ```
    DB_CONNECTION=mysql
@@ -78,6 +80,8 @@
    ```
    REACT_APP_API_URL=http://localhost:8000/api
    ```
+
+<div style="page-break-before: always;"></div>
 
 4. Start development server:
    ```
@@ -167,6 +171,8 @@ public function store(StoreBookingRequest $request)
 - Use PascalCase for components
 - Keep components focused on a single responsibility
 
+<div style="page-break-before: always;"></div>
+
 Example React component:
 ```jsx
 /**
@@ -217,6 +223,8 @@ export default BookingForm;
    });
    ```
 
+<div style="page-break-before: always;"></div>
+
 3. Define relationships in model:
    ```php
    public function user()
@@ -255,6 +263,8 @@ export default BookingForm;
    ```
    php artisan make:request StoreModelNameRequest
    ```
+
+<div style="page-break-before: always;"></div>
 
 2. Define validation rules:
    ```php
@@ -299,6 +309,8 @@ export default BookingForm;
    }
    ```
 
+<div style="page-break-before: always;"></div>
+
 ## Frontend Development
 
 ### Creating Components
@@ -328,6 +340,8 @@ export default BookingForm;
    
    export default BookingCard;
    ```
+
+<div style="page-break-before: always;"></div>
 
 ### Managing State with Context
 1. Create a context file:
@@ -401,6 +415,8 @@ export default BookingForm;
    };
    ```
 
+<div style="page-break-before: always;"></div>
+
 ### API Services
 1. Create service modules:
    ```jsx
@@ -426,6 +442,8 @@ export default BookingForm;
    
    export default bookingService;
    ```
+
+<div style="page-break-before: always;"></div>
 
 2. Configure Axios with interceptors:
    ```jsx
@@ -477,6 +495,8 @@ export default BookingForm;
    DB_DATABASE=:memory:
    ```
 
+   <div style="page-break-before: always;"></div>
+
 3. Write feature tests:
    ```php
    namespace Tests\Feature;
@@ -517,6 +537,8 @@ export default BookingForm;
    ```
    php artisan test
    ```
+
+<div style="page-break-before: always;"></div>
 
 ### Frontend Testing
 1. Write component tests with React Testing Library:
@@ -565,6 +587,8 @@ export default BookingForm;
    php artisan migrate --force
    ```
 
+<div style="page-break-before: always;"></div>
+
 ### Frontend Deployment
 1. Build production assets:
    ```
@@ -600,6 +624,8 @@ feat(booking): add cancellation feature
 - Create cancellation form component
 - Implement refund calculation
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## Contribution Guidelines
 

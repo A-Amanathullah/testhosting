@@ -34,6 +34,8 @@ Welcome to the RS-Express Bus Booking System! This comprehensive guide will walk
 - **Manager**: Can manage buses, routes, and view reports
 - **Administrator**: Has full access to all system features
 
+<div style="page-break-before: always;"></div>
+
 ## Public User Features
 
 ### Searching for Buses
@@ -79,6 +81,8 @@ Welcome to the RS-Express Bus Booking System! This comprehensive guide will walk
 4. Verify your email address by clicking the link sent to your email
 5. Log in with your new credentials
 
+<div style="page-break-before: always;"></div>
+
 ## Registered User Features
 
 ### Logging In
@@ -118,6 +122,8 @@ Welcome to the RS-Express Bus Booking System! This comprehensive guide will walk
    - **Cancel Booking**: Cancel the reservation (subject to cancellation policy)
    - **Change Seats**: Modify seat selection (if available)
    - **Print Ticket**: Download a PDF ticket for printing
+
+<div style="page-break-before: always;"></div>
 
 ### Loyalty Program
 1. Access the loyalty program by clicking **Loyalty Program** in the dashboard
@@ -161,6 +167,9 @@ The admin dashboard provides at-a-glance information:
    - Click the **Edit** button next to the bus
    - Update the necessary information
    - Click **Save Changes**
+
+<div style="page-break-before: always;"></div>
+
 5. To delete a bus:
    - Click the **Delete** button
    - Confirm the deletion
@@ -201,6 +210,8 @@ The admin dashboard provides at-a-glance information:
    - Click **Cancel Trip**
    - Provide reason for cancellation
    - The system will automatically notify all booked passengers
+
+<div style="page-break-before: always;"></div>
 
 ### Booking Management
 1. From the admin panel, click **Bookings**
@@ -246,6 +257,9 @@ The admin dashboard provides at-a-glance information:
    - Bus Utilization
    - Route Performance
    - Cancellation Analysis
+
+<div style="page-break-before: always;"></div>
+
 3. Set date range for the report
 4. Click **Generate Report**
 5. View the report or export it as CSV, PDF, or Excel
@@ -282,6 +296,8 @@ The admin dashboard provides at-a-glance information:
    - Cancel booking
    - Print ticket
 
+   <div style="page-break-before: always;"></div>
+
 ### Agent Reports
 1. From the agent dashboard, click **My Reports**
 2. View reports specific to your bookings:
@@ -315,6 +331,8 @@ The admin dashboard provides at-a-glance information:
   
 - **Issue**: Cannot print e-ticket
   - **Solution**: Download the PDF first, then print from your device's PDF reader
+
+<div style="page-break-before: always;"></div>
 
 ## FAQ
 

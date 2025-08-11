@@ -39,6 +39,10 @@ Authenticates a user and returns a token.
 POST /api/register
 ```
 
+
+<div style="page-break-before: always;"></div>
+
+
 Creates a new user account.
 
 **Request Body:**
@@ -87,6 +91,10 @@ Authorization: Bearer {token}
 }
 ```
 
+
+<div style="page-break-before: always;"></div>
+
+
 ## Bus Management
 
 ### List All Buses
@@ -100,6 +108,8 @@ Returns a list of all buses.
 ```
 Authorization: Bearer {token}
 ```
+
+<div style="page-break-before: always;"></div>
 
 **Response:**
 ```json
@@ -141,6 +151,7 @@ Authorization: Bearer {token}
   }
 }
 ```
+<div style="page-break-before: always;"></div>
 
 ### Get Bus Details
 ```
@@ -181,6 +192,8 @@ Creates a new bus record.
 Authorization: Bearer {token}
 ```
 
+<div style="page-break-before: always;"></div>
+
 **Request Body:**
 ```json
 {
@@ -219,6 +232,7 @@ Updates an existing bus record.
 ```
 Authorization: Bearer {token}
 ```
+<div style="page-break-before: always;"></div>
 
 **Request Body:**
 ```json
@@ -229,6 +243,7 @@ Authorization: Bearer {token}
   "status": "active"
 }
 ```
+
 
 **Response:**
 ```json
@@ -281,6 +296,10 @@ Returns a list of all routes.
 Authorization: Bearer {token}
 ```
 
+
+<div style="page-break-before: always;"></div>
+
+
 **Response:**
 ```json
 {
@@ -327,6 +346,8 @@ Authorization: Bearer {token}
 POST /api/routes
 ```
 
+<div style="page-break-before: always;"></div>
+
 Creates a new route.
 
 **Headers:**
@@ -361,6 +382,8 @@ Authorization: Bearer {token}
 }
 ```
 
+
+
 ## Trip Management
 
 ### List All Trips
@@ -374,6 +397,8 @@ Returns a list of all trips.
 ```
 Authorization: Bearer {token}
 ```
+
+<div style="page-break-before: always;"></div>
 
 **Response:**
 ```json
@@ -424,12 +449,16 @@ Authorization: Bearer {token}
 }
 ```
 
+<div style="page-break-before: always;"></div>
+
 ### Search Trips
 ```
 GET /api/trips/search?start_point=Colombo&end_point=Kandy&date=2023-06-15
 ```
 
 Searches for trips by route and date.
+
+
 
 **Parameters:**
 - `start_point` (string): Departure location
@@ -470,6 +499,8 @@ Searches for trips by route and date.
 }
 ```
 
+<div style="page-break-before: always;"></div>
+
 ### Create Trip
 ```
 POST /api/trips
@@ -481,6 +512,9 @@ Creates a new trip.
 ```
 Authorization: Bearer {token}
 ```
+
+
+
 
 **Request Body:**
 ```json
@@ -515,6 +549,8 @@ Authorization: Bearer {token}
 }
 ```
 
+<div style="page-break-before: always;"></div>
+
 ## Booking Management
 
 ### List All Bookings
@@ -528,6 +564,8 @@ Returns a list of all bookings.
 ```
 Authorization: Bearer {token}
 ```
+
+<div style="page-break-before: always;"></div>
 
 **Response:**
 ```json
@@ -577,6 +615,7 @@ Authorization: Bearer {token}
   }
 }
 ```
+<div style="page-break-before: always;"></div>
 
 ### Create Booking
 ```
@@ -600,6 +639,8 @@ Authorization: Bearer {token}
   "passenger_phone": "1234567890"
 }
 ```
+
+<div style="page-break-before: always;"></div>
 
 **Response:**
 ```json
@@ -637,6 +678,8 @@ Returns details for a specific booking.
 ```
 Authorization: Bearer {token}
 ```
+
+<div style="page-break-before: always;"></div>
 
 **Response:**
 ```json
@@ -696,6 +739,7 @@ Authorization: Bearer {token}
 }
 ```
 
+
 **Response:**
 ```json
 {
@@ -726,6 +770,8 @@ Returns a list of all users (admin only).
 ```
 Authorization: Bearer {token}
 ```
+
+<div style="page-break-before: always;"></div>
 
 **Response:**
 ```json
@@ -816,6 +862,7 @@ Returns statistics for the admin dashboard.
 ```
 Authorization: Bearer {token}
 ```
+<div style="page-break-before: always;"></div>
 
 **Response:**
 ```json
@@ -851,6 +898,8 @@ Authorization: Bearer {token}
   }
 }
 ```
+
+<div style="page-break-before: always;"></div>
 
 ## Error Responses
 
@@ -895,6 +944,8 @@ Status: 403 Forbidden
 }
 ```
 
+<div style="page-break-before: always;"></div>
+
 ### Resource Not Found
 ```
 Status: 404 Not Found
@@ -905,6 +956,8 @@ Status: 404 Not Found
   "message": "Resource not found."
 }
 ```
+
+
 
 ### Server Error
 ```
