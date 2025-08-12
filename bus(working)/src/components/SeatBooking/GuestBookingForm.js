@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import PaymentAPI from "../PaymentAPI";
 import { createGuestBooking } from "../../services/guestBookingService";
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 0, agentId = null, isAgentBooking = false, processingBookingId = null, onRefresh = null }) => {
   const [form, setForm] = useState({
     name: "",
     phone: "",
     email: "",
+    countryCode: ""
   });
   const [error, setError] = useState("");
   const [showPayment, setShowPayment] = useState(false);
@@ -15,16 +18,40 @@ const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+
+  // If using PhoneInput, handle phone and countryCode separately
+  // This is handled in handlePhoneChange below
+};
+
+const handlePhoneChange = (value, data) => {
+  setForm({
+    ...form,
+    phone: value,
+    countryCode: data.dialCode
+  });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLoading) return; // Prevent multiple submissions
-    
+    if (isLoading) return;
     if (!form.name || !form.phone) {
       setError("Name and phone are required.");
       return;
     }
+    // Phone validation: must start with country code and be exactly 9 digits after country code
+    const countryCode = form.countryCode;
+    const phoneWithoutCode = form.phone.startsWith(countryCode) ? form.phone.slice(countryCode.length) : form.phone;
+    const phoneRegex = /^\d{9}$/;
+    if (!form.phone || !countryCode || !phoneRegex.test(phoneWithoutCode)) {
+      setError("Please enter a valid 9-digit phone number after the country code.");
+      return;
+    }
+    // Ensure phone number includes '+' before country code
+    let formattedPhone = form.phone;
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = `+${formattedPhone}`;
+    }
+    // Use formattedPhone in guestData
     setError("");
     setIsLoading(true);
     
@@ -33,6 +60,7 @@ const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 
       if (isAgentBooking && agentId) {
         const guestData = {
           ...form,
+          phone: formattedPhone,
           status: "Confirmed",
           payment_status: "Not Applicable",
           agent_id: agentId
@@ -56,6 +84,7 @@ const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 
       // For regular guest bookings, prepare data for payment flow
       const guestData = {
         ...form,
+        phone: formattedPhone,
         status: "Processing",
         payment_status: "Pending",
         agent_id: agentId // This will be null for non-agent bookings
@@ -176,13 +205,19 @@ const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 
               onChange={handleChange}
               className="w-full border rounded px-3 py-2"
             />
-            <input
-              type="tel"
-              name="phone"
-              placeholder="Phone Number"
+            <PhoneInput
+              country={'lk'}
               value={form.phone}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
+              onChange={handlePhoneChange}
+              inputProps={{
+                name: 'phone',
+                required: true,
+                className: "w-full border rounded px-3 py-2"
+              }}
+              enableSearch={true}
+              onlyCountries={['lk']}
+              countryCodeEditable={false}
+              placeholder="Phone Number"
             />
             <input
               type="email"

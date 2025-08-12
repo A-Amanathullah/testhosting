@@ -1,5 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useContext, useState } from "react";
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 import { signupUser, storeUserDetails, fetchUser } from "../services/authService";
 import { AuthContext } from "../context/AuthContext";
 import GoogleAuthButton from "../components/Auth/GoogleAuthButton";
@@ -11,6 +13,7 @@ const SignUp = () => {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNo, setPhoneNo] = useState("");
+  const [countryCode, setCountryCode] = useState("");
   const [gender, setGender] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,6 +39,19 @@ const SignUp = () => {
       return setFormErrors(["Passwords do not match."]);
     }
 
+    // Phone validation: must start with country code and be exactly 9 digits after country code
+    const cc = countryCode;
+    const phoneWithoutCode = phoneNo.startsWith(cc) ? phoneNo.slice(cc.length) : phoneNo;
+    const phoneRegex = /^\d{9}$/;
+    if (!phoneNo || !cc || !phoneRegex.test(phoneWithoutCode)) {
+      setFormErrors(["Please enter a valid 9-digit phone number after the country code."]);
+      return;
+    }
+    // Ensure phone number includes '+' before country code
+    let formattedPhone = phoneNo;
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = `+${formattedPhone}`;
+    }
     setLoading(true);
     setFormErrors([]);
 
@@ -50,7 +66,7 @@ const SignUp = () => {
         user_id: user.id,
         first_name: firstName,
         last_name: lastName,
-        phone_no: phoneNo,
+        phone_no: formattedPhone,
         gender,
         email,
         role: user.role,
@@ -143,12 +159,21 @@ const SignUp = () => {
               </div>
               <div className="py-2">
                 <span className="mb-2 text-md">Phone Number</span>
-                <input
-                  type="text"
+                <PhoneInput
+                  country={'lk'}
                   value={phoneNo}
-                  onChange={(e) => setPhoneNo(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500 text-sm sm:text-base"
-                  name="phone_no"
+                  onChange={(value, data) => {
+                    setPhoneNo(value);
+                    setCountryCode(data.dialCode);
+                  }}
+                  inputProps={{
+                    name: 'phone_no',
+                    required: true,
+                    className: "w-full p-2 border border-gray-300 rounded-md placeholder:font-light placeholder:text-gray-500 text-sm sm:text-base"
+                  }}
+                  onlyCountries={['lk']}
+                  countryCodeEditable={false}
+                  placeholder="Phone Number"
                 />
               </div>
               <div className="py-2">

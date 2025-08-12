@@ -4,20 +4,23 @@ import { Link } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 
 
+
 const BusTripCard = ({ trip, buses }) => {
 
+
+
   const busInfo = buses.find(bus => bus.bus_no === trip.bus_no);
-  
+
   // Format date from ISO string to user-friendly format (DD MMM YYYY)
   // Note: With backend changes, dates may already be formatted
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    
+
     // Check if date is already formatted (contains spaces, e.g., "10 Jul 2025")
     if (typeof dateString === 'string' && dateString.includes(' ')) {
       return dateString; // Already formatted
     }
-    
+
     try {
       // Check if it's an ISO string (with T and Z)
       const isISO = typeof dateString === 'string' && dateString.includes('T');
@@ -28,23 +31,23 @@ const BusTripCard = ({ trip, buses }) => {
       return dateString; // Return original string if parsing fails
     }
   };
-  
+
   // Use route-based information if available, otherwise use trip defaults
   const startPoint = trip.actual_start_point || trip.start_point;
   const endPoint = trip.actual_end_point || trip.end_point;
   const departureTime = trip.actual_departure_time || trip.departure_time;
   const arrivalTime = trip.actual_arrival_time || trip.arrival_time;
   const journeyPrice = trip.journey_fare || trip.price;
-  
+
   // Format duration properly
   let journeyDuration = trip.duration;
-  if (trip.journey_duration) {
-    // journey_duration comes as "X minutes" from backend
-    const minutes = parseInt(trip.journey_duration.replace(' minutes', ''));
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    journeyDuration = `${hours}h ${remainingMinutes}m`;
-  }
+  // if (trip.journey_duration) {
+  //   // journey_duration comes as "X minutes" from backend
+  //   const minutes = parseInt(trip.journey_duration.replace(' minutes', ''));
+  //   const hours = Math.floor(minutes / 60);
+  //   const remainingMinutes = minutes % 60;
+  //   journeyDuration = `${hours}h ${remainingMinutes}m`;
+  // }
   return (
 
     <div className="bg-white rounded-3xl mb-4 sm:mb-6">
@@ -95,12 +98,23 @@ const BusTripCard = ({ trip, buses }) => {
               <button className="bg-orange-500 text-white px-2 sm:px-4 py-0.5 sm:py-1 rounded mt-1 sm:mt-2 w-full lg:w-auto text-xs sm:text-base">Book seat</button>
             </Link>
           ) : (
-            <button
-              className="bg-gray-400 text-white px-2 sm:px-4 py-0.5 sm:py-1 rounded mt-1 sm:mt-2 cursor-not-allowed w-full lg:w-auto text-xs sm:text-base"
-              disabled
-            >
-              Book seat
-            </button>
+            <div>
+              <button
+                className="bg-gray-400 text-white px-2 sm:px-4 py-0.5 sm:py-1 rounded mt-1 sm:mt-2 cursor-not-allowed w-full lg:w-auto text-xs sm:text-base animate-[blinkbg_2s_linear_infinite]"
+                disabled
+              >
+                Book seat
+              </button>
+              <style>
+                {`
+                  @keyframes blinkbg {
+                    0%, 50% { background-color: #ef4444; } /* red-500 */
+                    50%, 100% { background-color: #3b82f6; } /* blue-500 */
+                  }
+                `}
+              </style>
+            </div>
+
           )}
 
         </div>

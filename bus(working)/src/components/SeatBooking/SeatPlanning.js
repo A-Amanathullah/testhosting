@@ -18,7 +18,7 @@ import { formatDateForMySQL, formatDateForDisplay } from "../../utils/dateUtils"
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
-const SeatPlanning = ({ pickup, drop }) => {
+const SeatPlanning = ( ) => {
     const location = useLocation();
     const trip = location.state?.trip;
     const { user } = useContext(AuthContext);
@@ -26,6 +26,8 @@ const SeatPlanning = ({ pickup, drop }) => {
     const { buses } = useBusHook();
     const busNo = trip?.bus_no;
     const date = trip?.departure_date;
+    const pickup = trip?.end_point;
+    const drop = trip?.end_point;
     const busInfo = buses.find(bus => String(bus.bus_no) === String(busNo));
     const bus_id = busInfo ? busInfo.id : null;
     
@@ -506,8 +508,8 @@ const SeatPlanning = ({ pickup, drop }) => {
                 serial_no: serialNo,
                 reserved_tickets: selectedSeats.length,
                 seat_no: selectedSeats.join(","),
-                pickup,
-                drop,
+                pickup:trip.start_point,
+                drop:trip.end_point,
                 role: user.role,
                 departure_date: formattedDepartureDate,
                 reason: null,
@@ -743,19 +745,19 @@ const SeatPlanning = ({ pickup, drop }) => {
                                 </div>
                                 <button
                                     onClick={() => {
-                                        if (!pickup || !drop) {
-                                            toast.error("Please select pickup and drop locations.", {
-                                                position: "top-center",
-                                                autoClose: 3000,
-                                                hideProgressBar: false,
-                                                closeOnClick: true,
-                                                pauseOnHover: true,
-                                                draggable: true,
-                                                progress: undefined,
-                                                theme: "colored",
-                                            });
-                                            return;
-                                        }
+                                        // if (!pickup || !drop) {
+                                        //     toast.error("Please select pickup and drop locations.", {
+                                        //         position: "top-center",
+                                        //         autoClose: 3000,
+                                        //         hideProgressBar: false,
+                                        //         closeOnClick: true,
+                                        //         pauseOnHover: true,
+                                        //         draggable: true,
+                                        //         progress: undefined,
+                                        //         theme: "colored",
+                                        //     });
+                                        //     return;
+                                        // }
                                         createInitialBooking(); // Changed from setShowModal(true)
                                     }}
                                     className="mt-2 w-full bg-green-600 hover:bg-green-700 text-white py-1 sm:py-2 px-2 sm:px-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-base"
