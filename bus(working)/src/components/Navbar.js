@@ -27,7 +27,7 @@ function Navbar() {
     // Helper function to check if user has any admin permissions
     const hasAnyAdminPermissions = useCallback(() => {
         if (!permissions || !user) return false;
-        
+
         // Simple check: if the permissions object has any keys at all, user has permissions
         return Object.keys(permissions).length > 0;
     }, [permissions, user]);
@@ -51,12 +51,15 @@ function Navbar() {
                 <div className="container flex justify-between items-center bg-white px-2 md:px-0 ">
                     {/* logo section */}
                     <div className=" flex items-center gap-2 relative ">
-                        <img src={logo} alt="RS Express" className="w-36 h-16 ml-4 md:w-48 md:h-15 object-contain" />
+                        <Link to="/"><img src={logo} alt="RS Express" className="w-36 h-16 ml-4 md:w-48 md:h-15 object-contain" /></Link>
                     </div>
                     {/* menu items - hide when on admin panel */}
                     {!isOnAdminPanel &&
                         <div className="hidden md:block cursor-pointer">
                             <ul className="flex items-center gap-6">
+                                <li className="inline-block py-1 px-3 hover:text-primary font-semibold">
+                                    <Link to="/">Home</Link>
+                                </li>
                                 <li className="inline-block py-1 px-3 hover:text-primary font-semibold">
                                     <Link to="/about-us">About us</Link>
                                 </li>
@@ -74,12 +77,13 @@ function Navbar() {
 
                     {/* icon section */}
                     <div className="flex items-center mr-5 gap-4">
-                        <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mx-2 "
-                            onClick={() => { handleMenuClick(); navigate("/"); }}>
-                            <FaHome className="" />
-                        </button>
+
                         {user && hasAnyAdminPermissions() ? (
                             <div className="flex items-center">
+                                <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mx-2 "
+                                    onClick={() => { handleMenuClick(); navigate("/"); }}>
+                                    <FaHome className="" />
+                                </button>
                                 <Link to="/admin" onClick={handleMenuClick}>
                                     <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mr-1" title="Admin Dashboard">
                                         <BsFillGrid1X2Fill className="p-0.5" />
