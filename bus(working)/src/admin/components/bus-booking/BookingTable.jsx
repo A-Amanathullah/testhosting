@@ -89,6 +89,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
   };
 
   // Prepare combined data of bookings, frozen seats, and cancellations
+  // For phone number: regular bookings use booking.phone_no, guest/cancellation use booking.phone
   const prepareTableData = () => {
     // Filter bookings and frozenSeats by bus_id and selectedDate
     const selectedBusObj = buses?.find((b) => String(b.bus_no) === String(selectedBusNo));
@@ -155,6 +156,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         id: booking.id,
         serialNo: booking.serial_no || '-',
         name: booking.name || booking.frozenBy || 'Admin',
+        phone: booking.phone_no || '',
         ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || parsedSeats.length || 0,
         seatNumbers: formattedSeatNumbers,
         paymentStatus: booking.payment_status || booking.paymentStatus || null,
@@ -196,6 +198,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         id: `cancelled-${c.id}`,
         serialNo: c.serial_no || '-',
         name: c.name || 'Passenger',
+        phone: c.phone || '',
         ticketsReserved: parsedSeats.length,
         seatNumbers: formattedSeatNumbers,
         paymentStatus: c.payment_status || null,
@@ -221,6 +224,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         id: `guest-${guest.id || 'unknown'}`,
         serialNo: guest.serial_no || '-',
         name: guest.name || 'Guest',
+        phone: guest.phone || '',
         ticketsReserved: guest.reserved_tickets || parsedSeats.length,
         seatNumbers: formattedSeatNumbers,
         paymentStatus: guest.payment_status || null,
@@ -284,6 +288,9 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
                 Name/Agent
               </th>
               <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                Phone
+              </th>
+              <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                 Type
               </th>
               <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
@@ -320,6 +327,9 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                   {row.name}
+                </td>
+                <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
+                  {row.phone}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                   {row.type === 'guest' ? 'Guest' : row.type === 'booking' ? `${row.role}` : row.type === 'frozen' ? 'Frozen' : 'Cancelled'}

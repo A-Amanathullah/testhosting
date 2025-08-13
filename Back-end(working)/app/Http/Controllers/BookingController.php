@@ -27,7 +27,11 @@ class BookingController extends Controller
             $query->where('departure_date', $request->departure_date);
         }
 
-        $bookings = $query->get();
+        // Join with user_details to get phone_no
+        $bookings = $query
+            ->leftJoin('user_details', 'bookings.user_id', '=', 'user_details.user_id')
+            ->select('bookings.*', 'user_details.phone_no')
+            ->get();
 
         // Ensure seat_no is always an array in the response
         $bookings->transform(function ($booking) {
