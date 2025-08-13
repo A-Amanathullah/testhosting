@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { storeUserDetails } from '../../../services/authService';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = false, roles = [] }) => {  // Form state
   const [formData, setFormData] = useState({
     name: '',
-    contact_number: '',
+    contact_number: '', // will store full phone with country code
+    countryCode: '',
     email: '',
     address: '',
     role: '',
@@ -58,12 +61,25 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
       ...prev,
       [name]: value
     }));
-    
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
         [name]: null
+      }));
+    }
+  };
+
+  // Handle phone input changes (using react-phone-input-2)
+  const handlePhoneChange = (value, data) => {
+    setFormData(prev => ({
+      ...prev,
+      contact_number: value,
+      countryCode: data.dialCode
+    }));
+    if (errors.contact_number) {
+      setErrors(prev => ({
+        ...prev,
+        contact_number: null
       }));
     }
   };
@@ -83,32 +99,34 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
   const validateForm = () => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^\d{10}$/;
-    
-    // Required field validation
+    // Phone validation: must start with country code and be exactly 9 digits after country code (like GuestBookingForm)
+    const countryCode = formData.countryCode;
+    const phoneWithoutCode = formData.contact_number.startsWith(countryCode) ? formData.contact_number.slice(countryCode.length) : formData.contact_number;
+    const phoneRegex = /^\d{9}$/;
+
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.contact_number.trim()) newErrors.contact_number = "Contact number is required";
-    else if (!phoneRegex.test(formData.contact_number)) newErrors.contact_number = "Please enter a valid 10-digit phone number";
-    
+    else if (!countryCode || !phoneRegex.test(phoneWithoutCode)) newErrors.contact_number = "Please enter a valid 9-digit phone number after the country code.";
+
     if (!formData.email.trim()) newErrors.email = "Email is required";
     else if (!emailRegex.test(formData.email)) newErrors.email = "Please enter a valid email address";
-    
+
     if (!formData.address.trim()) newErrors.address = "Address is required";
     if (!formData.nic_no.trim()) newErrors.nic_no = "NIC number is required";
     if (!formData.role) newErrors.role = "Role is required";
     if (!formData.first_name.trim()) newErrors.first_name = "First name is required";
     if (!formData.last_name.trim()) newErrors.last_name = "Last name is required";
     if (!formData.gender) newErrors.gender = "Gender is required";
-    
+
     // Password validation (not required in edit mode if left empty)
     if (!isEdit || (formData.password || formData.confirmPassword)) {
       if (!formData.password) newErrors.password = "Password is required";
       else if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
-      
+
       if (!formData.confirmPassword) newErrors.confirmPassword = "Please confirm password";
       else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords don't match";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -117,7 +135,13 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      const { confirmPassword, ...dataToSubmit } = formData;
+      const { confirmPassword, countryCode, ...dataToSubmit } = formData;
+      // Ensure phone number includes '+' before country code
+      let formattedPhone = formData.contact_number;
+      if (!formattedPhone.startsWith('+')) {
+        formattedPhone = `+${formattedPhone}`;
+      }
+      dataToSubmit.contact_number = formattedPhone;
       if (isEdit && !dataToSubmit.password) {
         const { password, ...dataWithoutPassword } = dataToSubmit;
         await onSubmit(dataWithoutPassword);
@@ -126,12 +150,11 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
       }
       // After user/staff creation, send user_details
       if (formData.user_id) {
-        // Call user-details API (assume storeUserDetails is imported)
         await storeUserDetails({
           user_id: formData.user_id,
           first_name: formData.first_name,
           last_name: formData.last_name,
-          phone_no: formData.contact_number,
+          phone_no: formattedPhone,
           gender: formData.gender,
           email: formData.email,
           role: formData.role,
@@ -196,12 +219,19 @@ const StaffForm = ({ onSubmit, initialData = null, isEdit = false, disabled = fa
         {/* Contact Number */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Contact Number *</label>
-          <input
-            type="tel"
-            name="contact_number"
+          <PhoneInput
+            country={'lk'}
             value={formData.contact_number}
-            onChange={handleChange}
-            className={`mt-1 block w-full border ${errors.contact_number ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-red-500 focus:border-red-500`}
+            onChange={handlePhoneChange}
+            inputProps={{
+              name: 'contact_number',
+              required: true,
+              className: "w-full border rounded px-3 py-2"
+            }}
+            enableSearch={true}
+            onlyCountries={['lk']}
+            countryCodeEditable={false}
+            placeholder="Phone Number"
           />
           {errors.contact_number && <p className="mt-1 text-sm text-red-600">{errors.contact_number}</p>}
         </div>

@@ -1,4 +1,7 @@
+
 import React, { useEffect, useState } from 'react';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 import { fetchUsers, createUser, updateUser, deleteUser } from '../../services/userService';
 import { getRoles } from '../../services/roleService';
 import { FaEdit, FaTrash, FaEye, FaEyeSlash } from '../components/Icons';
@@ -8,15 +11,18 @@ import { usePermissions } from '../../context/PermissionsContext';
 import { getToken } from '../../utils/auth';
 import axios from 'axios';
 
+
+
 const initialForm = {
   name: '',
   email: '',
-  role: 'User',  // Match the capitalized role
+  role: 'User',
   password: '',
   confirm_password: '',
   first_name: '',
   last_name: '',
-  phone_no: '',
+  phone_no: '', // will store full phone with country code
+  countryCode: '',
   gender: '',
 };
 
@@ -48,6 +54,18 @@ const UsersPage = () => {
   const canAdd = () => hasPermission('add');
   const canEdit = () => hasPermission('edit');
   const canDelete = () => hasPermission('delete');
+
+  // Filtered users for search
+  const filteredUsers = users.filter(u => {
+    const q = search.toLowerCase();
+    return (
+      u.name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.first_name?.toLowerCase().includes(q) ||
+      u.last_name?.toLowerCase().includes(q) ||
+      u.phone_no?.toLowerCase().includes(q)
+    );
+  });
 
   useEffect(() => {
     // Fetch current user info first
@@ -112,7 +130,6 @@ const UsersPage = () => {
       });
       return;
     }
-    
     setEditingUser(user);
     setForm({
       name: user.name,
@@ -123,6 +140,7 @@ const UsersPage = () => {
       first_name: user.first_name || '',
       last_name: user.last_name || '',
       phone_no: user.phone_no || '',
+      countryCode: user.phone_no ? user.phone_no.replace(/^\+(\d{1,3}).*$/, '$1') : '',
       gender: user.gender || '',
     });
     setShowForm(true);
@@ -159,20 +177,31 @@ const UsersPage = () => {
     if (submitting) return;
     setFormError(null);
     setSubmitting(true);
-    
+    // Phone validation: must start with country code and be exactly 9 digits after country code
+    const countryCode = form.countryCode;
+    const phoneWithoutCode = form.phone_no.startsWith(countryCode) ? form.phone_no.slice(countryCode.length) : form.phone_no;
+    const phoneRegex = /^\d{9}$/;
+    if (!form.phone_no || !countryCode || !phoneRegex.test(phoneWithoutCode)) {
+      setFormError('Please enter a valid 9-digit phone number after the country code.');
+      setSubmitting(false);
+      return;
+    }
+    // Ensure phone number includes '+' before country code
+    let formattedPhone = form.phone_no;
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = `+${formattedPhone}`;
+    }
     // Check permissions before submission
     if (editingUser && !canEdit()) {
       setFormError('You do not have permission to edit users.');
       setSubmitting(false);
       return;
     }
-    
     if (!editingUser && !canAdd()) {
       setFormError('You do not have permission to add users.');
       setSubmitting(false);
       return;
     }
-    
     if (!editingUser && form.password !== form.confirm_password) {
       setFormError('Passwords do not match.');
       setSubmitting(false);
@@ -181,30 +210,18 @@ const UsersPage = () => {
     const userPayload = {
       name: form.name,
       email: form.email,
-      role: form.role.toLowerCase(), // Convert to lowercase for backend validation
+      role: form.role.toLowerCase(),
       password: form.password,
     };
     const userDetailsPayload = {
       first_name: form.first_name,
       last_name: form.last_name,
-      phone_no: form.phone_no,
+      phone_no: formattedPhone,
       gender: form.gender,
       email: form.email,
-      role: form.role.toLowerCase(), // Convert to lowercase for backend validation
+      role: form.role.toLowerCase(),
     };
     try {
-      // Permission check for edit/add
-      if (editingUser && !canEdit()) {
-        setFormError('You do not have permission to edit users.');
-        setSubmitting(false);
-        return;
-      }
-      if (!editingUser && !canAdd()) {
-        setFormError('You do not have permission to add users.');
-        setSubmitting(false);
-        return;
-      }
-      
       if (editingUser) {
         const updated = await updateUser(editingUser.id, userPayload, userDetailsPayload);
         setUsers(users.map(u => (u.id === editingUser.id ? updated : u)));
@@ -228,27 +245,6 @@ const UsersPage = () => {
     }
     setSubmitting(false);
   };
-
-  const filteredUsers = users.filter(u => {
-    const q = search.toLowerCase();
-    return (
-      u.name?.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q) ||
-      u.first_name?.toLowerCase().includes(q) ||
-      u.last_name?.toLowerCase().includes(q) ||
-      u.phone_no?.toLowerCase().includes(q)
-    );
-  });
-
-  // Hide notification after 3 seconds
-  useEffect(() => {
-    if (notification.message) {
-      const timer = setTimeout(() => {
-        setNotification({ message: '', type: '' });
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [notification]);
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (error) return (
@@ -421,7 +417,20 @@ const UsersPage = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium">Phone</label>
-                    <input type="text" className="w-full border rounded px-3 py-2" value={form.phone_no} onChange={e => setForm({ ...form, phone_no: e.target.value })} />
+                    <PhoneInput
+                      country={'lk'}
+                      value={form.phone_no}
+                      onChange={(value, data) => setForm(f => ({ ...f, phone_no: value, countryCode: data.dialCode }))}
+                      inputProps={{
+                        name: 'phone_no',
+                        required: true,
+                        className: "w-full border rounded px-3 py-2"
+                      }}
+                      enableSearch={true}
+                      onlyCountries={['lk']}
+                      countryCodeEditable={false}
+                      placeholder="Phone Number"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium">Gender</label>

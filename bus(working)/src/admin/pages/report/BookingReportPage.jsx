@@ -79,7 +79,8 @@ const BookingReportPage = () => {
     // Convert guest bookings to the same format as regular bookings
     const formattedGuestBookings = guestBookings.map(booking => ({
       ...booking,
-      booking_type: 'guest'  // Add a marker to identify as guest booking
+      bookedDate: guestBookings.created_at || '-',
+      booking_type: 'guest',  // Add a marker to identify as guest booking
     }));
     
     // Combine regular and guest bookings
@@ -102,6 +103,7 @@ const BookingReportPage = () => {
       name: booking.name || '-',
       busNumber: booking.bus_no || booking.busNumber || '-',
       price: booking.price || '-',
+      bookedDate: booking.booked_date || '-',
       ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
       seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : (booking.seat_no || '-'),
       route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || '-',
@@ -210,6 +212,9 @@ const BookingReportPage = () => {
                       Serial No.
                     </th>
                     <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                      Booked Date
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                       Name
                     </th>
                     <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
@@ -237,6 +242,9 @@ const BookingReportPage = () => {
                     >
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {booking.serialNo}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
+                        {booking.bookedDate || booking.created_at}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {booking.name}

@@ -165,7 +165,8 @@ const BusSchedulePage = () => {
       (schedule.driver_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (schedule.conductor_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (`${schedule.start_point || ''} to ${schedule.end_point || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
-    ));
+    ))
+    .sort((a, b) => new Date(a.departure_date) - new Date(b.departure_date));
 
   // Helper to check permissions for Bus Schedule
   const can = (action) => {
