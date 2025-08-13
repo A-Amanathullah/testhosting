@@ -79,7 +79,6 @@ const BookingReportPage = () => {
     // Convert guest bookings to the same format as regular bookings
     const formattedGuestBookings = guestBookings.map(booking => ({
       ...booking,
-      bookedDate: guestBookings.created_at || '-',
       booking_type: 'guest',  // Add a marker to identify as guest booking
     }));
     
@@ -96,20 +95,27 @@ const BookingReportPage = () => {
 
   // Map bookings for display
   const mappedTableBookings = useMemo(() => {
-    return confirmedTableBookings.map((booking, index) => ({
-      id: booking.id,
-      uniqueKey: `${booking.booking_type === 'guest' ? 'guest' : 'regular'}-${booking.id}-${index}`, // Ensure unique keys
-      serialNo: booking.serial_no || '-',
-      name: booking.name || '-',
-      busNumber: booking.bus_no || booking.busNumber || '-',
-      price: booking.price || '-',
-      bookedDate: booking.booked_date || '-',
-      ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
-      seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : (booking.seat_no || '-'),
-      route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || '-',
-      status: booking.status,
-      bookingType: booking.booking_type === 'guest' ? 'Guest' : 'Regular'
-    }));
+    return confirmedTableBookings
+      .map((booking, index) => ({
+        id: booking.id,
+        uniqueKey: `${booking.booking_type === 'guest' ? 'guest' : 'regular'}-${booking.id}-${index}`,
+        serialNo: booking.serial_no || '-',
+        name: booking.name || '-',
+        busNumber: booking.bus_no || booking.busNumber || '-',
+        price: booking.price || '-',
+        bookedDate: booking.created_at || '-',
+        ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
+        seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : (booking.seat_no || '-'),
+        route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || '-',
+        status: booking.status,
+        bookingType: booking.booking_type === 'guest' ? 'Guest' : 'Regular'
+      }))
+      .sort((a, b) => {
+        if (a.bookedDate === '-' && b.bookedDate === '-') return 0;
+        if (a.bookedDate === '-') return 1;
+        if (b.bookedDate === '-') return -1;
+        return new Date(b.bookedDate) - new Date(a.bookedDate);
+      });
   }, [confirmedTableBookings]);
 
   const handleBusChange = (busNo) => {
@@ -244,7 +250,7 @@ const BookingReportPage = () => {
                         {booking.serialNo}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {booking.bookedDate || booking.created_at}
+                        {booking.bookedDate && booking.bookedDate !== '-' ? new Date(booking.bookedDate).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {booking.name}

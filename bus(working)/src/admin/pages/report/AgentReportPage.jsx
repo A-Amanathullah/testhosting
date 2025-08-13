@@ -74,22 +74,29 @@ const AgentReportPage = () => {
 
     // Filter bookings to include only those with role 'agent' and map to expected structure
     const mappedBookings = allBookings
-      .filter(booking => booking.role === 'agent') // Only include agent bookings
+      .filter(booking => booking.role === 'agent')
       .map(booking => ({
         id: booking.id,
         serialNo: booking.serial_no,
+        bookedDate: booking.created_at,
         agentId: booking.user_id,
         agentName: booking.name,
-        customerName: booking.name, // Adjust if you have a specific customer name field
+        customerName: booking.name,
         bus_no: booking.bus_no,
-        contactNumber: booking.contact_number || 'N/A', // Adjust if contact is available
+        contactNumber: booking.contact_number || 'N/A',
         ticketsReserved: booking.reserved_tickets,
         seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no,
         route: `${booking.pickup} - ${booking.drop}`,
         status: booking.status,
-        commission: booking.price ? booking.price * 0.1 : 0, // Example: 10% commission; adjust as needed
+        commission: booking.price ? booking.price * 0.1 : 0,
         bookingDate: booking.booked_date
-      }));
+      }))
+      .sort((a, b) => {
+        if (!a.bookedDate && !b.bookedDate) return 0;
+        if (!a.bookedDate) return 1;
+        if (!b.bookedDate) return -1;
+        return new Date(b.bookedDate) - new Date(a.bookedDate);
+      });
 
     setBookings(mappedBookings);
     setIsLoading(bookingsLoading);
@@ -260,6 +267,9 @@ const AgentReportPage = () => {
                       Agent Name
                     </th>
                     <th scope="col" className="w-2/12 px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                      Booked Date
+                    </th>
+                    <th scope="col" className="w-2/12 px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                       Customer
                     </th>
                     <th scope="col" className="w-1/12 px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
@@ -287,6 +297,9 @@ const AgentReportPage = () => {
                     <tr key={booking.id} className="hover:bg-gray-50">
                       <td className="px-3 py-2 text-sm text-gray-900 whitespace-normal">
                         {booking.serialNo}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-gray-900 whitespace-normal">
+                        {booking.bookedDate ? new Date(booking.bookedDate).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-900 whitespace-normal">
                         {booking.agentName}

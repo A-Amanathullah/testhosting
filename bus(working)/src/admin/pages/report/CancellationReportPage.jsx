@@ -52,19 +52,26 @@ const CancellationReportPage = () => {
   }, [selectedBusNo, cancellations]);
 
   // Map for table
-  const mappedTableBookings = (filteredCancellations || []).map(booking => ({
-    id: booking.id,
-    serialNo: booking.serial_no || '-',
-    name: booking.name || '-',
-    busNumber: booking.bus_no || booking.busNumber || '-',
-    costForSeats: booking.price || booking.cost || '-',
-    ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
-    seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : (booking.seat_no || '-'),
-    route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || '-',
-    cancellationDate: booking.booked_date || booking.booked_date || null,
-    cancellationReason: booking.reason || booking.cancellationReason || null,
-    status: booking.status
-  }));
+  const mappedTableBookings = (filteredCancellations || [])
+    .map(booking => ({
+      id: booking.id,
+      serialNo: booking.serial_no || '-',
+      name: booking.name || '-',
+      busNumber: booking.bus_no || booking.busNumber || '-',
+      costForSeats: booking.price || booking.cost || '-',
+      ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
+      seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : (booking.seat_no || '-'),
+      route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || '-',
+      cancellationDate: booking.booked_date || booking.booked_date || null,
+      cancellationReason: booking.reason || booking.cancellationReason || null,
+      status: booking.status
+    }))
+    .sort((a, b) => {
+      if (!a.cancellationDate && !b.cancellationDate) return 0;
+      if (!a.cancellationDate) return 1;
+      if (!b.cancellationDate) return -1;
+      return new Date(b.cancellationDate) - new Date(a.cancellationDate);
+    });
 
   // Handle bus selection
   const handleBusChange = (busNo) => {

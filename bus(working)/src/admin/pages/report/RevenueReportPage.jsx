@@ -138,7 +138,13 @@ const RevenueReportPage = () => {
   }));
   
   // Combine regular and guest bookings for the table
-  const mappedTableBookings = [...mappedRegularBookings, ...mappedGuestBookings];
+  const mappedTableBookings = [...mappedRegularBookings, ...mappedGuestBookings]
+    .sort((a, b) => {
+      if (!a.date && !b.date) return 0;
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return new Date(b.date) - new Date(a.date);
+    });
 
   // Map for cancelations
   const mappedCancelBookings = filteredCancellations.map(booking => ({
