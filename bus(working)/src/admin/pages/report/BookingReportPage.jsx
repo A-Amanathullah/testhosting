@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Pagination from '../../components/Pagination';
 import { usePermissions } from '../../../context/PermissionsContext';
 import { 
   BusSelector, 
@@ -6,6 +7,7 @@ import {
   PrintButton,
   ReportPrintLayout
 } from '../../components/bus-booking';
+// import PrintLogoHeader from '../../components/bus-booking/PrintLogoHeader';
 import '../../components/bus-booking/print.css';
 import useBusHook from '../../../hooks/useBusHook';
 import useBookings from '../../../hooks/useBookings';
@@ -54,6 +56,10 @@ const BookingReportPage = () => {
     const uniqueDates = Array.from(new Set(allDates)).sort();
     setAvailableDates(uniqueDates);
   }, [allBookings, allGuestBookings, selectedBusNo]);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 20;
 
   // Compute filtered bookings
   const filteredBookings = useMemo(() => {
@@ -104,6 +110,7 @@ const BookingReportPage = () => {
         busNumber: booking.bus_no || booking.busNumber || '-',
         price: booking.price || '-',
         bookedDate: booking.created_at || '-',
+        phone: booking.phone_no || booking.phone || '-',
         ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || 0,
         seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : (booking.seat_no || '-'),
         route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || '-',
@@ -117,6 +124,12 @@ const BookingReportPage = () => {
         return new Date(b.bookedDate) - new Date(a.bookedDate);
       });
   }, [confirmedTableBookings]);
+
+  // Pagination logic for table rows
+  const paginatedBookings = useMemo(() => {
+    const startIdx = (currentPage - 1) * recordsPerPage;
+    return mappedTableBookings.slice(startIdx, startIdx + recordsPerPage);
+  }, [mappedTableBookings, currentPage, recordsPerPage]);
 
   const handleBusChange = (busNo) => {
     setSelectedBusNo(busNo);
@@ -133,23 +146,48 @@ const BookingReportPage = () => {
   };
 
   const handlePrint = () => {
-    // console.log('Permissions:', permissions);
-    // console.log('Bus Booking Report permissions:', permissions?.['Bus Booking Report']);
-    // console.log('Has print permission:', hasPermission('print'));
-    
     if (!hasPermission('print')) {
       setNotification("You don't have permission to print booking reports.");
       return;
     }
-    
-    if (allBookings.length) {
-      if (printTableRef.current) {
-        printTableRef.current.focus();
-      }
-      setTimeout(() => {
-        window.print();
-      }, 100);
+    if (!mappedTableBookings.length) return;
+    if (!printTableRef.current) return;
+    const printContents = printTableRef.current.innerHTML;
+    const printWindow = window.open('', '', 'height=800,width=1200');
+    if (!printWindow) {
+      setNotification('Popup blocked! Please allow popups for this site to print.');
+      return;
     }
+    printWindow.document.write('<html><head><title>Booking Report</title>');
+    printWindow.document.write(`
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; margin: 0; padding: 24px; }
+        .print-logo { display: block; margin: 0 auto 24px auto; max-width: 220px; }
+        h1 { text-align: center; color: #1a237e; font-size: 2rem; margin-bottom: 12px; }
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #fff; box-shadow: 0 2px 8px #e3e3e3; }
+        .print-table th, .print-table td { border: 1px solid #bdbdbd; padding: 10px 14px; font-size: 1rem; }
+        .print-table th { background: #e3eafc; color: #1a237e; font-weight: 700; }
+        .print-table tr:nth-child(even) { background: #f7fafd; }
+        .print-table .print-hide, .print-table .print-hide * { display: none !important; }
+        @media print {
+          body { margin: 0; }
+        }
+      </style>
+    `);
+    printWindow.document.write('</head><body>');
+    // Add logo and title using imported image path
+    printWindow.document.write(`
+      <img src="${require('../../../assets/Side.png')}" alt="Company Logo" class="print-logo" />
+      <h1>Booking Report</h1>
+    `);
+    printWindow.document.write(printContents.replace(/ReportPrintLayout_print-header__[^\s"]*/g, 'print-logo-header').replace(/min-w-full/g, 'print-table'));
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   const selectedBusObj = buses.find(bus => String(bus.bus_no) === String(selectedBusNo));
@@ -224,6 +262,9 @@ const BookingReportPage = () => {
                       Name
                     </th>
                     <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                      Phone
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                       Bus No.
                     </th>
                     <th scope="col" className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
@@ -241,7 +282,7 @@ const BookingReportPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mappedTableBookings.map((booking) => (
+                  {paginatedBookings.map((booking) => (
                     <tr 
                       key={booking.uniqueKey} 
                       className={`hover:bg-gray-50 ${booking.bookingType === 'Guest' ? 'bg-blue-50' : ''}`}
@@ -254,6 +295,9 @@ const BookingReportPage = () => {
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {booking.name}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
+                        {booking.phone}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {booking.busNumber}
@@ -280,6 +324,16 @@ const BookingReportPage = () => {
                   ))}
                 </tbody>
               </table>
+            {/* Pagination Controls */}
+            {mappedTableBookings.length > recordsPerPage && (
+              <div className="flex justify-center my-4">
+                <Pagination
+                  page={currentPage}
+                  setPage={setCurrentPage}
+                  totalPages={Math.ceil(mappedTableBookings.length / recordsPerPage)}
+                />
+              </div>
+            )}
             </div>
           )}
         </div>

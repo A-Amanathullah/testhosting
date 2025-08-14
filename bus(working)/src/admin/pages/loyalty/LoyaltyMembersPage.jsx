@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import Pagination from '../../components/Pagination';
 import { Users, RefreshCw, Plus, BarChart3, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { 
   getLoyaltyMembers, 
@@ -13,6 +14,13 @@ import { usePermissions } from '../../../context/PermissionsContext';
 
 const LoyaltyMembersPage = () => {
   const [members, setMembers] = useState([]);
+  const [currentPageLocal, setCurrentPageLocal] = useState(1);
+  const recordsPerPage = 10;
+
+  // Paginated members for current page
+  const paginatedMembers = useMemo(() => (
+    members.slice((currentPageLocal - 1) * recordsPerPage, currentPageLocal * recordsPerPage)
+  ), [members, currentPageLocal, recordsPerPage]);
   const [statistics, setStatistics] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -375,7 +383,7 @@ const LoyaltyMembersPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  members.map((member) => (
+                  paginatedMembers.map((member) => (
                     <tr key={member.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -448,6 +456,16 @@ const LoyaltyMembersPage = () => {
                 )}
               </tbody>
             </table>
+            {/* Pagination Controls */}
+            {members.length > recordsPerPage && (
+              <div className="flex justify-center my-4">
+                <Pagination
+                  page={currentPageLocal}
+                  setPage={setCurrentPageLocal}
+                  totalPages={Math.ceil(members.length / recordsPerPage)}
+                />
+              </div>
+            )}
           </div>
 
           {/* Pagination */}

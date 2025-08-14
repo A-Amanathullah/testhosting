@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import Pagination from '../../components/Pagination';
 import { Search, Edit, Trash, Printer, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 
 const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, canPrint }) => {
@@ -26,7 +27,7 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
   // Filter staff based on search term
   const filteredStaff = React.useMemo(() => {
     return sortedStaff.filter(person => 
-      person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       person.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       person.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (person.phone_no && person.phone_no.includes(searchTerm))
@@ -58,6 +59,13 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
       setSelectedStaff([...selectedStaff, id]);
     }
   };
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+  const paginatedStaff = useMemo(() => (
+    filteredStaff.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage)
+  ), [filteredStaff, currentPage, recordsPerPage]);
 
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -171,7 +179,7 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredStaff.length > 0 ? (
-              filteredStaff.map((person) => (
+              paginatedStaff.map((person) => (
                 <tr key={person.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
@@ -263,6 +271,16 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
           </tbody>
         </table>
       </div>
+      {/* Pagination Controls */}
+      {filteredStaff.length > recordsPerPage && (
+        <div className="flex justify-center my-4">
+          <Pagination
+            page={currentPage}
+            setPage={setCurrentPage}
+            totalPages={Math.ceil(filteredStaff.length / recordsPerPage)}
+          />
+        </div>
+      )}
     </div>
   );
 };

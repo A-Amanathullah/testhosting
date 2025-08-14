@@ -26,7 +26,7 @@ const SeatPlanning = ( ) => {
     const { buses } = useBusHook();
     const busNo = trip?.bus_no;
     const date = trip?.departure_date;
-    const pickup = trip?.end_point;
+    const pickup = trip?.start_point;
     const drop = trip?.end_point;
     const busInfo = buses.find(bus => String(bus.bus_no) === String(busNo));
     const bus_id = busInfo ? busInfo.id : null;
@@ -508,8 +508,8 @@ const SeatPlanning = ( ) => {
                 serial_no: serialNo,
                 reserved_tickets: selectedSeats.length,
                 seat_no: selectedSeats.join(","),
-                pickup:trip.start_point,
-                drop:trip.end_point,
+                pickup,
+                drop,
                 role: user.role,
                 departure_date: formattedDepartureDate,
                 reason: null,

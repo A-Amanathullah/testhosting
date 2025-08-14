@@ -1,5 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import Pagination from '../components/Pagination';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { fetchUsers, createUser, updateUser, deleteUser } from '../../services/userService';
@@ -55,17 +56,31 @@ const UsersPage = () => {
   const canEdit = () => hasPermission('edit');
   const canDelete = () => hasPermission('delete');
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 15;
+
   // Filtered users for search
-  const filteredUsers = users.filter(u => {
+  const filteredUsers = useMemo(() => {
+    setPage(1); // Reset to first page on search change
     const q = search.toLowerCase();
-    return (
+    return users.filter(u => (
       u.name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
       u.first_name?.toLowerCase().includes(q) ||
       u.last_name?.toLowerCase().includes(q) ||
       u.phone_no?.toLowerCase().includes(q)
-    );
-  });
+    ));
+    // eslint-disable-next-line
+  }, [users, search]);
+
+  // Paginated data
+  const paginatedUsers = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filteredUsers.slice(start, start + rowsPerPage);
+  }, [filteredUsers, page]);
+
+  const totalPages = Math.ceil(filteredUsers.length / rowsPerPage) || 1;
 
   useEffect(() => {
     // Fetch current user info first
@@ -313,7 +328,7 @@ const UsersPage = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map(user => (
+              {paginatedUsers.map(user => (
                 <tr key={user.id || user.email} className="border-t">
                   <td className="py-2">{user.name}</td>
                   <td className="py-2">{user.email}</td>
@@ -332,6 +347,12 @@ const UsersPage = () => {
                   </td>
                 </tr>
               ))}
+          {/* Pagination controls */}
+          {filteredUsers.length > rowsPerPage && (
+            <div className="flex justify-center mt-6">
+              <Pagination page={page} setPage={setPage} totalPages={totalPages} />
+            </div>
+          )}
             </tbody>
           </table>
           {/* Modal for Add/Edit User */}

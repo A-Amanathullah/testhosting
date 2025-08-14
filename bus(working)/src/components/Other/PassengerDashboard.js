@@ -13,6 +13,15 @@ import axios from 'axios';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const PassengerDashboard = () => {
+  // Helper: Format date string to YYYY-MM-DD
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    return d.toISOString().slice(0, 10);
+  };
+  // Tab state for bookings section
+  const [activeBookingTab, setActiveBookingTab] = useState('personal'); // 'personal' or 'guest'
   const { user } = useContext(AuthContext);
   const [qrModal, setQrModal] = useState({ open: false, details: null });
   const [loyaltyMember, setLoyaltyMember] = useState(null);
@@ -20,7 +29,9 @@ const PassengerDashboard = () => {
   const [loading, setLoading] = useState(false);
 
   const passengerName = user?.name;
-  const isAgent = user?.role === 'agent';
+  const isAgent = user?.role?.toLowerCase() === 'agent';
+
+  // ...existing code...
 
   // Fetch loyalty member data for the user
   useEffect(() => {
@@ -75,6 +86,8 @@ const PassengerDashboard = () => {
   const { cancellations = [] } = useCancellations(user?.id, user?.role);
   // Fetch guest bookings made by this agent (if user is an agent)
   const { guestBookings = [] } = useAgentGuestBookings(isAgent ? user?.id : null);
+
+  // ...existing code...
 
   // Calculate stats from bookings and cancellations (including agent guest bookings)
   const stats = {
@@ -300,15 +313,84 @@ const PassengerDashboard = () => {
     }
   };
 
+  // Sort bookings, cancellations, and guestBookings by created_at descending (newest first)
+  const sortedBookings = [...bookings].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const sortedCancellations = [...cancellations].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const sortedGuestBookings = [...guestBookings].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  // Filter cancellations for each tab (define here for pagination and rendering)
+  const personalCancellations = sortedCancellations.filter(c => !c.booking_type || c.booking_type !== 'guest');
+  const guestCancellations = sortedCancellations.filter(c => c.booking_type === 'guest');
+
+  // Pagination state and helpers
+  const PAGE_SIZE = 10;
+  // Bookings
+  const [bookingPage, setBookingPage] = useState(1);
+  const totalBookingPages = Math.ceil(sortedBookings.length / PAGE_SIZE);
+  const pagedBookings = sortedBookings.slice((bookingPage - 1) * PAGE_SIZE, bookingPage * PAGE_SIZE);
+  // Guest Bookings
+  const [guestBookingPage, setGuestBookingPage] = useState(1);
+  const totalGuestBookingPages = Math.ceil(sortedGuestBookings.length / PAGE_SIZE);
+  const pagedGuestBookings = sortedGuestBookings.slice((guestBookingPage - 1) * PAGE_SIZE, guestBookingPage * PAGE_SIZE);
+  // Cancellations (personal)
+  const [personalCancellationPage, setPersonalCancellationPage] = useState(1);
+  const totalPersonalCancellationPages = Math.ceil(personalCancellations.length / PAGE_SIZE);
+  const pagedPersonalCancellations = personalCancellations.slice((personalCancellationPage - 1) * PAGE_SIZE, personalCancellationPage * PAGE_SIZE);
+  // Cancellations (guest)
+  const [guestCancellationPage, setGuestCancellationPage] = useState(1);
+  const totalGuestCancellationPages = Math.ceil(guestCancellations.length / PAGE_SIZE);
+  const pagedGuestCancellations = guestCancellations.slice((guestCancellationPage - 1) * PAGE_SIZE, guestCancellationPage * PAGE_SIZE);
+
+  // Pagination component (modern look)
+  const Pagination = ({ page, setPage, totalPages }) => (
+    <div className="flex justify-center items-center gap-2 mt-4">
+      <button
+        onClick={() => setPage(page - 1)}
+        disabled={page === 1}
+        className="px-3 py-1 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 font-medium hover:bg-gray-200 disabled:opacity-50 transition"
+      >
+        Prev
+      </button>
+      {Array.from({ length: totalPages }, (_, i) => (
+        <button
+          key={i + 1}
+          onClick={() => setPage(i + 1)}
+          className={`px-3 py-1 rounded-lg border font-semibold transition ${page === i + 1 ? 'bg-blue-600 text-white border-blue-600 shadow' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
+        >
+          {i + 1}
+        </button>
+      ))}
+      <button
+        onClick={() => setPage(page + 1)}
+        disabled={page === totalPages}
+        className="px-3 py-1 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 font-medium hover:bg-gray-200 disabled:opacity-50 transition"
+      >
+        Next
+      </button>
+    </div>
+  );
+
+  // Tab state for cancellations section (for agents)
+  const [activeCancellationTab, setActiveCancellationTab] = useState('personal'); // 'personal' or 'guest'
+
+
   return (
-    <div className="p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 flex-col h-full w-full max-w-full overflow-x-auto">
-      {/* Loyalty Card Section */}
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          {/* Loyalty Card Display - More Prominent Position */}
+    <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 sm:px-4 md:px-8 flex flex-col items-center">
+      <div className="w-full max-w-6xl mx-auto bg-white/90 rounded-3xl shadow-2xl p-4 sm:p-8 md:p-12 space-y-8 border border-blue-100 mt-4 mb-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-blue-800 tracking-tight drop-shadow">Passenger Dashboard</h1>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-center">
+            <span className="text-base sm:text-lg text-gray-500 font-medium">Welcome, <span className="text-blue-700 font-bold">{passengerName}</span></span>
+          </div>
+        </div>
+
+        {/* Loyalty Card Section */}
+        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-8">
+          {/* Loyalty Card Display */}
           <div className="w-full md:w-1/2 max-w-md order-2 md:order-1">
             {loading ? (
-              <div className="animate-pulse bg-gray-200 h-64 w-full rounded-lg"></div>
+              <div className="animate-pulse bg-gray-200 h-64 w-full rounded-2xl shadow"></div>
             ) : loyaltyMember && loyaltyCard ? (
               <LoyaltyCard 
                 tier={loyaltyMember.card_type || loyaltyCard.tier}
@@ -319,20 +401,19 @@ const PassengerDashboard = () => {
                 canEdit={false}
               />
             ) : (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                <h3 className="text-lg font-semibold mb-2">Join Our Loyalty Program!</h3>
+              <div className="bg-gradient-to-br from-blue-100 to-blue-200 border border-blue-200 rounded-2xl p-8 text-center shadow">
+                <h3 className="text-xl font-bold mb-2 text-blue-800">Join Our Loyalty Program!</h3>
                 <p className="text-gray-600">Get exclusive benefits and earn points with every trip</p>
               </div>
             )}
           </div>
-          
           {/* Loyalty Member Details */}
           <div className="w-full md:w-1/2 order-1 md:order-2">
             {loading ? (
-              <div className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
+              <div className="animate-pulse bg-gray-200 h-32 rounded-2xl shadow"></div>
             ) : loyaltyMember ? (
-              <div className="p-6 bg-white rounded-lg shadow-md">
-                <h3 className="font-bold text-xl mb-4 text-blue-800">Your Loyalty Profile</h3>
+              <div className="p-8 bg-white rounded-2xl shadow-lg border border-blue-100">
+                <h3 className="font-bold text-2xl mb-4 text-blue-800">Your Loyalty Profile</h3>
                 <div className="space-y-3">
                   <p className="flex justify-between border-b pb-2">
                     <span className="font-medium text-gray-600">Member Name:</span> 
@@ -355,126 +436,249 @@ const PassengerDashboard = () => {
                 </div>
               </div>
             ) : (
-              <div className="p-6 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="p-8 bg-gray-50 rounded-2xl border border-gray-200 shadow">
                 <p className="text-gray-500 text-center">No loyalty membership found</p>
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 pb-4 sm:pb-10 w-full">
-        <div className="bg-blue-200 p-3 sm:p-6 rounded-xl shadow w-full">
-          <h3 className="text-base sm:text-xl font-medium">Total Booked</h3>
-          <p className="text-xl sm:text-3xl font-bold text-blue-800">{stats.booked}</p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4 sm:pb-10 w-full">
+          <div className="bg-gradient-to-br from-blue-200 to-blue-300 p-6 rounded-2xl shadow text-center border border-blue-100">
+            <h3 className="text-lg font-semibold mb-2 text-blue-900">Total Booked</h3>
+            <p className="text-3xl font-extrabold text-blue-800">{stats.booked}</p>
+          </div>
+          <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 p-6 rounded-2xl shadow text-center border border-yellow-100">
+            <h3 className="text-lg font-semibold mb-2 text-yellow-900">Pending</h3>
+            <p className="text-3xl font-extrabold text-yellow-800">{stats.pending}</p>
+          </div>
+          <div className="bg-gradient-to-br from-red-100 to-red-200 p-6 rounded-2xl shadow text-center border border-red-100">
+            <h3 className="text-lg font-semibold mb-2 text-red-900">Cancelled</h3>
+            <p className="text-3xl font-extrabold text-red-800">{stats.cancelled}</p>
+          </div>
         </div>
-        <div className="bg-yellow-100 p-2 sm:p-4 rounded-xl shadow w-full">
-          <h3 className="text-base sm:text-xl font-medium">Pending</h3>
-          <p className="text-xl sm:text-3xl font-bold text-yellow-800">{stats.pending}</p>
-        </div>
-        <div className="bg-red-100 p-2 sm:p-4 rounded-xl shadow w-full">
-          <h3 className="text-base sm:text-xl font-medium">Cancelled</h3>
-          <p className="text-xl sm:text-3xl font-bold text-red-800">{stats.cancelled}</p>
-        </div>
-      </div>
 
-      {/* Booking Table */}
-      <div className="w-full overflow-x-auto">
-        <h3 className="text-lg sm:text-xl font-semibold mb-4">Your Personal Bookings</h3>
-        <table className="w-full min-w-[700px] table-auto border border-gray-200 text-xs sm:text-sm md:text-base">
-          <thead className="bg-gray-100 text-xs sm:text-base md:text-lg">
-            <tr>
-              {/* <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Booked Date</th> */}
-              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Bus No</th>
-              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Pickup</th>
-              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Drop</th>
-              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Journey Date</th>
-              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Seats</th>
-              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Status</th>
-              <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bookings.map((booking) => (
-              <tr key={booking.id} className="text-center">
-                {/* <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.booked_date}</td> */}
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.bus_no}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.pickup}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.drop}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{booking.booked_date}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border capitalize break-words">{booking.status}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border space-x-1">{renderActions(booking.status, booking)}</td>
-              </tr>
-            ))}
-            {/* Show cancellations as read-only rows */}
-            {cancellations.map((c) => (
-              <tr key={`cancelled-${c.id}`} className="text-center bg-red-50">
-                {/* <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.booked_date}</td> */}
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.bus_no}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.pickup}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.drop}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{c.booked_date}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{Array.isArray(c.seat_no) ? c.seat_no.join(', ') : c.seat_no}</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border capitalize break-words">cancelled</td>
-                <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border text-gray-400 italic">-</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        {/* Bookings Tab Menu and Table Section */}
+        <div className="w-full overflow-x-auto">
+          <div className="flex gap-2 mb-4">
+            <button
+              className={`px-4 py-2 rounded-t-xl font-semibold border-b-4 transition-colors duration-200 shadow-sm ${activeBookingTab === 'personal' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent text-gray-500 bg-gray-100 hover:bg-gray-200'}`}
+              onClick={() => setActiveBookingTab('personal')}
+            >
+              Your Personal Bookings
+            </button>
+            {isAgent && (
+              <button
+                className={`px-4 py-2 rounded-t-xl font-semibold border-b-4 transition-colors duration-200 shadow-sm ${activeBookingTab === 'guest' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent text-gray-500 bg-gray-100 hover:bg-gray-200'}`}
+                onClick={() => setActiveBookingTab('guest')}
+              >
+                Guest Bookings You Made
+              </button>
+            )}
+          </div>
 
-      {/* Agent Guest Bookings Section */}
-      {isAgent && (
-        <div className="w-full overflow-x-auto mt-8">
-          <h3 className="text-lg sm:text-xl font-semibold mb-4">Guest Bookings You Made</h3>
-          <table className="w-full min-w-[800px] table-auto border border-gray-200 text-xs sm:text-sm md:text-base">
-            <thead className="bg-blue-100 text-xs sm:text-base md:text-lg">
-              <tr>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Guest Name</th>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Phone</th>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Bus No</th>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Pickup</th>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Drop</th>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Journey Date</th>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Seats</th>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Status</th>
-                <th className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border whitespace-nowrap">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {guestBookings.map((guestBooking) => (
-                <tr key={`guest-${guestBooking.id}`} className="text-center bg-blue-50">
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.name}</td>
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.phone}</td>
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.bus_no}</td>
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.pickup}</td>
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.drop}</td>
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.departure_date}</td>
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border break-words">{guestBooking.seat_no}</td>
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border capitalize break-words">{guestBooking.status}</td>
-                  <td className="px-1 sm:px-2 md:px-4 py-1 sm:py-2 border space-x-1">
-                    {renderGuestBookingActions(guestBooking.status, guestBooking)}
-                  </td>
-                </tr>
-              ))}
-              {guestBookings.length === 0 && (
+        {/* Personal Bookings Table with Pagination and modern card */}
+        {activeBookingTab === 'personal' && (
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
+            <table className="w-full min-w-[700px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
+              <thead className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-900 text-xs sm:text-base md:text-lg">
                 <tr>
-                  <td colSpan="9" className="px-4 py-8 text-center text-gray-500 italic">
-                    No guest bookings found
-                  </td>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Booked/Cancelled Date</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Journey Date</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Seats</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Status</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Action</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {pagedBookings.map((booking, idx) => (
+                  <tr key={booking.id} className={`text-center transition hover:bg-blue-50 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
+                    <td className="px-3 py-2 break-words">{formatDate(booking.created_at)}</td>
+                    <td className="px-3 py-2 break-words">{booking.bus_no}</td>
+                    <td className="px-3 py-2 break-words">{booking.pickup}</td>
+                    <td className="px-3 py-2 break-words">{booking.drop}</td>
+                    <td className="px-3 py-2 break-words">{booking.booked_date}</td>
+                    <td className="px-3 py-2 break-words">{Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no}</td>
+                    <td className="px-3 py-2 capitalize break-words font-semibold">{booking.status}</td>
+                    <td className="px-3 py-2 space-x-1">{renderActions(booking.status, booking)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {totalBookingPages > 1 && (
+              <Pagination page={bookingPage} setPage={setBookingPage} totalPages={totalBookingPages} />
+            )}
+          </div>
+        )}
+
+        {/* Guest Bookings Table with Pagination and modern card */}
+        {isAgent && activeBookingTab === 'guest' && (
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
+            <table className="w-full min-w-[800px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
+              <thead className="bg-gradient-to-r from-blue-200 to-blue-300 text-blue-900 text-xs sm:text-base md:text-lg">
+                <tr>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Booked Date</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Guest Name</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Phone</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Journey Date</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Seats</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Status</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedGuestBookings.map((guestBooking, idx) => (
+                  <tr key={`guest-${guestBooking.id}`} className={`text-center transition hover:bg-blue-50 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
+                    <td className="px-3 py-2 break-words">{formatDate(guestBooking.created_at)}</td>
+                    <td className="px-3 py-2 break-words">{guestBooking.name}</td>
+                    <td className="px-3 py-2 break-words">{guestBooking.phone}</td>
+                    <td className="px-3 py-2 break-words">{guestBooking.bus_no}</td>
+                    <td className="px-3 py-2 break-words">{guestBooking.pickup}</td>
+                    <td className="px-3 py-2 break-words">{guestBooking.drop}</td>
+                    <td className="px-3 py-2 break-words">{guestBooking.departure_date}</td>
+                    <td className="px-3 py-2 break-words">{guestBooking.seat_no}</td>
+                    <td className="px-3 py-2 capitalize break-words font-semibold">{guestBooking.status}</td>
+                    <td className="px-3 py-2 space-x-1">{renderGuestBookingActions(guestBooking.status, guestBooking)}</td>
+                  </tr>
+                ))}
+                {guestBookings.length === 0 && (
+                  <tr>
+                    <td colSpan="9" className="px-4 py-8 text-center text-gray-500 italic">
+                      No guest bookings found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            {totalGuestBookingPages > 1 && (
+              <Pagination page={guestBookingPage} setPage={setGuestBookingPage} totalPages={totalGuestBookingPages} />
+            )}
+          </div>
+        )}
+
+        {/* Cancellations Tab Menu and Table Section (for agents) with Pagination and modern card */}
+        {isAgent && (
+          <div className="mt-8">
+            <div className="flex gap-2 mb-4">
+              <button
+                className={`px-4 py-2 rounded-t-md font-semibold border-b-2 transition-colors duration-200 ${activeCancellationTab === 'personal' ? 'border-red-600 text-red-700 bg-red-50' : 'border-transparent text-gray-500 bg-gray-100 hover:bg-gray-200'}`}
+                onClick={() => setActiveCancellationTab('personal')}
+              >
+                Your Cancelled Bookings
+              </button>
+              <button
+                className={`px-4 py-2 rounded-t-md font-semibold border-b-2 transition-colors duration-200 ${activeCancellationTab === 'guest' ? 'border-red-600 text-red-700 bg-red-50' : 'border-transparent text-gray-500 bg-gray-100 hover:bg-gray-200'}`}
+                onClick={() => setActiveCancellationTab('guest')}
+              >
+                Guest Cancellations You Made
+              </button>
+            </div>
+            {/* Personal Cancellations Table with Pagination and card */}
+            {activeCancellationTab === 'personal' && (
+              <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
+                <table className="w-full min-w-[700px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
+                  <thead className="bg-gradient-to-r from-red-100 to-red-200 text-red-900 text-xs sm:text-base md:text-lg">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Cancelled Date</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Journey Date</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Seats</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedPersonalCancellations.map((c, idx) => (
+                      <tr key={`cancelled-personal-${c.id}`} className={`text-center transition hover:bg-red-50 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
+                        <td className="px-3 py-2 break-words">{formatDate(c.created_at)}</td>
+                        <td className="px-3 py-2 break-words">{c.bus_no}</td>
+                        <td className="px-3 py-2 break-words">{c.pickup}</td>
+                        <td className="px-3 py-2 break-words">{c.drop}</td>
+                        <td className="px-3 py-2 break-words">{c.booked_date}</td>
+                        <td className="px-3 py-2 break-words">{Array.isArray(c.seat_no) ? c.seat_no.join(', ') : c.seat_no}</td>
+                        <td className="px-3 py-2 capitalize break-words font-semibold">cancelled</td>
+                      </tr>
+                    ))}
+                    {pagedPersonalCancellations.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="px-4 py-8 text-center text-gray-500 italic">
+                          No personal cancellations found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                {totalPersonalCancellationPages > 1 && (
+                  <Pagination page={personalCancellationPage} setPage={setPersonalCancellationPage} totalPages={totalPersonalCancellationPages} />
+                )}
+              </div>
+            )}
+            {/* Guest Cancellations Table with Pagination and card */}
+            {activeCancellationTab === 'guest' && (
+              <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
+                <table className="w-full min-w-[700px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
+                  <thead className="bg-gradient-to-r from-red-200 to-red-300 text-red-900 text-xs sm:text-base md:text-lg">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Cancelled Date</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Guest Name</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Phone</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Journey Date</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Seats</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedGuestCancellations.map((c, idx) => (
+                      <tr key={`cancelled-guest-${c.id}`} className={`text-center transition hover:bg-red-50 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
+                        <td className="px-3 py-2 break-words">{formatDate(c.created_at)}</td>
+                        <td className="px-3 py-2 break-words">{c.name}</td>
+                        <td className="px-3 py-2 break-words">{c.phone}</td>
+                        <td className="px-3 py-2 break-words">{c.bus_no}</td>
+                        <td className="px-3 py-2 break-words">{c.pickup}</td>
+                        <td className="px-3 py-2 break-words">{c.drop}</td>
+                        <td className="px-3 py-2 break-words">{c.booked_date}</td>
+                        <td className="px-3 py-2 break-words">{Array.isArray(c.seat_no) ? c.seat_no.join(', ') : c.seat_no}</td>
+                        <td className="px-3 py-2 capitalize break-words font-semibold">cancelled</td>
+                      </tr>
+                    ))}
+                    {pagedGuestCancellations.length === 0 && (
+                      <tr>
+                        <td colSpan="9" className="px-4 py-8 text-center text-gray-500 italic">
+                          No guest cancellations found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                {totalGuestCancellationPages > 1 && (
+                  <Pagination page={guestCancellationPage} setPage={setGuestCancellationPage} totalPages={totalGuestCancellationPages} />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       {qrModal.open && (
         <BookingQRCode bookingDetails={qrModal.details} onCancel={() => setQrModal({ open: false, details: null })} />
       )}
-    </div>
-  );
+
+    </div> {/* End of main card container */}
+    {qrModal.open && (
+      <BookingQRCode bookingDetails={qrModal.details} onCancel={() => setQrModal({ open: false, details: null })} />
+    )}
+  </div> // End of gradient background wrapper
+);
 };
 
 export default PassengerDashboard;

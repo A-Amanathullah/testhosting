@@ -19,9 +19,23 @@ class CancellationController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Booking cancelled and moved to cancellations.']);
     }
 
-    // List all cancellations
-    public function index()
+    // List cancellations, optionally filtered by user_id or agent_id
+    public function index(Request $request)
     {
-        return Cancellation::all();
+        $userId = $request->query('user_id');
+        $agentId = $request->query('agent_id');
+        $query = Cancellation::query();
+        if ($userId && $agentId) {
+            // For agents, get cancellations where user_id = userId OR agent_id = agentId
+            $query->where(function($q) use ($userId, $agentId) {
+                $q->where('user_id', $userId)
+                  ->orWhere('agent_id', $agentId);
+            });
+        } elseif ($userId) {
+            $query->where('user_id', $userId);
+        } elseif ($agentId) {
+            $query->where('agent_id', $agentId);
+        }
+        return $query->get();
     }
 }

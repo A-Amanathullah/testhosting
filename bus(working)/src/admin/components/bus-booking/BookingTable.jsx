@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+import Pagination from '../../components/Pagination';
 import { normalizeToYYYYMMDD } from '../../../utils/dateUtils';
 
 // Helper function to parse seat numbers from any format (string, array, comma-separated)
@@ -24,10 +25,10 @@ const parseSeatNumbers = (seatData) => {
 
 const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings = [], isLoading, selectedBusNo, selectedDate, printRef, buses, onCancelBooking }) => {
   // Helper: Map bus_id to bus_no
-  const getBusNoById = (bus_id) => {
-    const bus = buses?.find((b) => String(b.id) === String(bus_id));
-    return bus?.bus_no || bus?.busNumber || 'N/A';
-  };
+  // const getBusNoById = (bus_id) => {
+  //   const bus = buses?.find((b) => String(b.id) === String(bus_id));
+  //   return bus?.bus_no || bus?.busNumber || 'N/A';
+  // };
 
   // Function to render status badge
   const renderStatusBadge = (status) => {
@@ -90,15 +91,174 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
 
   // Prepare combined data of bookings, frozen seats, and cancellations
   // For phone number: regular bookings use booking.phone_no, guest/cancellation use booking.phone
-  const prepareTableData = () => {
-    // Filter bookings and frozenSeats by bus_id and selectedDate
+  // const prepareTableData = () => {
+  //   // Filter bookings and frozenSeats by bus_id and selectedDate
+  //   const selectedBusObj = buses?.find((b) => String(b.bus_no) === String(selectedBusNo));
+  //   const selectedBusId = selectedBusObj?.id;
+    
+  //   // Normalize selected date for comparison
+  //   const normalizedSelectedDate = normalizeToYYYYMMDD(selectedDate);
+    
+  //   // Filter regular bookings
+  //   const filteredBookings = bookings.filter(b => {
+  //     const normalizedBookingDate = normalizeToYYYYMMDD(b.departure_date || b.departureDate);
+  //     const busMatches = String(b.bus_id) === String(selectedBusId) || 
+  //                        String(b.bus_no) === String(selectedBusNo);
+  //     const dateMatches = !normalizedSelectedDate || normalizedBookingDate === normalizedSelectedDate;
+  //     return busMatches && dateMatches;
+  //   });
+    
+  //   // Filter frozen seats
+  //   const filteredFrozenSeats = (frozenSeats || []).filter(f => {
+  //     const normalizedFrozenDate = normalizeToYYYYMMDD(f.departure_date || f.departureDate);
+  //     const busMatches = String(f.bus_id) === String(selectedBusId) || 
+  //                        String(f.bus_no) === String(selectedBusNo);
+  //     const dateMatches = !normalizedSelectedDate || normalizedFrozenDate === normalizedSelectedDate;
+  //     return busMatches && dateMatches;
+  //   });
+    
+  //   // Filter cancellations - be more flexible with bus ID matching
+  //   const filteredCancellations = (cancellations || []).filter(c => {
+  //     const normalizedCancelDate = normalizeToYYYYMMDD(c.departure_date);
+  //     const busMatches = String(c.bus_id) === String(selectedBusId) || 
+  //                        String(c.bus_no) === String(selectedBusNo);
+  //     const dateMatches = !normalizedSelectedDate || normalizedCancelDate === normalizedSelectedDate;
+  //     return busMatches && dateMatches;
+  //   });
+    
+  //   // Filter guest bookings
+  //   const filteredGuestBookings = (guestBookings || []).filter(g => {
+  //     if (!g) return false;
+      
+  //     let normalizedGuestDate;
+  //     try {
+  //       normalizedGuestDate = normalizeToYYYYMMDD(g.departure_date);
+  //     } catch (err) {
+  //       normalizedGuestDate = null;
+  //     }
+      
+  //     const busMatches = 
+  //       String(g.bus_no) === String(selectedBusNo) || 
+  //       String(g.bus_id) === String(selectedBusId);
+      
+  //     const dateMatches = 
+  //       !normalizedSelectedDate || 
+  //       !normalizedGuestDate ||
+  //       normalizedGuestDate === normalizedSelectedDate;
+      
+  //     return busMatches && dateMatches;
+  //   });
+    
+  //   const bookingsData = filteredBookings.map(booking => {
+  //     const parsedSeats = parseSeatNumbers(booking.seat_no);
+  //     const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
+      
+  //     return {
+  //       id: booking.id,
+  //       serialNo: booking.serial_no || '-',
+  //       name: booking.name || booking.frozenBy || 'Admin',
+  //       phone: booking.phone_no || '',
+  //       ticketsReserved: booking.reserved_tickets || booking.ticketsReserved || parsedSeats.length || 0,
+  //       seatNumbers: formattedSeatNumbers,
+  //       paymentStatus: booking.payment_status || booking.paymentStatus || null,
+  //       route: booking.route || `${booking.pickup || ''}${booking.drop ? '-' + booking.drop : ''}` || 'N/A',
+  //       status: booking.status,
+  //       reason: booking.reason,
+  //       busNumber: getBusNoById(booking.bus_id),
+  //       role: booking.role,
+  //       type: 'booking',
+  //       raw: booking // Keep the raw booking data for the cancel action
+  //     };
+  //   });
+    
+  //   const frozenData = filteredFrozenSeats.map(frozen => {
+  //     const parsedSeats = parseSeatNumbers(frozen.seat_no);
+  //     const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
+      
+  //     return {
+  //       id: `frozen-${frozen.id}`,
+  //       serialNo: frozen.serial_no || '-',
+  //       name: frozen.name || frozen.frozenBy || 'Admin',
+  //       ticketsReserved: parsedSeats.length,
+  //       seatNumbers: formattedSeatNumbers,
+  //       paymentStatus: frozen.payment_status || null,
+  //       route: frozen.route || `${frozen.start_point || ''}${frozen.end_point ? '-' + frozen.end_point : ''}` || 'N/A',
+  //       status: 'Frozen',
+  //       reason: frozen.reason,
+  //       busNumber: getBusNoById(frozen.bus_id),
+  //       role: frozen.role,
+  //       type: 'frozen'
+  //     };
+  //   });
+    
+  //   const cancellationData = filteredCancellations.map(c => {
+  //     const parsedSeats = parseSeatNumbers(c.seat_no);
+  //     const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
+      
+  //     return {
+  //       id: `cancelled-${c.id}`,
+  //       serialNo: c.serial_no || '-',
+  //       name: c.name || 'Passenger',
+  //       phone: c.phone || '',
+  //       ticketsReserved: parsedSeats.length,
+  //       seatNumbers: formattedSeatNumbers,
+  //       paymentStatus: c.payment_status || null,
+  //       route: c.route || `${c.pickup || ''}${c.drop ? '-' + c.drop : ''}` || 'N/A',
+  //       status: 'Cancelled',
+  //       reason: c.reason,
+  //       busNumber: getBusNoById(c.bus_id),
+  //       role: c.role,
+  //       type: 'cancelled'
+  //     };
+  //   });
+    
+  //   // Add guest bookings to the data
+  //   const guestData = filteredGuestBookings.map(guest => {
+  //     if (!guest) {
+  //       return null;
+  //     }
+      
+  //     const parsedSeats = parseSeatNumbers(guest.seat_no);
+  //     const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
+      
+  //     const tableData = {
+  //       id: `guest-${guest.id || 'unknown'}`,
+  //       serialNo: guest.serial_no || '-',
+  //       name: guest.name || 'Guest',
+  //       phone: guest.phone || '',
+  //       ticketsReserved: guest.reserved_tickets || parsedSeats.length,
+  //       seatNumbers: formattedSeatNumbers,
+  //       paymentStatus: guest.payment_status || null,
+  //       route: guest.route || `${guest.pickup || ''}${guest.drop ? '-' + guest.drop : ''}` || 'N/A',
+  //       status: guest.status || 'Confirmed',  // Default to Confirmed if no status is provided
+  //       reason: guest.reason,
+  //       busNumber: guest.bus_no || getBusNoById(guest.bus_id),
+  //       type: 'guest',
+  //       raw: guest // Keep the raw booking data for the cancel action
+  //     };
+      
+  //     return tableData;
+  //   }).filter(Boolean); // Filter out any null entries from invalid data
+    
+  //   return [...bookingsData, ...frozenData, ...cancellationData, ...guestData];
+  // };
+
+
+  // Pagination state (must be before any early returns)
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 20;
+
+  // Always compute tableData and paginatedTableData, but render early returns below
+  const tableData = useMemo(() => {
+    // Prepare combined data of bookings, frozen seats, and cancellations
+    // For phone number: regular bookings use booking.phone_no, guest/cancellation use booking.phone
+    const getBusNoById = (bus_id) => {
+      const bus = buses?.find((b) => String(b.id) === String(bus_id));
+      return bus?.bus_no || bus?.busNumber || 'N/A';
+    };
     const selectedBusObj = buses?.find((b) => String(b.bus_no) === String(selectedBusNo));
     const selectedBusId = selectedBusObj?.id;
-    
-    // Normalize selected date for comparison
     const normalizedSelectedDate = normalizeToYYYYMMDD(selectedDate);
-    
-    // Filter regular bookings
     const filteredBookings = bookings.filter(b => {
       const normalizedBookingDate = normalizeToYYYYMMDD(b.departure_date || b.departureDate);
       const busMatches = String(b.bus_id) === String(selectedBusId) || 
@@ -106,8 +266,6 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
       const dateMatches = !normalizedSelectedDate || normalizedBookingDate === normalizedSelectedDate;
       return busMatches && dateMatches;
     });
-    
-    // Filter frozen seats
     const filteredFrozenSeats = (frozenSeats || []).filter(f => {
       const normalizedFrozenDate = normalizeToYYYYMMDD(f.departure_date || f.departureDate);
       const busMatches = String(f.bus_id) === String(selectedBusId) || 
@@ -115,8 +273,6 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
       const dateMatches = !normalizedSelectedDate || normalizedFrozenDate === normalizedSelectedDate;
       return busMatches && dateMatches;
     });
-    
-    // Filter cancellations - be more flexible with bus ID matching
     const filteredCancellations = (cancellations || []).filter(c => {
       const normalizedCancelDate = normalizeToYYYYMMDD(c.departure_date);
       const busMatches = String(c.bus_id) === String(selectedBusId) || 
@@ -124,34 +280,26 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
       const dateMatches = !normalizedSelectedDate || normalizedCancelDate === normalizedSelectedDate;
       return busMatches && dateMatches;
     });
-    
-    // Filter guest bookings
     const filteredGuestBookings = (guestBookings || []).filter(g => {
       if (!g) return false;
-      
       let normalizedGuestDate;
       try {
         normalizedGuestDate = normalizeToYYYYMMDD(g.departure_date);
       } catch (err) {
         normalizedGuestDate = null;
       }
-      
       const busMatches = 
         String(g.bus_no) === String(selectedBusNo) || 
         String(g.bus_id) === String(selectedBusId);
-      
       const dateMatches = 
         !normalizedSelectedDate || 
         !normalizedGuestDate ||
         normalizedGuestDate === normalizedSelectedDate;
-      
       return busMatches && dateMatches;
     });
-    
     const bookingsData = filteredBookings.map(booking => {
       const parsedSeats = parseSeatNumbers(booking.seat_no);
       const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
-      
       return {
         id: booking.id,
         serialNo: booking.serial_no || '-',
@@ -169,11 +317,9 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         raw: booking // Keep the raw booking data for the cancel action
       };
     });
-    
     const frozenData = filteredFrozenSeats.map(frozen => {
       const parsedSeats = parseSeatNumbers(frozen.seat_no);
       const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
-      
       return {
         id: `frozen-${frozen.id}`,
         serialNo: frozen.serial_no || '-',
@@ -189,11 +335,9 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         type: 'frozen'
       };
     });
-    
     const cancellationData = filteredCancellations.map(c => {
       const parsedSeats = parseSeatNumbers(c.seat_no);
       const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
-      
       return {
         id: `cancelled-${c.id}`,
         serialNo: c.serial_no || '-',
@@ -210,16 +354,12 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         type: 'cancelled'
       };
     });
-    
-    // Add guest bookings to the data
     const guestData = filteredGuestBookings.map(guest => {
       if (!guest) {
         return null;
       }
-      
       const parsedSeats = parseSeatNumbers(guest.seat_no);
       const formattedSeatNumbers = parsedSeats.sort((a, b) => a - b).join(', ');
-      
       const tableData = {
         id: `guest-${guest.id || 'unknown'}`,
         serialNo: guest.serial_no || '-',
@@ -235,12 +375,21 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
         type: 'guest',
         raw: guest // Keep the raw booking data for the cancel action
       };
-      
       return tableData;
     }).filter(Boolean); // Filter out any null entries from invalid data
-    
-    return [...bookingsData, ...frozenData, ...cancellationData, ...guestData];
-  };
+    const allRows = [...bookingsData, ...frozenData, ...cancellationData, ...guestData];
+    // Try to sort by id descending (assuming id is numeric or string with numeric value)
+    return allRows.slice().sort((a, b) => {
+      const aId = parseInt((a.raw?.id ?? a.id ?? '').toString().replace(/\D/g, ''));
+      const bId = parseInt((b.raw?.id ?? b.id ?? '').toString().replace(/\D/g, ''));
+      if (!isNaN(aId) && !isNaN(bId)) return bId - aId;
+      return 0;
+    });
+  }, [bookings, frozenSeats, cancellations, guestBookings, selectedBusNo, selectedDate, buses]);
+
+  const paginatedTableData = useMemo(() => (
+    tableData.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage)
+  ), [tableData, currentPage, recordsPerPage]);
 
   if (!selectedBusNo || !selectedDate) {
     return (
@@ -258,8 +407,6 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
     );
   }
 
-  const tableData = prepareTableData();
-  
   if (tableData.length === 0) {
     return (
       <div className="p-4 text-center bg-white rounded-lg shadow">
@@ -317,7 +464,7 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tableData.map((row) => (
+            {paginatedTableData.map((row) => (
               <tr 
                 key={row.id} 
                 className={`hover:bg-gray-50 ${row.type === 'frozen' ? 'bg-purple-50' : row.type === 'guest' ? 'bg-blue-50' : ''}`}
@@ -359,6 +506,16 @@ const BookingTable = ({ bookings, frozenSeats, cancellations = [], guestBookings
             ))}
           </tbody>
         </table>
+        {/* Pagination Controls */}
+        {tableData.length > recordsPerPage && (
+          <div className="flex justify-center my-4">
+            <Pagination
+              page={currentPage}
+              setPage={setCurrentPage}
+              totalPages={Math.ceil(tableData.length / recordsPerPage)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

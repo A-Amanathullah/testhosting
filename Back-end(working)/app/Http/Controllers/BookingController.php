@@ -14,17 +14,17 @@ class BookingController extends Controller
 
         // Filter by user_id if provided
         if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
+            $query->where('bookings.user_id', $request->user_id);
         }
 
         // Filter by bus_no (bus_id) if provided
         if ($request->has('bus_no')) {
-            $query->where('bus_id', $request->bus_no);
+            $query->where('bookings.bus_id', $request->bus_no);
         }
 
         // Filter by departure_date if provided
         if ($request->has('departure_date')) {
-            $query->where('departure_date', $request->departure_date);
+            $query->where('bookings.departure_date', $request->departure_date);
         }
 
         // Join with user_details to get phone_no

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+import Pagination from '../../components/Pagination';
 import { Eye, Edit, Trash2 } from 'lucide-react';
 
 const BusTable = ({
@@ -8,13 +9,32 @@ const BusTable = ({
   onEditBus,
   onDeleteBus
 }) => {
-  const filteredBuses = Array.isArray(buses)
-    ? buses.filter(bus =>
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 5;
+
+  const filteredBuses = useMemo(() => {
+    if (!Array.isArray(buses)) return [];
+    // Sort buses alphabetically by bus_no (case-insensitive)
+    const sorted = [...buses].sort((a, b) => {
+      const aNo = (a.bus_no || '').toLowerCase();
+      const bNo = (b.bus_no || '').toLowerCase();
+      if (aNo < bNo) return -1;
+      if (aNo > bNo) return 1;
+      return 0;
+    });
+    return sorted.filter(bus =>
       bus?.bus_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (bus?.start_point && bus?.end_point &&
         `${bus.start_point} to ${bus.end_point}`.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-    : [];
+    );
+  }, [buses, searchTerm]);
+
+  // Paginated buses for current page
+  const paginatedBuses = useMemo(() => (
+    filteredBuses.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage)
+  ), [filteredBuses, currentPage, recordsPerPage]);
 
   return (
     <>
@@ -42,7 +62,7 @@ const BusTable = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredBuses.length > 0 ? (
-              filteredBuses.map((bus) => (
+              paginatedBuses.map((bus) => (
                 <tr key={bus.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <img
@@ -91,6 +111,16 @@ const BusTable = ({
             )}
           </tbody>
         </table>
+        {/* Pagination Controls */}
+        {filteredBuses.length > recordsPerPage && (
+          <div className="flex justify-center my-4">
+            <Pagination
+              page={currentPage}
+              setPage={setCurrentPage}
+              totalPages={Math.ceil(filteredBuses.length / recordsPerPage)}
+            />
+          </div>
+        )}
       </div>
     </>
   );

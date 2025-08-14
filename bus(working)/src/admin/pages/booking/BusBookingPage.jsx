@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import SideLogo from '../../../assets/Side.png';
 import { usePermissions } from '../../../context/PermissionsContext';
 import {
   BusSelector,
@@ -93,10 +94,32 @@ const BusBookingPage = () => {
       return;
     }
     printWindow.document.write('<html><head><title>Bus Booking Report</title>');
-    // Inline minimal print styles for clarity
-    printWindow.document.write('<style>body{font-family:sans-serif;} table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:8px;}</style>');
+    // Professional print styles: logo, hide actions, clean table
+    printWindow.document.write(`
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; margin: 0; padding: 24px; }
+        .print-logo { display: block; margin: 0 auto 24px auto; max-width: 220px; }
+        h1 { text-align: center; color: #1a237e; font-size: 2rem; margin-bottom: 12px; }
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #fff; box-shadow: 0 2px 8px #e3e3e3; }
+        .print-table th, .print-table td { border: 1px solid #bdbdbd; padding: 10px 14px; font-size: 1rem; }
+        .print-table th { background: #e3eafc; color: #1a237e; font-weight: 700; }
+        .print-table tr:nth-child(even) { background: #f7fafd; }
+        .print-table .print-hide, .print-table .print-hide * { display: none !important; }
+        @media print {
+          body { margin: 0; }
+        }
+      </style>
+    `);
     printWindow.document.write('</head><body>');
-    printWindow.document.write(printContents);
+    // Add logo and title using imported image path
+    printWindow.document.write(`
+      <img src="${SideLogo}" alt="Company Logo" class="print-logo" />
+      <h1>Bus Booking Report</h1>
+    `);
+    // Insert table, but hide actions column by replacing class
+    let tableHtml = printContents.replace(/class="(.*?)actions(.*?)"/g, 'class="$1print-hide$2"');
+    tableHtml = tableHtml.replace(/<th[^>]*>\s*Actions\s*<\/th>/gi, '<th class="print-hide">Actions</th>');
+    printWindow.document.write(tableHtml.replace(/BookingTable_table__[^\s"]*/g, 'print-table'));
     printWindow.document.write('</body></html>');
     printWindow.document.close();
     printWindow.focus();

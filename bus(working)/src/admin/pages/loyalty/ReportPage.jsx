@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import Pagination from '../../components/Pagination';
 import { usePermissions } from '../../../context/PermissionsContext';
 import { Search } from 'lucide-react';
 import { PrintReportButton } from '../../components/loyalty-card';
@@ -37,18 +38,31 @@ const ReportPage = () => {
     }
   };
   
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
+
   // Filter reports based on search query and tier filter
   const filteredReports = useMemo(() => {
+    setPage(1); // Reset to first page on filter/search change
     return customerReports.filter(customer => {
       const matchesSearch = 
         customer.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
         customer.customer_id?.toLowerCase().includes(searchQuery.toLowerCase());
-      
       const matchesTier = tierFilter === 'All' || customer.tier === tierFilter;
-      
       return matchesSearch && matchesTier;
     });
+    // eslint-disable-next-line
   }, [customerReports, searchQuery, tierFilter]);
+
+  // Paginated data
+  const paginatedReports = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filteredReports.slice(start, start + rowsPerPage);
+  }, [filteredReports, page]);
+
+  const totalPages = Math.ceil(filteredReports.length / rowsPerPage) || 1;
   
   // Calculate summary statistics based on filtered data
   const totalBookings = filteredReports.reduce((sum, customer) => sum + customer.total_bookings, 0);
@@ -113,16 +127,34 @@ const ReportPage = () => {
             />
           </div>
         </div>
-          {/* Customer loyalty reports table */}
-        <div className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm loyalty-report-print">          {/* This header will only show when printing */}
+        {/* Customer loyalty reports table */}
+        <div className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm loyalty-report-print">
+          {/* This header will only show when printing */}
           <div className="hidden loyalty-report-header print:block">
             <h1>RS-EXPRESS BUS SERVICE</h1>
             <p>Customer Loyalty Program Report</p>
             <p>Report Date: {currentDate}</p>
           </div>
-            <div className="flex flex-wrap items-center justify-between mb-4">
+
+          {/* Summary cards */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            <div className="flex-1 min-w-[180px] bg-gradient-to-r from-red-100 to-red-200 rounded-lg shadow p-4 flex flex-col items-center">
+              <span className="text-xs text-gray-500">Total Bookings</span>
+              <span className="text-2xl font-bold text-red-700">{totalBookings}</span>
+            </div>
+            <div className="flex-1 min-w-[180px] bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg shadow p-4 flex flex-col items-center">
+              <span className="text-xs text-gray-500">Total Amount</span>
+              <span className="text-2xl font-bold text-blue-700">{totalAmount.toLocaleString()} Rs</span>
+            </div>
+            <div className="flex-1 min-w-[180px] bg-gradient-to-r from-amber-100 to-amber-200 rounded-lg shadow p-4 flex flex-col items-center">
+              <span className="text-xs text-gray-500">Total Points Earned</span>
+              <span className="text-2xl font-bold text-amber-700">{totalPointsEarned}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-gray-900">Customer Loyalty Details</h2>
-            
+
             {/* Search and filter - hidden during print */}
             <div className="flex items-center space-x-4 no-print">
               {/* Search input */}
@@ -138,7 +170,7 @@ const ReportPage = () => {
                   className="py-2 pl-10 pr-4 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
-              
+
               {/* Tier filter dropdown */}
               <select
                 value={tierFilter}
@@ -153,7 +185,7 @@ const ReportPage = () => {
               </select>
             </div>
           </div>
-          
+
           <div className="overflow-x-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
@@ -174,57 +206,53 @@ const ReportPage = () => {
               </div>
             ) : (
               <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Customer ID</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Customer Name</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Total Amount (Rs)</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Points Earned</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Tier</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredReports.length > 0 ? (
-                  <>
-                    {filteredReports.map((customer, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{customer.customer_id}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{customer.customer_name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.total_amount.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.points_earned}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            customer.tier === 'Diamond' ? 'bg-blue-200 text-blue-800' :
-                            customer.tier === 'Platinum' ? 'bg-slate-200 text-slate-800' : 
-                            customer.tier === 'Gold' ? 'bg-amber-200 text-amber-800' : 
-                            'bg-gray-200 text-gray-800'
-                          }`}>
-                            {customer.tier}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Summary row */}
-                    <tr className="font-medium bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900" colSpan="2">Total</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{totalBookings}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {totalAmount.toLocaleString()} Rs
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{totalPointsEarned}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900"></td>
-                    </tr>
-                  </>
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                      <p className="text-lg font-medium">No customers found matching your search criteria</p>
-                      <p className="mt-1">Try adjusting your search or filter options</p>
-                    </td>
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Customer ID</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Customer Name</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Total Amount (Rs)</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Points Earned</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Tier</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedReports.length > 0 ? (
+                    <>
+                      {paginatedReports.map((customer, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{customer.customer_id}</td>
+                          <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{customer.customer_name}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.total_amount.toLocaleString()}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{customer.points_earned}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              customer.tier === 'Diamond' ? 'bg-blue-200 text-blue-800' :
+                              customer.tier === 'Platinum' ? 'bg-slate-200 text-slate-800' : 
+                              customer.tier === 'Gold' ? 'bg-amber-200 text-amber-800' : 
+                              'bg-gray-200 text-gray-800'
+                            }`}>
+                              {customer.tier}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                        <p className="text-lg font-medium">No customers found matching your search criteria</p>
+                        <p className="mt-1">Try adjusting your search or filter options</p>
+                      </td>
+                    </tr>
+                  )}
+            {/* Pagination controls */}
+            {filteredReports.length > rowsPerPage && (
+              <div className="flex justify-center mt-6">
+                <Pagination page={page} setPage={setPage} totalPages={totalPages} />
+              </div>
+            )}
+                </tbody>
+              </table>
             )}
           </div>
         </div>

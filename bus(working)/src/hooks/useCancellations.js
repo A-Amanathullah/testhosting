@@ -11,25 +11,15 @@ const useCancellations = (userId, userRole) => {
   useEffect(() => {
     if (!userId) return;
     setLoading(true);
-    axios.get(`${API_URL}/cancellations`)
+    // For agents, fetch both user_id and agent_id cancellations
+    let url = `${API_URL}/cancellations?user_id=${userId}`;
+    if (userRole && userRole.toLowerCase() === 'agent') {
+      url += `&agent_id=${userId}`;
+    }
+    axios.get(url)
       .then(res => {
-        // Filter by user if needed
-        const all = Array.isArray(res.data) ? res.data : [];
-        
-        let filteredCancellations = [];
-        
-        // Get user's own cancelled bookings
-        filteredCancellations = all.filter(c => String(c.user_id) === String(userId));
-        
-        // If user is an agent, also get cancelled guest bookings they made
-        if (userRole === 'agent') {
-          const guestCancellations = all.filter(c => 
-            c.booking_type === 'guest' && String(c.agent_id) === String(userId)
-          );
-          filteredCancellations = [...filteredCancellations, ...guestCancellations];
-        }
-        
-        setCancellations(filteredCancellations);
+        // Backend now returns all relevant cancellations
+        setCancellations(Array.isArray(res.data) ? res.data : []);
         setLoading(false);
       })
       .catch(err => {

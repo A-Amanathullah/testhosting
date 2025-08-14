@@ -1,5 +1,6 @@
 import { usePermissions } from '../../context/PermissionsContext';
-import { useState, useEffect, /*useContext*/ } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Pagination from '../components/Pagination';
 // import { AuthContext } from '../../context/AuthContext';
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react';
 import {
@@ -150,23 +151,37 @@ const BusSchedulePage = () => {
   };
 
   // Filter schedules to only show present and future dates
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Set to start of today
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  const filteredSchedules = schedules
-    .filter(schedule => {
-      // Only show schedules with departure_date today or in the future
-      const depDate = new Date(schedule.departure_date);
-      depDate.setHours(0, 0, 0, 0); // Ignore time part
-      return depDate >= today;
-    })
-    .filter(schedule => (
-      (schedule.bus_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (schedule.driver_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (schedule.conductor_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (`${schedule.start_point || ''} to ${schedule.end_point || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
-    ))
-    .sort((a, b) => new Date(a.departure_date) - new Date(b.departure_date));
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 5;
+
+  const filteredSchedules = useMemo(() => (
+    schedules
+      .filter(schedule => {
+        // Only show schedules with departure_date today or in the future
+        const depDate = new Date(schedule.departure_date);
+        depDate.setHours(0, 0, 0, 0); // Ignore time part
+        return depDate >= today;
+      })
+      .filter(schedule => (
+        (schedule.bus_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (schedule.driver_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (schedule.conductor_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (`${schedule.start_point || ''} to ${schedule.end_point || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
+      ))
+      .sort((a, b) => new Date(a.departure_date) - new Date(b.departure_date))
+  ), [schedules, searchTerm, today]);
+
+  // Paginated schedules for current page
+  const paginatedSchedules = useMemo(() => (
+    filteredSchedules.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage)
+  ), [filteredSchedules, currentPage, recordsPerPage]);
 
   // Helper to check permissions for Bus Schedule
   const can = (action) => {
@@ -267,7 +282,7 @@ const BusSchedulePage = () => {
             <table className="min-w-full">
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSchedules.length > 0 ? (
-                  filteredSchedules.map((schedule) => {
+                  paginatedSchedules.map((schedule) => {
                     const busInfo = buses.find(bus => bus.bus_no === schedule.bus_no);
                     return (
                       <tr key={schedule.id} className="hover:bg-gray-50">
@@ -368,6 +383,16 @@ const BusSchedulePage = () => {
               </tbody>
             </table>
           </div>
+          {/* Pagination Controls */}
+          {filteredSchedules.length > recordsPerPage && (
+            <div className="flex justify-center my-4">
+              <Pagination
+                page={currentPage}
+                setPage={setCurrentPage}
+                totalPages={Math.ceil(filteredSchedules.length / recordsPerPage)}
+              />
+            </div>
+          )}
         </div>
       </div>
 

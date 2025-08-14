@@ -1,4 +1,6 @@
+import SideLogo from '../../../assets/Side.png';
 import React, { useState, useEffect, useRef } from 'react';
+import Pagination from '../../components/Pagination';
 import { usePermissions } from '../../../context/PermissionsContext';
 import { PrintButton, ReportPrintLayout } from '../../components/bus-booking';
 import useBusHook from '../../../hooks/useBusHook';
@@ -137,6 +139,10 @@ const RevenueReportPage = () => {
     bookingType: 'Guest'
   }));
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 20;
+
   // Combine regular and guest bookings for the table
   const mappedTableBookings = [...mappedRegularBookings, ...mappedGuestBookings]
     .sort((a, b) => {
@@ -145,6 +151,9 @@ const RevenueReportPage = () => {
       if (!b.date) return -1;
       return new Date(b.date) - new Date(a.date);
     });
+
+  // Paginated bookings for current page
+  const paginatedBookings = mappedTableBookings.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage);
 
   // Map for cancelations
   const mappedCancelBookings = filteredCancellations.map(booking => ({
@@ -173,15 +182,44 @@ const RevenueReportPage = () => {
       setNotification("You don't have permission to print revenue reports.");
       return;
     }
-    
-    if (mappedTableBookings.length) {
-      if (printReportRef.current) {
-        printReportRef.current.focus();
-      }
-      setTimeout(() => {
-        window.print();
-      }, 100);
+    if (!mappedTableBookings.length) return;
+    if (!printReportRef.current) return;
+    const printContents = printReportRef.current.innerHTML;
+    const printWindow = window.open('', '', 'height=800,width=1200');
+    if (!printWindow) {
+      setNotification('Popup blocked! Please allow popups for this site to print.');
+      return;
     }
+    printWindow.document.write('<html><head><title>Revenue Report</title>');
+    printWindow.document.write(`
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; margin: 0; padding: 24px; }
+        .print-logo { display: block; margin: 0 auto 24px auto; max-width: 220px; }
+        h1 { text-align: center; color: #1a237e; font-size: 2rem; margin-bottom: 12px; }
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #fff; box-shadow: 0 2px 8px #e3e3e3; }
+        .print-table th, .print-table td { border: 1px solid #bdbdbd; padding: 10px 14px; font-size: 1rem; }
+        .print-table th { background: #e3eafc; color: #1a237e; font-weight: 700; }
+        .print-table tr:nth-child(even) { background: #f7fafd; }
+        .print-table .print-hide, .print-table .print-hide * { display: none !important; }
+        @media print {
+          body { margin: 0; }
+        }
+      </style>
+    `);
+    printWindow.document.write('</head><body>');
+    // Add logo and title using imported image path
+    printWindow.document.write(`
+      <img src="${SideLogo}" alt="Company Logo" class="print-logo" />
+      <h1>Revenue Report</h1>
+    `);
+    printWindow.document.write(printContents.replace(/min-w-full/g, 'print-table'));
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   // Helper: Map bus_no to bus object
@@ -346,7 +384,7 @@ const RevenueReportPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mappedTableBookings.map((booking) => (
+                  {paginatedBookings.map((booking) => (
                     <tr 
                       key={booking.id} 
                       className={`hover:bg-gray-50 ${booking.bookingType === 'Guest' ? 'bg-blue-50' : ''}`}
@@ -372,6 +410,16 @@ const RevenueReportPage = () => {
                   ))}
                 </tbody>
               </table>
+            {/* Pagination Controls */}
+            {mappedTableBookings.length > recordsPerPage && (
+              <div className="flex justify-center my-4">
+                <Pagination
+                  page={currentPage}
+                  setPage={setCurrentPage}
+                  totalPages={Math.ceil(mappedTableBookings.length / recordsPerPage)}
+                />
+              </div>
+            )}
             </div>
           )}
         </div>
