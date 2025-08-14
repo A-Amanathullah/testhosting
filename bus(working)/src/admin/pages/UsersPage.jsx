@@ -261,14 +261,18 @@ const UsersPage = () => {
     setSubmitting(false);
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-[60vh]">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+      <span className="text-lg text-gray-600 font-medium">Loading users...</span>
+    </div>
+  );
   if (error) return (
-    <div className="p-6">
-      <div className="text-red-600 mb-4">{error}</div>
+    <div className="flex flex-col items-center justify-center h-[60vh]">
+      <div className="text-red-600 text-lg font-semibold mb-2">{error}</div>
       {error.includes('Access denied') && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-          <strong>Note:</strong> To access user management, please login with an admin account.
-          <br />
+        <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 px-6 py-4 rounded shadow">
+          <strong>Note:</strong> To access user management, please login with an admin account.<br />
           <small>Test admin credentials: admin@test.com / password123</small>
           {currentUser && (
             <div className="mt-2">
@@ -292,69 +296,87 @@ const UsersPage = () => {
           </div>
         )}
           
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-2xl font-bold">User Management</h1>
-              {currentUser && (
-                <p className="text-sm text-gray-600">
-                  Logged in as: <span className="font-medium">{currentUser.name}</span> 
-                  ({currentUser.role})
-                </p>
+        <div className="bg-white rounded-2xl shadow-lg p-8 animate-fade-in">
+          {/* Card header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 border-b pb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 text-blue-700 rounded-full p-3 shadow text-2xl">
+                {/* User icon alternative */}
+                <span role="img" aria-label="users">👥</span>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900">User Management</h1>
+                {currentUser && (
+                  <p className="text-sm text-gray-500 mt-1">Logged in as: <span className="font-semibold">{currentUser.name}</span> ({currentUser.role})</p>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-stretch sm:items-center w-full sm:w-auto">
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition w-full sm:w-64 shadow-sm"
+              />
+              {canAdd() && (
+                <button
+                  className="flex items-center justify-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold rounded-lg shadow transition-all duration-150"
+                  onClick={() => { setShowForm(true); setEditingUser(null); setForm(initialForm); }}
+                >
+                  <span className="text-lg font-bold">+</span> Add User
+                </button>
               )}
             </div>
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="border rounded px-3 py-2 mr-4 w-60"
-            />
-            {canAdd() && (
-              <button className="px-4 py-2 bg-blue-700 text-white rounded" onClick={() => { setShowForm(true); setEditingUser(null); setForm(initialForm); }}>Add User</button>
-            )}
           </div>
-          <table className="min-w-full mb-6">
-            <thead>
-              <tr>
-                <th className="text-left py-2">Name</th>
-                <th className="text-left py-2">Email</th>
-                <th className="text-left py-2">Role</th>
-                <th className="text-left py-2">First Name</th>
-                <th className="text-left py-2">Last Name</th>
-                <th className="text-left py-2">Phone</th>
-                <th className="text-left py-2">Gender</th>
-                <th className="text-left py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedUsers.map(user => (
-                <tr key={user.id || user.email} className="border-t">
-                  <td className="py-2">{user.name}</td>
-                  <td className="py-2">{user.email}</td>
-                  <td className="py-2">{user.role}</td>
-                  <td className="py-2">{user.first_name}</td>
-                  <td className="py-2">{user.last_name}</td>
-                  <td className="py-2">{user.phone_no}</td>
-                  <td className="py-2">{user.gender}</td>
-                  <td className="py-2 flex gap-2">
-                    {canEdit() && (
-                      <button title="Edit" className="p-2 bg-yellow-500 text-white rounded-full" onClick={() => handleEdit(user)}><FaEdit /></button>
-                    )}
-                    {canDelete() && (
-                      <button title="Delete" className="p-2 bg-red-600 text-white rounded-full" onClick={() => handleDelete(user.id)}><FaTrash /></button>
-                    )}
-                  </td>
+          {/* Table */}
+          <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+            <table className="min-w-full text-sm text-gray-900">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-4 py-3 text-left font-semibold">Name</th>
+                  <th className="px-4 py-3 text-left font-semibold">Email</th>
+                  <th className="px-4 py-3 text-left font-semibold">Role</th>
+                  <th className="px-4 py-3 text-left font-semibold">First Name</th>
+                  <th className="px-4 py-3 text-left font-semibold">Last Name</th>
+                  <th className="px-4 py-3 text-left font-semibold">Phone</th>
+                  <th className="px-4 py-3 text-left font-semibold">Gender</th>
+                  <th className="px-4 py-3 text-left font-semibold">Actions</th>
                 </tr>
-              ))}
+              </thead>
+              <tbody>
+                {paginatedUsers.length > 0 ? paginatedUsers.map(user => (
+                  <tr key={user.id || user.email} className="even:bg-gray-50 hover:bg-blue-50 transition">
+                    <td className="px-4 py-3 whitespace-nowrap">{user.name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.email}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.role}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.first_name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.last_name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.phone_no}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.gender}</td>
+                    <td className="px-4 py-3 flex gap-2">
+                      {canEdit() && (
+                        <button title="Edit" className="p-2 bg-yellow-400 hover:bg-yellow-500 text-white rounded-full shadow transition" onClick={() => handleEdit(user)}><FaEdit /></button>
+                      )}
+                      {canDelete() && (
+                        <button title="Delete" className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full shadow transition" onClick={() => handleDelete(user.id)}><FaTrash /></button>
+                      )}
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan="8" className="px-4 py-8 text-center text-gray-400 font-medium">No users found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
           {/* Pagination controls */}
           {filteredUsers.length > rowsPerPage && (
-            <div className="flex justify-center mt-6">
+            <div className="flex justify-center mt-8">
               <Pagination page={page} setPage={setPage} totalPages={totalPages} />
             </div>
           )}
-            </tbody>
-          </table>
           {/* Modal for Add/Edit User */}
           {showForm && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
