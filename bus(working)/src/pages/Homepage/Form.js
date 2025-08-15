@@ -24,7 +24,7 @@ const Form = () => {
 
     const [showBus, setShowBus] = useState(true);
     const [showStatus, setShowStatus] = useState(false);
-    const [selectedView, setSelectedView] = useState("bus");
+    const [selectedView, setSelectedView] = useState("status");
     const [isSwapped, setIsSwapped] = useState(false);
 
     const handleBus = (e) => {
