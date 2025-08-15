@@ -278,7 +278,7 @@ const ListPage = () => {
         title="Add Staff"
         staff={null}
         onSubmit={handleUpdateStaff}
-        isEdit={true}
+        isEdit={false}
         isCreate={true}
         roles={roles} // 'User' role already filtered out during load
       />

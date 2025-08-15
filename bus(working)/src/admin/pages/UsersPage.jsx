@@ -1,5 +1,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Pagination from '../components/Pagination';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
@@ -41,7 +43,7 @@ const UsersPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [search, setSearch] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
-  const [notification, setNotification] = useState({ message: '', type: '' });
+
   
   // Get permissions
   const { permissions } = usePermissions();
@@ -64,13 +66,15 @@ const UsersPage = () => {
   const filteredUsers = useMemo(() => {
     setPage(1); // Reset to first page on search change
     const q = search.toLowerCase();
-    return users.filter(u => (
+    const filtered = users.filter(u => (
       u.name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
       u.first_name?.toLowerCase().includes(q) ||
       u.last_name?.toLowerCase().includes(q) ||
       u.phone_no?.toLowerCase().includes(q)
     ));
+    // Sort alphabetically by name (case-insensitive)
+    return filtered.sort((a, b) => (a.name?.toLowerCase() || '').localeCompare(b.name?.toLowerCase() || ''));
     // eslint-disable-next-line
   }, [users, search]);
 
@@ -139,10 +143,7 @@ const UsersPage = () => {
 
   const handleEdit = (user) => {
     if (!canEdit()) {
-      setNotification({
-        message: 'You do not have permission to edit users.',
-        type: 'error'
-      });
+      toast.error('You do not have permission to edit users.');
       return;
     }
     setEditingUser(user);
@@ -163,26 +164,16 @@ const UsersPage = () => {
 
   const handleDelete = async (id) => {
     if (!canDelete()) {
-      setNotification({
-        message: 'You do not have permission to delete users.',
-        type: 'error'
-      });
+      toast.error('You do not have permission to delete users.');
       return;
     }
-    
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
         await deleteUser(id);
         setUsers(users.filter(u => u.id !== id));
-        setNotification({
-          message: 'User deleted successfully.',
-          type: 'success'
-        });
+        toast.success('User deleted successfully.');
       } catch (err) {
-        setNotification({
-          message: 'Failed to delete user.',
-          type: 'error'
-        });
+        toast.error('Failed to delete user.');
       }
     }
   };
@@ -240,11 +231,11 @@ const UsersPage = () => {
       if (editingUser) {
         const updated = await updateUser(editingUser.id, userPayload, userDetailsPayload);
         setUsers(users.map(u => (u.id === editingUser.id ? updated : u)));
-        setNotification({ message: 'User updated successfully.', type: 'success' });
+        toast.success('User updated successfully.');
       } else {
         const created = await createUser(userPayload, userDetailsPayload);
         setUsers([...users, created]);
-        setNotification({ message: 'User created successfully.', type: 'success' });
+        toast.success('User created successfully.');
       }
       setShowForm(false);
       setEditingUser(null);
@@ -286,16 +277,8 @@ const UsersPage = () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
+      <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
       <div className="flex-grow p-6 overflow-auto">
-        {/* Notification */}
-        {notification.message && (
-          <div className={`mb-4 p-4 rounded-md ${
-            notification.type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700'
-          }`}>
-            <div className="whitespace-pre-line">{notification.message}</div>
-          </div>
-        )}
-          
         <div className="bg-white rounded-2xl shadow-lg p-8 animate-fade-in">
           {/* Card header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 border-b pb-4">

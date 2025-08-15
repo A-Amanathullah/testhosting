@@ -397,9 +397,11 @@ const AgentReportPage = () => {
                       </td>
                     </tr>
                   ))}
-              {/* Pagination Controls */}
+                </tbody>
+              </table>
+              {/* Pagination Controls - moved outside table for proper alignment */}
               {bookings.length > recordsPerPage && (
-                <div className="flex justify-center my-4">
+                <div className="flex justify-center items-center my-6">
                   <Pagination
                     page={currentPage}
                     setPage={setCurrentPage}
@@ -407,8 +409,6 @@ const AgentReportPage = () => {
                   />
                 </div>
               )}
-                </tbody>
-              </table>
             </div>
           )}
         </div>

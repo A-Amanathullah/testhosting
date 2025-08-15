@@ -245,14 +245,15 @@ const ReportPage = () => {
                       </td>
                     </tr>
                   )}
-            {/* Pagination controls */}
-            {filteredReports.length > rowsPerPage && (
-              <div className="flex justify-center mt-6">
-                <Pagination page={page} setPage={setPage} totalPages={totalPages} />
-              </div>
-            )}
+            {/* End of table body */}
                 </tbody>
               </table>
+            )}
+            {/* Pagination controls - moved outside table for proper alignment */}
+            {filteredReports.length > rowsPerPage && (
+              <div className="flex justify-center items-center my-6">
+                <Pagination page={page} setPage={setPage} totalPages={totalPages} />
+              </div>
             )}
           </div>
         </div>

@@ -1,4 +1,6 @@
 import{ useState, useEffect } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { Plus, Search } from 'lucide-react';
 import {
   BusTable,
@@ -27,7 +29,7 @@ const BusRegisterPage = () => {
   const { permissions } = usePermissions();
   // const { user } = useContext(AuthContext);
   // const role = user?.role;
-  const [notification, setNotification] = useState("");
+  const [notification, setNotification] = useState(""); // Only for permission errors
 
   // Sample bus data - replace with actual data from your API
   const [buses, setBuses] = useState([]);
@@ -45,16 +47,20 @@ const BusRegisterPage = () => {
     }
   };
 
- const handleAddBus = async (formData) => {
+
+const handleAddBus = async (formData) => {
   try {
     await registerBus(formData);
     const data = await getAllBuses();
     setBuses(data);
     setIsAddModalOpen(false);
+    toast.success('Bus added successfully!');
   } catch (error) {
     console.error("Error adding bus:", error);
+    toast.error('Failed to add bus.');
   }
 };
+
 
 
 const handleEditBus = async (updatedBus) => {
@@ -63,12 +69,15 @@ const handleEditBus = async (updatedBus) => {
     const data = await getAllBuses();
     setBuses(data);
     setIsEditModalOpen(false);
+    toast.success('Bus updated successfully!');
   } catch (error) {
     console.error("Failed to update bus:", error);
+    toast.error('Failed to update bus.');
   }
 };
 
   
+
 
 const handleDeleteBus = async () => {
   if (selectedBus) {
@@ -78,8 +87,10 @@ const handleDeleteBus = async () => {
       setBuses(data);
       setIsDeleteModalOpen(false);
       setSelectedBus(null);
+      toast.success('Bus deleted successfully!');
     } catch (error) {
       console.error("Error deleting bus:", error);
+      toast.error('Failed to delete bus.');
     }
   }
 };
@@ -132,7 +143,8 @@ const handleDeleteBus = async () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
-      {/* Notification */}
+      <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
+      {/* Notification for permission errors only */}
       {notification && (
         <div className="fixed top-6 right-6 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow">
           {notification}

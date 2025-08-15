@@ -563,9 +563,9 @@ const PassengerDashboard = () => {
           </div>
         )}
 
-        {/* Cancellations Tab Menu and Table Section (for agents) with Pagination and modern card */}
-        {isAgent && (
-          <div className="mt-8">
+        {/* Cancellations Tab Menu and Table Section (now for all users) with Pagination and modern card */}
+        <div className="mt-8">
+          {isAgent ? (
             <div className="flex gap-2 mb-4">
               <button
                 className={`px-4 py-2 rounded-t-md font-semibold border-b-2 transition-colors duration-200 ${activeCancellationTab === 'personal' ? 'border-red-600 text-red-700 bg-red-50' : 'border-transparent text-gray-500 bg-gray-100 hover:bg-gray-200'}`}
@@ -580,94 +580,103 @@ const PassengerDashboard = () => {
                 Guest Cancellations You Made
               </button>
             </div>
-            {/* Personal Cancellations Table with Pagination and card */}
-            {activeCancellationTab === 'personal' && (
-              <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
-                <table className="w-full min-w-[700px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
-                  <thead className="bg-gradient-to-r from-red-100 to-red-200 text-red-900 text-xs sm:text-base md:text-lg">
-                    <tr>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Cancelled Date</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Journey Date</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Seats</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Status</th>
+          ) : (
+            <div className="flex gap-2 mb-4">
+              <button
+                className={`px-4 py-2 rounded-t-md font-semibold border-b-2 transition-colors duration-200 border-red-600 text-red-700 bg-red-50`}
+                disabled
+              >
+                Your Cancelled Bookings
+              </button>
+            </div>
+          )}
+          {/* Personal Cancellations Table with Pagination and card */}
+          {(activeCancellationTab === 'personal' || !isAgent) && (
+            <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
+              <table className="w-full min-w-[700px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
+                <thead className="bg-gradient-to-r from-red-100 to-red-200 text-red-900 text-xs sm:text-base md:text-lg">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Cancelled Date</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Journey Date</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Seats</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedPersonalCancellations.map((c, idx) => (
+                    <tr key={`cancelled-personal-${c.id}`} className={`text-center transition hover:bg-red-50 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
+                      <td className="px-3 py-2 break-words">{formatDate(c.created_at)}</td>
+                      <td className="px-3 py-2 break-words">{c.bus_no}</td>
+                      <td className="px-3 py-2 break-words">{c.pickup}</td>
+                      <td className="px-3 py-2 break-words">{c.drop}</td>
+                      <td className="px-3 py-2 break-words">{c.booked_date}</td>
+                      <td className="px-3 py-2 break-words">{Array.isArray(c.seat_no) ? c.seat_no.join(', ') : c.seat_no}</td>
+                      <td className="px-3 py-2 capitalize break-words font-semibold">cancelled</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {pagedPersonalCancellations.map((c, idx) => (
-                      <tr key={`cancelled-personal-${c.id}`} className={`text-center transition hover:bg-red-50 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
-                        <td className="px-3 py-2 break-words">{formatDate(c.created_at)}</td>
-                        <td className="px-3 py-2 break-words">{c.bus_no}</td>
-                        <td className="px-3 py-2 break-words">{c.pickup}</td>
-                        <td className="px-3 py-2 break-words">{c.drop}</td>
-                        <td className="px-3 py-2 break-words">{c.booked_date}</td>
-                        <td className="px-3 py-2 break-words">{Array.isArray(c.seat_no) ? c.seat_no.join(', ') : c.seat_no}</td>
-                        <td className="px-3 py-2 capitalize break-words font-semibold">cancelled</td>
-                      </tr>
-                    ))}
-                    {pagedPersonalCancellations.length === 0 && (
-                      <tr>
-                        <td colSpan="7" className="px-4 py-8 text-center text-gray-500 italic">
-                          No personal cancellations found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-                {totalPersonalCancellationPages > 1 && (
-                  <Pagination page={personalCancellationPage} setPage={setPersonalCancellationPage} totalPages={totalPersonalCancellationPages} />
-                )}
-              </div>
-            )}
-            {/* Guest Cancellations Table with Pagination and card */}
-            {activeCancellationTab === 'guest' && (
-              <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
-                <table className="w-full min-w-[700px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
-                  <thead className="bg-gradient-to-r from-red-200 to-red-300 text-red-900 text-xs sm:text-base md:text-lg">
+                  ))}
+                  {pagedPersonalCancellations.length === 0 && (
                     <tr>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Cancelled Date</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Guest Name</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Phone</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Journey Date</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Seats</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap">Status</th>
+                      <td colSpan="7" className="px-4 py-8 text-center text-gray-500 italic">
+                        No personal cancellations found
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {pagedGuestCancellations.map((c, idx) => (
-                      <tr key={`cancelled-guest-${c.id}`} className={`text-center transition hover:bg-red-50 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
-                        <td className="px-3 py-2 break-words">{formatDate(c.created_at)}</td>
-                        <td className="px-3 py-2 break-words">{c.name}</td>
-                        <td className="px-3 py-2 break-words">{c.phone}</td>
-                        <td className="px-3 py-2 break-words">{c.bus_no}</td>
-                        <td className="px-3 py-2 break-words">{c.pickup}</td>
-                        <td className="px-3 py-2 break-words">{c.drop}</td>
-                        <td className="px-3 py-2 break-words">{c.booked_date}</td>
-                        <td className="px-3 py-2 break-words">{Array.isArray(c.seat_no) ? c.seat_no.join(', ') : c.seat_no}</td>
-                        <td className="px-3 py-2 capitalize break-words font-semibold">cancelled</td>
-                      </tr>
-                    ))}
-                    {pagedGuestCancellations.length === 0 && (
-                      <tr>
-                        <td colSpan="9" className="px-4 py-8 text-center text-gray-500 italic">
-                          No guest cancellations found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-                {totalGuestCancellationPages > 1 && (
-                  <Pagination page={guestCancellationPage} setPage={setGuestCancellationPage} totalPages={totalGuestCancellationPages} />
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                  )}
+                </tbody>
+              </table>
+              {totalPersonalCancellationPages > 1 && (
+                <Pagination page={personalCancellationPage} setPage={setPersonalCancellationPage} totalPages={totalPersonalCancellationPages} />
+              )}
+            </div>
+          )}
+          {/* Guest Cancellations Table with Pagination and card (only for agents) */}
+          {isAgent && activeCancellationTab === 'guest' && (
+            <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
+              <table className="w-full min-w-[700px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
+                <thead className="bg-gradient-to-r from-red-200 to-red-300 text-red-900 text-xs sm:text-base md:text-lg">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Cancelled Date</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Guest Name</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Phone</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Journey Date</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Seats</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedGuestCancellations.map((c, idx) => (
+                    <tr key={`cancelled-guest-${c.id}`} className={`text-center transition hover:bg-red-50 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
+                      <td className="px-3 py-2 break-words">{formatDate(c.created_at)}</td>
+                      <td className="px-3 py-2 break-words">{c.name}</td>
+                      <td className="px-3 py-2 break-words">{c.phone}</td>
+                      <td className="px-3 py-2 break-words">{c.bus_no}</td>
+                      <td className="px-3 py-2 break-words">{c.pickup}</td>
+                      <td className="px-3 py-2 break-words">{c.drop}</td>
+                      <td className="px-3 py-2 break-words">{c.booked_date}</td>
+                      <td className="px-3 py-2 break-words">{Array.isArray(c.seat_no) ? c.seat_no.join(', ') : c.seat_no}</td>
+                      <td className="px-3 py-2 capitalize break-words font-semibold">cancelled</td>
+                    </tr>
+                  ))}
+                  {pagedGuestCancellations.length === 0 && (
+                    <tr>
+                      <td colSpan="9" className="px-4 py-8 text-center text-gray-500 italic">
+                        No guest cancellations found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              {totalGuestCancellationPages > 1 && (
+                <Pagination page={guestCancellationPage} setPage={setGuestCancellationPage} totalPages={totalGuestCancellationPages} />
+              )}
+            </div>
+          )}
+        </div>
       </div>
       {qrModal.open && (
         <BookingQRCode bookingDetails={qrModal.details} onCancel={() => setQrModal({ open: false, details: null })} />

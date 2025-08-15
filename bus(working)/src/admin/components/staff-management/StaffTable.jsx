@@ -10,7 +10,7 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
   // Sort staff based on the current sort configuration
   const sortedStaff = React.useMemo(() => {
     let sortableStaff = [...staff];
-    if (sortConfig.key) {
+    if (sortConfig.key && sortConfig.key !== 'name') {
       sortableStaff.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -20,6 +20,9 @@ const StaffTable = ({ staff, user , onEdit, onDelete, onViewDetails, onPrint, ca
         }
         return 0;
       });
+    } else {
+      // Always sort by name alphabetically by default
+      sortableStaff.sort((a, b) => (a.name?.toLowerCase() || '').localeCompare(b.name?.toLowerCase() || ''));
     }
     return sortableStaff;
   }, [staff, sortConfig]);

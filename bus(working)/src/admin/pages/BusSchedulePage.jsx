@@ -1,5 +1,7 @@
 import { usePermissions } from '../../context/PermissionsContext';
 import { useState, useEffect, useMemo } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Pagination from '../components/Pagination';
 // import { AuthContext } from '../../context/AuthContext';
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react';
@@ -70,14 +72,11 @@ const BusSchedulePage = () => {
       for (const schedule of scheduleData) {
         // Find the bus object using the selected bus_no
         const busInfo = buses.find(bus => bus.bus_no === schedule.bus_no);
-
         if (!busInfo) {
           console.error(`No bus found for bus_no: ${schedule.bus_no}`);
           continue; // Skip this schedule
         }
-
         const formData = new FormData();
-
         formData.append("bus_no", schedule.bus_no);
         formData.append("bus_id", busInfo.id);
         formData.append("bus_route_id", schedule.bus_route_id); // Add bus route ID
@@ -93,17 +92,16 @@ const BusSchedulePage = () => {
         formData.append("arrival_date", schedule.arrival_date);
         formData.append("arrival_time", schedule.arrival_time);
         formData.append("available_seats", busInfo.total_seats);
-
         await AddSchedule(formData); // Send each trip separately
       }
-
       // Refresh after all schedules are added
       const data = await getAllSchedules();
       setSchedules(data);
       setIsAddModalOpen(false);
-
+      toast.success('Schedule(s) added successfully!');
     } catch (error) {
       console.error("Error adding schedule:", error);
+      toast.error('Failed to add schedule(s).');
     }
   };
 
@@ -116,24 +114,28 @@ const BusSchedulePage = () => {
       setSchedules(data);
       setIsEditModalOpen(false);
       setSelectedSchedule(null);
+      toast.success('Schedule updated successfully!');
     } catch (error) {
       console.error("Error updating schedule:", error);
+      toast.error('Failed to update schedule.');
     }
   };
 
   const handleDeleteSchedule = async () => {
-  try {
-    if (selectedSchedule) {
-      await deleteSchedule(selectedSchedule.id);
-      const data = await getAllSchedules(); // Refresh the schedule list
-      setSchedules(data);
-      setIsDeleteModalOpen(false);
-      setSelectedSchedule(null);
+    try {
+      if (selectedSchedule) {
+        await deleteSchedule(selectedSchedule.id);
+        const data = await getAllSchedules(); // Refresh the schedule list
+        setSchedules(data);
+        setIsDeleteModalOpen(false);
+        setSelectedSchedule(null);
+        toast.success('Schedule deleted successfully!');
+      }
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      toast.error('Failed to delete schedule.');
     }
-  } catch (error) {
-    console.error("Error deleting schedule:", error);
-  }
-}
+  };
 
   const openViewModal = (schedule) => {
     setSelectedSchedule(schedule);
@@ -216,7 +218,8 @@ const BusSchedulePage = () => {
 
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-gray-50">
-      {/* Notification */}
+      <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
+      {/* Notification for permission errors only */}
       {notification && (
         <div className="fixed top-6 right-6 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow">
           {notification}
