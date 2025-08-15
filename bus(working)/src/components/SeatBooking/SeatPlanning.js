@@ -698,7 +698,7 @@ const SeatPlanning = ( ) => {
     };
 
     const handlePaymentSuccess = () => handlePayment("Paid");
-    const handlePaymentPayLater = () => handlePayment("Pending");
+    // const handlePaymentPayLater = () => handlePayment("Pending");
 
     return (
         <div>
@@ -871,8 +871,20 @@ const SeatPlanning = ( ) => {
                     <PaymentAPI
                         amount={Number(trip.price) * selectedSeats.length}
                         onSuccess={handlePaymentSuccess}
-                        onPayLater={handlePaymentPayLater}
-                        bookingId={bookingId}
+                        onCancel={async () => {
+                            // Cancel logic: delete the booking and close payment modal
+                            if (bookingId) {
+                                try {
+                                    await deleteBooking(bookingId, user?.token);
+                                    toast.info("Booking cancelled successfully.");
+                                } catch (err) {
+                                    toast.error("Failed to cancel booking.");
+                                }
+                            }
+                            setShowPayment(false);
+                            setBookingId(null);
+                            setSelectedSeats([]);
+                        }}
                     />
                 )}
                 {showQRCode && qrBookingDetails && (

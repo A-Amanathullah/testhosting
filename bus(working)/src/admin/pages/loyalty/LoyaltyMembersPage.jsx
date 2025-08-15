@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Pagination from '../../components/Pagination';
-import { Users, RefreshCw, Plus, BarChart3, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Users, BarChart3, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { 
   getLoyaltyMembers, 
-  createMembersForAllUsers, 
-  refreshAllMembersData, 
   getLoyaltyStatistics,
   updateMemberStatus,
-  deleteLoyaltyMember,
-  refreshMemberData
+  deleteLoyaltyMember
 } from '../../../services/loyaltyMemberService';
 import { usePermissions } from '../../../context/PermissionsContext';
 
@@ -102,71 +99,7 @@ const LoyaltyMembersPage = () => {
     }
   };
 
-  const handleCreateAllMembers = async () => {
-    if (!window.confirm('Create loyalty memberships for all eligible regular users? (Agents will be excluded)')) return;
-    
-    try {
-      setIsLoading(true);
-      const result = await createMembersForAllUsers();
-      setNotification({
-        message: `Successfully created ${result.created_count} loyalty memberships for regular users.`,
-        type: 'success'
-      });
-      await fetchMembers();
-      await fetchStatistics();
-    } catch (err) {
-      setNotification({
-        message: 'Failed to create loyalty memberships.',
-        type: 'error'
-      });
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleRefreshAllData = async () => {
-    if (!window.confirm('Refresh loyalty data for all members? This will recalculate points and update card types.')) return;
-    
-    try {
-      setIsLoading(true);
-      const result = await refreshAllMembersData();
-      setNotification({
-        message: `Successfully refreshed data for ${result.updated_count} members.`,
-        type: 'success'
-      });
-      await fetchMembers();
-      await fetchStatistics();
-    } catch (err) {
-      setNotification({
-        message: 'Failed to refresh loyalty data.',
-        type: 'error'
-      });
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-
-
-  const handleRefreshMemberData = async (memberId) => {
-    try {
-      const result = await refreshMemberData(memberId);
-      setNotification({
-        message: `Points updated: ${result.changes.points.old} → ${result.changes.points.new}\nCard type: ${result.changes.card_type.old} → ${result.changes.card_type.new}`,
-        type: 'success'
-      });
-      await fetchMembers();
-      await fetchStatistics();
-    } catch (err) {
-      setNotification({
-        message: 'Failed to refresh member data.',
-        type: 'error'
-      });
-      console.error(err);
-    }
-  };
 
   const handleToggleStatus = async (memberId, currentStatus) => {
     try {
@@ -251,25 +184,7 @@ const LoyaltyMembersPage = () => {
             <p className="text-sm text-gray-600">Manage loyalty program memberships for regular users (agents excluded)</p>
           </div>
           
-          <div className="flex space-x-3">
-            <button
-              onClick={handleCreateAllMembers}
-              disabled={isLoading}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              <Plus size={18} className="mr-2" />
-              Create All Members
-            </button>
-            
-            <button
-              onClick={handleRefreshAllData}
-              disabled={isLoading}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              <RefreshCw size={18} className="mr-2" />
-              Refresh All Data
-            </button>
-          </div>
+          {/* Removed manual create/refresh all members buttons as logic is now backend automated */}
         </div>
 
         {/* Statistics Cards */}
@@ -433,13 +348,7 @@ const LoyaltyMembersPage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleRefreshMemberData(member.id)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Refresh Data"
-                          >
-                            <RefreshCw size={16} />
-                          </button>
+                          {/* Removed manual refresh member button as logic is now backend automated */}
                           {hasPermission('delete') && (
                             <button
                               onClick={() => handleDeleteMember(member.id, member.member_name)}

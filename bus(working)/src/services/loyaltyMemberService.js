@@ -12,27 +12,7 @@ export const getLoyaltyMember = async (id) => {
   return res.data;
 };
 
-export const createMembersForAllUsers = async () => {
-  const res = await axios.post(`${API_URL}/loyalty-members/create-all`);
-  return res.data;
-};
 
-export const createMemberForUser = async (userId) => {
-  const res = await axios.post(`${API_URL}/loyalty-members/create-for-user`, {
-    user_id: userId
-  });
-  return res.data;
-};
-
-export const refreshAllMembersData = async () => {
-  const res = await axios.post(`${API_URL}/loyalty-members/refresh-all`);
-  return res.data;
-};
-
-export const refreshMemberData = async (id) => {
-  const res = await axios.post(`${API_URL}/loyalty-members/${id}/refresh`);
-  return res.data;
-};
 
 export const updateMemberStatus = async (id, isActive) => {
   const res = await axios.patch(`${API_URL}/loyalty-members/${id}/status`, {

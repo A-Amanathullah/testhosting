@@ -46,6 +46,14 @@ class LoyaltyCardController extends Controller
             'color' => 'nullable|string',
         ]);
         $card->update($data);
+
+        // If points_per_booking was updated, refresh all members with this card
+        if (array_key_exists('points_per_booking', $data)) {
+            $members = $card->loyaltyMembers;
+            foreach ($members as $member) {
+                $member->refreshLoyaltyData();
+            }
+        }
         return response()->json($card);
     }
 

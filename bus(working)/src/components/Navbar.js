@@ -14,6 +14,39 @@ import { usePermissions } from "../context/PermissionsContext";
 import { useNavigate } from "react-router-dom";
 
 function Navbar() {
+    // Extracted icon section for clarity
+    const renderIconSection = () => {
+        if (user && hasAnyAdminPermissions()) {
+            return (
+                <div className="flex items-center">
+                    <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mx-2 "
+                        onClick={() => { handleMenuClick(); navigate("/"); }}>
+                        <FaHome className="" />
+                    </button>
+                    <Link to="/admin" onClick={handleMenuClick}>
+                        <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mr-1" title="Admin Dashboard">
+                            <BsFillGrid1X2Fill className="p-0.5" />
+                        </button>
+                    </Link>
+                    <Link to="/passengerdash" onClick={handleMenuClick}>
+                        <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200" title="Passenger Dashboard">
+                            <FaUser className="p-0.5" />
+                        </button>
+                    </Link>
+                </div>
+            );
+        } else if (user) {
+            return (
+                <Link to="/passengerdash" onClick={handleMenuClick}>
+                    <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200">
+                        <BsFillGrid1X2Fill className="p-0.5" />
+                    </button>
+                </Link>
+            );
+        } else {
+            return null;
+        }
+    };
     const [open, setOpen] = useState(false)
     const [navAdmin, setNavAdmin] = useState(false)
     const { user, setUser } = useContext(AuthContext);
@@ -76,32 +109,10 @@ function Navbar() {
                         </div>}
 
                     {/* icon section */}
-                    <div className="flex items-center mr-5 gap-4">
 
-                        {user && hasAnyAdminPermissions() ? (
-                            <div className="flex items-center">
-                                <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mx-2 "
-                                    onClick={() => { handleMenuClick(); navigate("/"); }}>
-                                    <FaHome className="" />
-                                </button>
-                                <Link to="/admin" onClick={handleMenuClick}>
-                                    <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mr-1" title="Admin Dashboard">
-                                        <BsFillGrid1X2Fill className="p-0.5" />
-                                    </button>
-                                </Link>
-                                <Link to="/passengerdash" onClick={handleMenuClick}>
-                                    <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200" title="Passenger Dashboard">
-                                        <FaUser className="p-0.5" />
-                                    </button>
-                                </Link>
-                            </div>
-                        ) : (
-                            <Link to="/passengerdash" onClick={handleMenuClick}>
-                                <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200">
-                                    <BsFillGrid1X2Fill className="p-0.5" />
-                                </button>
-                            </Link>
-                        )}
+
+                    <div className="flex items-center mr-5 gap-4">
+                        {renderIconSection()}
 
                         {user ? (
                             <div className="flex items-center gap-5">
