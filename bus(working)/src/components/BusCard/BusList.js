@@ -134,7 +134,7 @@ const BusList = () => {
                                         </div>
                                     )}
                                     {filteredOutbound.map(trip => (
-                                        <BusTripCard key={`outbound-${trip.id}`} trip={trip} buses={buses} />
+                                        <BusTripCard key={`outbound-${trip.id}`} trip={trip} buses={buses} searchParams={searchParams} />
                                     ))}
                                 </>
                             )}
@@ -149,7 +149,7 @@ const BusList = () => {
                                         <p className="text-sm text-green-600">Departure: {formatDate(searchParams?.returnDate)}</p>
                                     </div>
                                     {filteredReturn.map(trip => (
-                                        <BusTripCard key={`return-${trip.id}`} trip={trip} buses={buses} />
+                                        <BusTripCard key={`return-${trip.id}`} trip={trip} buses={buses} searchParams={searchParams} />
                                     ))}
                                 </>
                             )}

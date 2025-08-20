@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 
 
 
-const BusTripCard = ({ trip, buses }) => {
+const BusTripCard = ({ trip, buses, searchParams }) => {
 
 
 
@@ -94,7 +94,14 @@ const BusTripCard = ({ trip, buses }) => {
 
           {trip.available_seats > 0 ? (
             <Link to="/seatPlan"
-              state={{ trip }}>
+              state={{ 
+                trip, 
+                isReturn: searchParams?.isReturn, 
+                selectedView: searchParams?.selectedView,
+                isSecondLeg: searchParams?.isSecondLeg,
+                firstTripBooking: searchParams?.firstTripBooking,
+                searchParams: searchParams // Pass the full search parameters including returnDate
+              }}>
               <button className="bg-orange-500 text-white px-2 sm:px-4 py-0.5 sm:py-1 rounded mt-1 sm:mt-2 w-full lg:w-auto text-xs sm:text-base">Book seat</button>
             </Link>
           ) : (

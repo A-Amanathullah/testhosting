@@ -13,7 +13,10 @@ import "react-toastify/dist/ReactToastify.css";
 import PaymentAPI from "../PaymentAPI";
 import BookingQRCode from "./BookingQRCode";
 import GuestBookingForm from "./GuestBookingForm";
+import ReturnTripChoiceModal from "./ReturnTripChoiceModal";
+import CombinedBookingConfirmModal from "./CombinedBookingConfirmModal";
 import axios from "axios";
+import locationService from "../../services/locationService";
 import { formatDateForMySQL, formatDateForDisplay } from "../../utils/dateUtils";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
@@ -21,6 +24,15 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 const SeatPlanning = ( ) => {
     const location = useLocation();
     const trip = location.state?.trip;
+    // Access isReturn and selectedView from navigation state
+    const isReturn = location.state?.isReturn;
+    const selectedView = location.state?.selectedView;
+    const isSecondLeg = location.state?.isSecondLeg; // Flag to indicate this is second leg of round trip
+    const firstTripBookingData = location.state?.firstTripBooking; // First trip booking data
+    const originalSearchParams = location.state?.searchParams; // Original search parameters including returnDate
+    // Debug log
+    console.log('isReturn:', isReturn, 'selectedView:', selectedView, 'isSecondLeg:', isSecondLeg);
+    console.log('originalSearchParams:', originalSearchParams);
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
     const { buses } = useBusHook();
@@ -55,6 +67,13 @@ const SeatPlanning = ( ) => {
     const [processingBookingId, setProcessingBookingId] = useState(null); // Track processing booking
     const [guestProcessingBookingId, setGuestProcessingBookingId] = useState(null); // Track guest processing booking
     const [isLoading, setIsLoading] = useState(false); // Loading state for button actions
+    
+    // Return trip booking states
+    const [showReturnChoiceModal, setShowReturnChoiceModal] = useState(false);
+    const [firstTripBooking, setFirstTripBooking] = useState(null); // Store first trip booking data
+    const [isBookingReturnTrip, setIsBookingReturnTrip] = useState(false); // Flag to track if user is booking return trip
+    const [showCombinedConfirmModal, setShowCombinedConfirmModal] = useState(false);
+    const [secondTripBooking, setSecondTripBooking] = useState(null); // Store second trip booking data
 
     // // Debug: Log bookings, frozenSeats, bus_id, and date to verify correct data per bus
     // console.log('bus_id:', bus_id, 'date:', date, 'bookings:', bookings, 'frozenSeats:', frozenSeats);
@@ -467,6 +486,62 @@ const SeatPlanning = ( ) => {
     const createInitialBooking = async () => {
         if (isLoading) return; // Prevent multiple submissions
         
+        console.log("=== CREATE INITIAL BOOKING DEBUG ===");
+        console.log("isSecondLeg:", isSecondLeg);
+        console.log("firstTripBookingData:", firstTripBookingData);
+        console.log("selectedView:", selectedView);
+        console.log("isReturn:", isReturn);
+        console.log("isBookingReturnTrip:", isBookingReturnTrip);
+        
+        // If this is the second leg of a round trip, proceed directly to booking
+        if (isSecondLeg && firstTripBookingData) {
+            console.log("This is second leg - proceeding with booking");
+            console.log("firstTripBookingData received:", firstTripBookingData);
+            // Store both trip data for final confirmation
+            setFirstTripBooking(firstTripBookingData);
+            setIsBookingReturnTrip(true);
+            // Proceed with creating the second booking
+            proceedWithBooking(false); // Show confirm modal for second leg
+            return;
+        }
+        
+        // Check if we need to show return trip choice modal
+        // Show modal if: 
+        // 1. User selected "Return" (selectedView === "bus") OR isReturn is true
+        // 2. AND we're not already booking the return trip
+        const shouldShowReturnChoice = ((selectedView === "bus") || (isReturn === true)) && !isBookingReturnTrip;
+        console.log("shouldShowReturnChoice:", shouldShowReturnChoice);
+        
+        if (shouldShowReturnChoice) {
+            console.log("Showing return choice modal");
+            // Store current selection for the choice modal
+            setFirstTripBooking({
+                trip,
+                selectedSeats: [...selectedSeats],
+                isReturn: isReturn || false
+            });
+            console.log("Setting firstTripBooking with:", {
+                trip: trip,
+                selectedSeats: selectedSeats,
+                isReturn: isReturn || false,
+                journey_type: trip.journey_type,
+                start_point: trip.start_point,
+                end_point: trip.end_point
+            });
+            setShowReturnChoiceModal(true);
+            return;
+        }
+        
+        console.log("Proceeding with regular one-way booking");
+        // Regular one-way booking
+        proceedWithBooking(false); // Pass false to show confirm modal
+    };
+
+    // Helper function to proceed with actual booking creation
+    const proceedWithBooking = async (skipConfirmModal = false) => {
+        console.log("=== PROCEED WITH BOOKING ===");
+        console.log("skipConfirmModal parameter:", skipConfirmModal);
+        
         if (!user) {
             // For guest users, create temporary booking to protect seats
             console.log("Guest user - creating temporary booking");
@@ -522,8 +597,53 @@ const SeatPlanning = ( ) => {
             setProcessingBookingId(response?.data?.id);
             setBookingId(response?.data?.id);
             
-            // All user types see the ConfirmBooking modal
-            setShowModal(true);
+            // If this is the second leg of a round trip, show combined confirmation
+            if (isSecondLeg && firstTripBookingData) {
+                console.log("=== SECOND LEG BOOKING ===");
+                console.log("firstTripBookingData:", firstTripBookingData);
+                console.log("Current trip (second leg):", trip);
+                console.log("Response booking ID:", response?.data?.id);
+                
+                setSecondTripBooking({
+                    trip,
+                    selectedSeats: [...selectedSeats],
+                    bookingId: response?.data?.id
+                });
+                console.log("Set secondTripBooking with bookingId:", response?.data?.id);
+                setShowCombinedConfirmModal(true);
+            } else if (!skipConfirmModal) {
+                console.log("Showing ConfirmBooking modal");
+                // Show ConfirmBooking modal only if not skipping
+                setShowModal(true);
+            } else {
+                console.log("Skipping ConfirmBooking modal - proceeding directly");
+                // If skipping confirm modal, handle admin/agent direct confirmation
+                if (user.role?.toLowerCase() === "admin" || user.role?.toLowerCase() === "agent") {
+                    try {
+                        await updateBookingStatus(response?.data?.id, "Confirmed", user.token);
+                        toast.success("Booking confirmed successfully!");
+                        
+                        const bookingDetails = {
+                            busName: busInfo?.bus_name || trip.bus_no,
+                            seatNumbers: selectedSeats,
+                            pickup,
+                            drop,
+                            price: Number(trip.price) * selectedSeats.length,
+                            serialNo: response?.data?.id,
+                            date: trip.departure_date,
+                        };
+                        
+                        setQrBookingDetails(bookingDetails);
+                        setShowQRCode(true);
+                        setSelectedSeats([]);
+                    } catch (updateErr) {
+                        toast.error("Booking created but confirmation failed: " + (updateErr.response?.data?.message || updateErr.message));
+                    }
+                } else {
+                    // For regular users, proceed to payment directly
+                    setShowPayment(true);
+                }
+            }
         } catch (err) {
             toast.error("Failed to create booking: " + (err.response?.data?.message || err.message));
         } finally {
@@ -663,30 +783,94 @@ const SeatPlanning = ( ) => {
     const handlePayment = async (paymentStatus) => {
         if (paymentStatus === "Paid") {
             try {
-                await updateBookingStatus({
-                    id: bookingId,
-                    payment_status: "Paid",
-                    status: "Confirmed",
-                }, user.token);
-                setSelectedSeats([]);
-                setShowPayment(false);
-                toast.success("Payment successful! Booking confirmed.");
-                
-                // For display purposes, keep original format
-                const displayDate = trip.departure_date;
-                
-                setQrBookingDetails({
-                    busName: busInfo?.bus_name || trip.bus_no,
-                    seatNumbers: selectedSeats,
-                    pickup,
-                    drop,
-                    price: Number(trip.price) * selectedSeats.length,
-                    serialNo: bookingId,
-                    date: displayDate,
-                });
-                setShowQRCode(true);
-                // navigate("/passengerdash"); // Optionally navigate after download
+                // Handle payment for both bookings if it's a combined booking
+                if (secondTripBooking && firstTripBookingData) {
+                    console.log("=== UPDATING BOTH BOOKINGS ===");
+                    const firstBookingId = firstTripBookingData?.bookingId || processingBookingId;
+                    const secondBookingId = secondTripBooking?.bookingId;
+                    
+                    console.log("First booking ID:", firstBookingId);
+                    console.log("Second booking ID:", secondBookingId);
+
+                    // Update both bookings to confirmed status
+                    await Promise.all([
+                        updateBookingStatus({
+                            id: firstBookingId,
+                            payment_status: "Paid",
+                            status: "Confirmed",
+                        }, user.token),
+                        updateBookingStatus({
+                            id: secondBookingId,
+                            payment_status: "Paid",
+                            status: "Confirmed",
+                        }, user.token)
+                    ]);
+
+                    console.log("Both bookings updated successfully");
+                    toast.success("Payment successful! Both bookings confirmed.");
+                    
+                    // Generate combined QR code
+                    const combinedBookingDetails = {
+                        firstTrip: {
+                            busName: buses.find(bus => String(bus.bus_no) === String(firstTripBookingData.trip.bus_no))?.bus_name || firstTripBookingData.trip.bus_no,
+                            seatNumbers: firstTripBookingData.selectedSeats,
+                            pickup: firstTripBookingData.trip.start_point,
+                            drop: firstTripBookingData.trip.end_point,
+                            price: Number(firstTripBookingData.trip.price) * firstTripBookingData.selectedSeats.length,
+                            serialNo: firstBookingId,
+                            date: firstTripBookingData.trip.departure_date,
+                        },
+                        secondTrip: {
+                            busName: buses.find(bus => String(bus.bus_no) === String(secondTripBooking.trip.bus_no))?.bus_name || secondTripBooking.trip.bus_no,
+                            seatNumbers: secondTripBooking.selectedSeats,
+                            pickup: secondTripBooking.trip.start_point,
+                            drop: secondTripBooking.trip.end_point,
+                            price: Number(secondTripBooking.trip.price) * secondTripBooking.selectedSeats.length,
+                            serialNo: secondBookingId,
+                            date: secondTripBooking.trip.departure_date,
+                        },
+                        totalAmount: (
+                            (Number(firstTripBookingData.trip.price) * firstTripBookingData.selectedSeats.length) +
+                            (Number(secondTripBooking.trip.price) * secondTripBooking.selectedSeats.length)
+                        ),
+                        isCombined: true
+                    };
+                    
+                    setQrBookingDetails(combinedBookingDetails);
+                    setShowPayment(false);
+                    setShowQRCode(true);
+                    setSelectedSeats([]);
+                } else {
+                    console.log("=== UPDATING SINGLE BOOKING ===");
+                    console.log("Single booking ID:", bookingId);
+                    
+                    // Handle single booking payment (existing logic)
+                    await updateBookingStatus({
+                        id: bookingId,
+                        payment_status: "Paid",
+                        status: "Confirmed",
+                    }, user.token);
+                    setSelectedSeats([]);
+                    setShowPayment(false);
+                    toast.success("Payment successful! Booking confirmed.");
+                    
+                    // For display purposes, keep original format
+                    const displayDate = trip.departure_date;
+                    
+                    setQrBookingDetails({
+                        busName: busInfo?.bus_name || trip.bus_no,
+                        seatNumbers: selectedSeats,
+                        pickup,
+                        drop,
+                        price: Number(trip.price) * selectedSeats.length,
+                        serialNo: bookingId,
+                        date: displayDate,
+                    });
+                    setShowQRCode(true);
+                    // navigate("/passengerdash"); // Optionally navigate after download
+                }
             } catch (err) {
+                console.error("Payment update failed:", err);
                 setShowPayment(false);
                 toast.error("Payment update failed: " + (err.response?.data?.message || err.message));
             }
@@ -699,6 +883,178 @@ const SeatPlanning = ( ) => {
 
     const handlePaymentSuccess = () => handlePayment("Paid");
     // const handlePaymentPayLater = () => handlePayment("Pending");
+
+    // Return trip choice handlers
+    const handleContinueOneWay = () => {
+        console.log("=== HANDLE CONTINUE ONE WAY ===");
+        setShowReturnChoiceModal(false);
+        console.log("Calling proceedWithBooking with skipConfirmModal = true");
+        // Proceed directly with booking and skip confirm modal
+        proceedWithBooking(true); // Pass true to skip confirm modal
+    };
+
+    const handleBookReturn = async () => {
+        setShowReturnChoiceModal(false);
+        
+        try {
+            // First, create the booking for the current selection
+            console.log("=== CREATING FIRST TRIP BOOKING ===");
+            console.log("Creating booking for first trip:", trip);
+            
+            if (!user) {
+                toast.error("Please login to book return trips.");
+                return;
+            }
+
+            const busInfo = buses.find(bus => String(bus.bus_no) === String(trip.bus_no));
+            if (!busInfo) {
+                toast.error("Bus information not found.");
+                return;
+            }
+
+            setIsLoading(true);
+
+            // Create first trip booking
+            const now = new Date();
+            const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, "");
+            const rand = Math.floor(100 + Math.random() * 900);
+            const serialNo = `BK-${yymmdd}-${rand}`;
+            const totalPrice = Number(trip.price) * selectedSeats.length;
+            const formattedDepartureDate = formatDateForMySQL(trip.departure_date);
+
+            const firstBookingData = {
+                user_id: user.id,
+                bus_id: trip.bus_id,
+                bus_no: trip.bus_no,
+                serial_no: serialNo,
+                reserved_tickets: selectedSeats.length,
+                seat_no: selectedSeats.join(","),
+                pickup,
+                drop,
+                role: user.role,
+                departure_date: formattedDepartureDate,
+                reason: null,
+                price: totalPrice,
+                status: "Processing",
+                payment_status: "Pending"
+            };
+
+            const firstBookingResponse = await createBooking(firstBookingData, user.token);
+            console.log("First booking created with ID:", firstBookingResponse?.data?.id);
+
+            // Store first trip booking with the booking ID
+            const firstTripBookingWithId = {
+                trip,
+                selectedSeats: [...selectedSeats],
+                isReturn: isReturn || false,
+                bookingId: firstBookingResponse?.data?.id
+            };
+
+            // Fetch available return trips using the return date from original search
+            const returnDate = originalSearchParams?.returnDate || trip.departure_date;
+            const formattedReturnDate = formatDateForMySQL(returnDate);
+            console.log("Searching for return trips:", {
+                from: trip.end_point,
+                to: trip.start_point,
+                date: formattedReturnDate,
+                originalReturnDate: returnDate
+            });
+            
+            const returnResults = await locationService.searchBusTripsByRoute(
+                trip.end_point, // Reverse direction
+                trip.start_point, // Reverse direction
+                formattedReturnDate
+            );
+            
+            console.log("Return trip search results:", returnResults);
+            
+            if (returnResults && returnResults.trips && returnResults.trips.length > 0) {
+                setIsBookingReturnTrip(true);
+                // Navigate to bus list with return trips
+                navigate('/busList', {
+                    state: {
+                        searchResults: returnResults.trips.map(returnTrip => ({
+                            ...returnTrip,
+                            journey_type: isReturn || (trip.journey_type === 'return') ? 'outbound' : 'return',
+                            journey_label: `${returnTrip.start_point} → ${returnTrip.end_point}`
+                        })),
+                        searchParams: {
+                            from: trip.end_point,
+                            to: trip.start_point,
+                            date: formattedReturnDate,
+                            isReturn: !(isReturn || (trip.journey_type === 'return')), // Opposite of first selection
+                            isSecondLeg: true, // Flag to indicate this is second leg of round trip
+                            firstTripBooking: firstTripBookingWithId // Pass the booking with ID
+                        }
+                    }
+                });
+            } else {
+                // If no return trips found, delete the first booking
+                try {
+                    await deleteBooking(firstBookingResponse?.data?.id, user.token);
+                } catch (deleteErr) {
+                    console.error("Failed to cleanup first booking:", deleteErr);
+                }
+                toast.error("No return trips available for the selected route and date.");
+            }
+        } catch (error) {
+            console.error("Error in handleBookReturn:", error);
+            toast.error("Failed to create booking or fetch return trips. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Combined booking confirmation handlers
+    const handleCombinedBookingConfirm = async () => {
+        if (isLoading) return;
+        setIsLoading(true);
+
+        try {
+            // Update both bookings to confirmed status and trigger payment
+            const firstBookingId = firstTripBookingData?.bookingId || processingBookingId;
+            const secondBookingId = secondTripBooking?.bookingId;
+            
+            console.log("=== COMBINED BOOKING CONFIRM ===");
+            console.log("First booking ID:", firstBookingId);
+            console.log("Second booking ID:", secondBookingId);
+
+            // For admin/agent users, confirm both bookings directly
+            if (user.role?.toLowerCase() === "admin" || user.role?.toLowerCase() === "agent") {
+                await Promise.all([
+                    updateBookingStatus(firstBookingId, "Confirmed", user.token),
+                    updateBookingStatus(secondBookingId, "Confirmed", user.token)
+                ]);
+
+                toast.success("Both bookings confirmed successfully!");
+                
+                // Generate QR codes for both bookings
+                const combinedBookingDetails = {
+                    firstTrip: { ...firstTripBookingData, bookingId: firstBookingId },
+                    secondTrip: { ...secondTripBooking, bookingId: secondBookingId },
+                    totalAmount: (
+                        (Number(firstTripBookingData.trip.price) * firstTripBookingData.selectedSeats.length) +
+                        (Number(secondTripBooking.trip.price) * secondTripBooking.selectedSeats.length)
+                    )
+                };
+                
+                setQrBookingDetails(combinedBookingDetails);
+                setShowCombinedConfirmModal(false);
+                setShowQRCode(true);
+                setSelectedSeats([]);
+            } else {
+                // For regular users, proceed to payment
+                console.log("Proceeding to payment for both bookings");
+                setShowCombinedConfirmModal(false);
+                setShowPayment(true);
+            }
+        } catch (err) {
+            console.error("Combined booking confirmation failed:", err);
+            toast.error("Booking confirmation failed: " + (err.response?.data?.message || err.message));
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <div>
@@ -745,6 +1101,8 @@ const SeatPlanning = ( ) => {
                                 </div>
                                 <button
                                     onClick={() => {
+                                        console.log("=== BUTTON CLICKED ===");
+                                        console.log("About to call createInitialBooking");
                                         // if (!pickup || !drop) {
                                         //     toast.error("Please select pickup and drop locations.", {
                                         //         position: "top-center",
@@ -869,11 +1227,29 @@ const SeatPlanning = ( ) => {
                 )}
                 {showPayment && (
                     <PaymentAPI
-                        amount={Number(trip.price) * selectedSeats.length}
+                        amount={
+                            secondTripBooking && firstTripBookingData 
+                                ? (Number(firstTripBookingData.trip.price) * firstTripBookingData.selectedSeats.length) + (Number(secondTripBooking.trip.price) * secondTripBooking.selectedSeats.length)
+                                : Number(trip.price) * selectedSeats.length
+                        }
                         onSuccess={handlePaymentSuccess}
                         onCancel={async () => {
-                            // Cancel logic: delete the booking and close payment modal
-                            if (bookingId) {
+                            // Cancel logic: delete the booking(s) and close payment modal
+                            if (secondTripBooking && firstTripBookingData) {
+                                // Cancel both bookings
+                                try {
+                                    const firstBookingId = firstTripBookingData?.bookingId || processingBookingId;
+                                    const secondBookingId = secondTripBooking?.bookingId;
+                                    await Promise.all([
+                                        deleteBooking(firstBookingId, user?.token),
+                                        deleteBooking(secondBookingId, user?.token)
+                                    ]);
+                                    toast.info("Both bookings cancelled successfully.");
+                                } catch (err) {
+                                    toast.error("Failed to cancel bookings.");
+                                }
+                            } else if (bookingId) {
+                                // Cancel single booking
                                 try {
                                     await deleteBooking(bookingId, user?.token);
                                     toast.info("Booking cancelled successfully.");
@@ -889,6 +1265,30 @@ const SeatPlanning = ( ) => {
                 )}
                 {showQRCode && qrBookingDetails && (
                     <BookingQRCode bookingDetails={qrBookingDetails} onCancel={() => setShowQRCode(false)} />
+                )}
+                
+                {/* Return Trip Choice Modal */}
+                {showReturnChoiceModal && firstTripBooking && (
+                    <ReturnTripChoiceModal
+                        onClose={() => setShowReturnChoiceModal(false)}
+                        onContinueOneWay={handleContinueOneWay}
+                        onBookReturn={handleBookReturn}
+                        trip={firstTripBooking.trip}
+                        selectedSeats={firstTripBooking.selectedSeats}
+                        isFirstTripReturn={firstTripBooking.isReturn}
+                        selectedView={selectedView}
+                    />
+                )}
+
+                {/* Combined Booking Confirmation Modal */}
+                {showCombinedConfirmModal && firstTripBookingData && secondTripBooking && (
+                    <CombinedBookingConfirmModal
+                        onClose={() => setShowCombinedConfirmModal(false)}
+                        onConfirm={handleCombinedBookingConfirm}
+                        firstTrip={firstTripBookingData}
+                        secondTrip={secondTripBooking}
+                        isLoading={isLoading}
+                    />
                 )}
             </div>
             <ToastContainer />
