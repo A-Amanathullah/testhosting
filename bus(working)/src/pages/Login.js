@@ -47,15 +47,18 @@ const Login = () => {
             // Load permissions for the user's role
             const userPermissions = await loadPermissions(userData.role);
             
-            // Debug logging
-            console.log("USER ROLE:", userData.role);
-            console.log("PERMISSIONS OBJECT:", userPermissions);
-            console.log("HAS PERMISSIONS:", hasAnyAdminPermissions(userPermissions));
+            // // Debug logging
+            // console.log("USER ROLE:", userData.role);
+            // console.log("PERMISSIONS OBJECT:", userPermissions);
+            // console.log("HAS PERMISSIONS:", hasAnyAdminPermissions(userPermissions));
             
             // Simply check if the user has any permissions
             if (hasAnyAdminPermissions(userPermissions)) {
               console.log("→ Redirecting to admin panel");
               navigate("/admin", { replace: true });
+            } else if (userData.role === "Conductor") {
+              console.log("→ Redirecting to conductor dashboard");
+              navigate("/conductor", { replace: true });
             } else {
               console.log("→ Redirecting to regular dashboard");
               navigate(redirectTo, { replace: true });
@@ -91,15 +94,18 @@ const Login = () => {
         // Load permissions for the user's role
         const userPermissions = await loadPermissions(userData.role);
         
-        // Debug logging
-        console.log("USER ROLE:", userData.role);
-        console.log("PERMISSIONS OBJECT:", userPermissions);
-        console.log("HAS PERMISSIONS:", hasAnyAdminPermissions(userPermissions));
+        // // Debug logging
+        // console.log("USER ROLE:", userData.role);
+        // console.log("PERMISSIONS OBJECT:", userPermissions);
+        // console.log("HAS PERMISSIONS:", hasAnyAdminPermissions(userPermissions));
         
         // Simply check if the user has any permissions
         if (hasAnyAdminPermissions(userPermissions)) {
           console.log("→ Redirecting to admin panel");
           navigate("/admin", { replace: true });
+        }  else if (userData.role === "Conductor") {
+              console.log("→ Redirecting to conductor dashboard");
+              navigate("/conductor", { replace: true });
         } else {
           console.log("→ Redirecting to regular dashboard");
           // Prevent redirecting back to /login

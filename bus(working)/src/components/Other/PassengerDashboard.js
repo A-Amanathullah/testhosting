@@ -484,7 +484,7 @@ const PassengerDashboard = () => {
             <table className="w-full min-w-[700px] table-auto text-xs sm:text-sm md:text-base rounded-xl overflow-hidden">
               <thead className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-900 text-xs sm:text-base md:text-lg">
                 <tr>
-                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Booked/Cancelled Date</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Booked Date</th>
                   <th className="px-3 py-2 font-semibold whitespace-nowrap">Bus No</th>
                   <th className="px-3 py-2 font-semibold whitespace-nowrap">Pickup</th>
                   <th className="px-3 py-2 font-semibold whitespace-nowrap">Drop</th>
@@ -501,7 +501,7 @@ const PassengerDashboard = () => {
                     <td className="px-3 py-2 break-words">{booking.bus_no}</td>
                     <td className="px-3 py-2 break-words">{booking.pickup}</td>
                     <td className="px-3 py-2 break-words">{booking.drop}</td>
-                    <td className="px-3 py-2 break-words">{booking.booked_date}</td>
+                    <td className="px-3 py-2 break-words">{booking.departure_date}</td>
                     <td className="px-3 py-2 break-words">{Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no}</td>
                     <td className="px-3 py-2 capitalize break-words font-semibold">{booking.status}</td>
                     <td className="px-3 py-2 space-x-1">{renderActions(booking.status, booking)}</td>

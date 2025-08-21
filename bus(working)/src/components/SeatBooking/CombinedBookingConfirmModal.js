@@ -1,17 +1,33 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { AuthContext } from '../../context/AuthContext';
 import { FaBus, FaArrowRight, FaArrowLeft, FaTimes, FaCalendarAlt, FaMapMarkerAlt } from 'react-icons/fa';
 
 const CombinedBookingConfirmModal = ({ 
     onClose, 
-    onConfirm, 
+    onConfirm,
+    onAgentBookForPassenger,
     firstTrip, 
     secondTrip, 
     isLoading = false 
 }) => {
+    const { user } = useContext(AuthContext);
+    
     const totalAmount = (
         (Number(firstTrip.trip.price) * firstTrip.selectedSeats.length) +
         (Number(secondTrip.trip.price) * secondTrip.selectedSeats.length)
     );
+
+    const handleConfirm = () => {
+        console.log("CombinedBookingConfirmModal: handleConfirm called");
+        onConfirm();
+    };
+
+    const handleBookForPassenger = () => {
+        console.log("CombinedBookingConfirmModal: handleBookForPassenger called");
+        if (onAgentBookForPassenger) {
+            onAgentBookForPassenger();
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -126,28 +142,77 @@ const CombinedBookingConfirmModal = ({
                 </div>
 
                 {/* Footer */}
-                <div className="bg-gray-50 px-6 py-4 flex justify-end gap-4">
+                <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="px-4 sm:px-6 py-3 sm:py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm sm:text-base font-medium focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
                         disabled={isLoading}
                     >
                         Cancel
                     </button>
-                    <button
-                        onClick={onConfirm}
-                        className="px-8 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        disabled={isLoading}
-                    >
-                        {isLoading ? (
-                            <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                                Processing...
-                            </>
-                        ) : (
-                            'Proceed to Payment'
-                        )}
-                    </button>
+                    
+                    {user?.role?.toLowerCase() === 'agent' ? (
+                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+                            <button
+                                onClick={handleConfirm}
+                                className="px-4 sm:px-6 py-3 sm:py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 active:from-blue-800 active:to-blue-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-medium shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    'Confirm (Agent)'
+                                )}
+                            </button>
+                            <button
+                                onClick={handleBookForPassenger}
+                                className="px-4 sm:px-6 py-3 sm:py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 active:from-green-800 active:to-green-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-medium shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    'Book for Passenger'
+                                )}
+                            </button>
+                        </div>
+                    ) : user?.role?.toLowerCase() === 'admin' ? (
+                        <button
+                            onClick={handleConfirm}
+                            className="px-4 sm:px-6 py-3 sm:py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 active:from-purple-800 active:to-purple-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-medium shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                                    Processing...
+                                </>
+                            ) : (
+                                'Confirm (Admin)'
+                            )}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleConfirm}
+                            className="px-6 sm:px-8 py-3 sm:py-2 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 active:from-green-800 active:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-medium shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                                    Processing...
+                                </>
+                            ) : (
+                                'Proceed to Payment'
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

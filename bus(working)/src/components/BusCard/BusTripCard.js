@@ -102,12 +102,12 @@ const BusTripCard = ({ trip, buses, searchParams }) => {
                 firstTripBooking: searchParams?.firstTripBooking,
                 searchParams: searchParams // Pass the full search parameters including returnDate
               }}>
-              <button className="bg-orange-500 text-white px-2 sm:px-4 py-0.5 sm:py-1 rounded mt-1 sm:mt-2 w-full lg:w-auto text-xs sm:text-base">Book seat</button>
+              <button className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white px-3 sm:px-4 py-2 sm:py-2 rounded-lg mt-2 sm:mt-2 w-full lg:w-auto text-sm sm:text-base font-medium transition-colors duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-50">Book seat</button>
             </Link>
           ) : (
             <div>
               <button
-                className="bg-gray-400 text-white px-2 sm:px-4 py-0.5 sm:py-1 rounded mt-1 sm:mt-2 cursor-not-allowed w-full lg:w-auto text-xs sm:text-base animate-[blinkbg_2s_linear_infinite]"
+                className="bg-gray-400 text-white px-3 sm:px-4 py-2 sm:py-2 rounded-lg mt-2 sm:mt-2 cursor-not-allowed w-full lg:w-auto text-sm sm:text-base font-medium animate-[blinkbg_2s_linear_infinite]"
                 disabled
               >
                 Book seat

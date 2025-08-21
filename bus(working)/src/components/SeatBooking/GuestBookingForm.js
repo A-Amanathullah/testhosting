@@ -4,7 +4,18 @@ import { createGuestBooking } from "../../services/guestBookingService";
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 
-const GuestBookingForm = ({ onSubmit, onLogin, onSignup, onClose, totalAmount = 0, agentId = null, isAgentBooking = false, processingBookingId = null, onRefresh = null }) => {
+const GuestBookingForm = ({ 
+  onSubmit, 
+  onLogin, 
+  onSignup, 
+  onClose, 
+  totalAmount = 0, 
+  agentId = null, 
+  isAgentBooking = false, 
+  processingBookingId = null, 
+  onRefresh = null,
+  isCombinedBooking = false // New prop to detect combined bookings
+}) => {
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -93,7 +104,17 @@ const handlePhoneChange = (value, data) => {
       // Store booking data for later use in payment flow
       setBookingData({ ...guestData, processingBookingId });
 
-      // Show payment component for regular guest bookings
+      // For combined bookings, let parent handle the flow
+      if (isCombinedBooking) {
+        console.log("Combined booking: Passing data to parent via onSubmit");
+        if (onSubmit) {
+          await onSubmit(guestData);
+          // Don't call onClose() here - let the parent handle closing after successful processing
+        }
+        return;
+      }
+
+      // Show payment component for regular single guest bookings
       setShowPayment(true);
 
     } catch (err) {
