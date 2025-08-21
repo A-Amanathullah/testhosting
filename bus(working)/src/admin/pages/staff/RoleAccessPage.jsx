@@ -55,6 +55,10 @@ const modules = [
 		],
 	},
 	{
+		name: 'Agent Commission',
+		actions: ['view', 'add', 'edit', 'delete'],
+	},
+	{
 		name: 'User Management',
 		actions: ['view', 'add', 'edit', 'delete'],
 	},

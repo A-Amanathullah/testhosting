@@ -14,6 +14,7 @@ import useUsers from '../../../hooks/useUsers';
 import useBookings from '../../../hooks/useBookings';
 import useAdminGuestBookings from '../../hooks/useAdminGuestBookings';
 import useBusHook from '../../../hooks/useBusHook';
+import agentCommissionService from '../../../services/agentCommissionService';
 
 const AgentReportPage = () => {
   // State for selected filters and data
@@ -25,6 +26,7 @@ const AgentReportPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
   const [notification, setNotification] = useState("");
+  const [agentCommissions, setAgentCommissions] = useState({}); // Store commission data for agents
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,6 +47,24 @@ const AgentReportPage = () => {
   // Reference to the table for printing
   const printTableRef = useRef(null);
 
+  // Function to fetch all agent commissions
+  const fetchAgentCommissions = async () => {
+    try {
+      const response = await agentCommissionService.getAll();
+      if (response.data.success) {
+        const commissionsMap = {};
+        response.data.data.forEach(commission => {
+          if (commission.is_active) {
+            commissionsMap[commission.user_id] = commission;
+          }
+        });
+        setAgentCommissions(commissionsMap);
+      }
+    } catch (error) {
+      console.error('Error fetching agent commissions:', error);
+    }
+  };
+
   // Fetch agents and available dates
   useEffect(() => {
     // Fetch agents data
@@ -55,6 +75,9 @@ const AgentReportPage = () => {
         name: user.name
       }));
     setAgents(agentList);
+
+    // Fetch agent commissions for dynamic calculation
+    fetchAgentCommissions();
 
     // Generate available dates from bookings
     if (allBookings && allBookings.length > 0) {
@@ -73,75 +96,127 @@ const AgentReportPage = () => {
 
   // Process bookings and guest bookings when filters/data change
   useEffect(() => {
-    setIsLoading(true);
+    const processBookings = async () => {
+      setIsLoading(true);
 
-    if (bookingsError || guestBookingsError) {
-      console.error('Error fetching bookings:', bookingsError, guestBookingsError);
-      setBookings([]);
-      setIsLoading(false);
-      return;
-    }
+      if (bookingsError || guestBookingsError) {
+        console.error('Error fetching bookings:', bookingsError, guestBookingsError);
+        setBookings([]);
+        setIsLoading(false);
+        return;
+      }
 
-    // Filter regular agent bookings
-    const mappedAgentBookings = allBookings
-      .filter(booking => booking.role === 'agent')
-      .map(booking => ({
-        id: booking.id,
-        serialNo: booking.serial_no,
-        bookedDate: booking.created_at,
-        agentId: booking.user_id,
-        agentName: users.find(u => u.id === booking.user_id)?.name || booking.name || 'N/A',
-        customerName: booking.name,
-        bus_no: booking.bus_no,
-        contactNumber: booking.phone_no || 'N/A',
-        ticketsReserved: booking.reserved_tickets,
-        seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no,
-        route: `${booking.pickup} - ${booking.drop}`,
-        status: booking.status,
-        commission: booking.price ? booking.price * 0.1 : 0,
-        bookingDate: booking.booked_date
-      }));
+      // Process regular agent bookings
+      const mappedAgentBookings = await Promise.all(
+        allBookings
+          .filter(booking => booking.role === 'agent')
+          .map(async (booking) => {
+            const bookingPrice = booking.price || 0;
+            let commission = 0;
 
-    // Filter guest bookings with agent_id
-    const mappedGuestAgentBookings = allGuestBookings
-      .filter(booking => booking.agent_id)
-      .map(booking => ({
-        id: booking.id,
-        serialNo: booking.serial_no,
-        bookedDate: booking.created_at,
-        agentId: booking.agent_id,
-        agentName: users.find(u => u.id === booking.agent_id)?.name || 'N/A',
-        customerName: booking.name,
-        bus_no: booking.bus_no,
-        contactNumber: booking.phone || booking.contact_number || 'N/A',
-        ticketsReserved: booking.reserved_tickets,
-        seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no,
-        route: `${booking.pickup} - ${booking.drop}`,
-        status: booking.status,
-        commission: booking.price ? booking.price * 0.1 : 0,
-        bookingDate: booking.booked_date
-      }));
+            // Calculate commission dynamically
+            if (agentCommissions[booking.user_id]) {
+              const commissionData = agentCommissions[booking.user_id];
+              const numSeats = booking.reserved_tickets || 1; // Number of seats booked
+              
+              if (commissionData.commission_type === 'percentage') {
+                // For percentage: calculate on total booking amount
+                commission = (bookingPrice * commissionData.commission_value) / 100;
+              } else {
+                // For fixed amount: multiply by number of seats (commission per seat)
+                commission = parseFloat(commissionData.commission_value) * numSeats;
+              }
+            } else {
+              // Fallback to 10% for backward compatibility
+              commission = bookingPrice * 0.1;
+            }
 
-    // Merge and sort all agent bookings
-    const allAgentBookings = [...mappedAgentBookings, ...mappedGuestAgentBookings]
-      .filter(b => {
-        // Filter by selected agent, bus, date if set
-        if (selectedAgent && String(b.agentId) !== String(selectedAgent)) return false;
-        if (selectedBusId && String(b.bus_no) !== String(buses.find(bus => bus.id === parseInt(selectedBusId))?.bus_no)) return false;
-        if (selectedDate && b.bookedDate && new Date(b.bookedDate).toISOString().split('T')[0] !== selectedDate) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        if (!a.bookedDate && !b.bookedDate) return 0;
-        if (!a.bookedDate) return 1;
-        if (!b.bookedDate) return -1;
-        return new Date(b.bookedDate) - new Date(a.bookedDate);
-      });
+            return {
+              id: booking.id,
+              serialNo: booking.serial_no,
+              bookedDate: booking.created_at,
+              agentId: booking.user_id,
+              agentName: users.find(u => u.id === booking.user_id)?.name || booking.name || 'N/A',
+              customerName: booking.name,
+              bus_no: booking.bus_no,
+              contactNumber: booking.phone_no || 'N/A',
+              ticketsReserved: booking.reserved_tickets,
+              seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no,
+              route: `${booking.pickup} - ${booking.drop}`,
+              status: booking.status,
+              commission: commission,
+              bookingDate: booking.booked_date
+            };
+          })
+      );
 
-  setBookings(allAgentBookings);
-  setIsLoading(bookingsLoading || guestBookingsLoading);
-  setCurrentPage(1); // Reset to first page on data/filter change
-  }, [allBookings, allGuestBookings, bookingsLoading, guestBookingsLoading, bookingsError, guestBookingsError, users, selectedBusId, selectedDate, selectedAgent, buses]);
+      // Process guest bookings with agent_id
+      const mappedGuestAgentBookings = await Promise.all(
+        allGuestBookings
+          .filter(booking => booking.agent_id)
+          .map(async (booking) => {
+            const bookingPrice = booking.price || 0;
+            let commission = 0;
+
+            // Calculate commission dynamically
+            if (agentCommissions[booking.agent_id]) {
+              const commissionData = agentCommissions[booking.agent_id];
+              const numSeats = booking.reserved_tickets || 1; // Number of seats booked
+              
+              if (commissionData.commission_type === 'percentage') {
+                // For percentage: calculate on total booking amount
+                commission = (bookingPrice * commissionData.commission_value) / 100;
+              } else {
+                // For fixed amount: multiply by number of seats (commission per seat)
+                commission = parseFloat(commissionData.commission_value) * numSeats;
+              }
+            } else {
+              // Fallback to 10% for backward compatibility
+              commission = bookingPrice * 0.1;
+            }
+
+            return {
+              id: booking.id,
+              serialNo: booking.serial_no,
+              bookedDate: booking.created_at,
+              agentId: booking.agent_id,
+              agentName: users.find(u => u.id === booking.agent_id)?.name || 'N/A',
+              customerName: booking.name,
+              bus_no: booking.bus_no,
+              contactNumber: booking.phone || booking.contact_number || 'N/A',
+              ticketsReserved: booking.reserved_tickets,
+              seatNumbers: Array.isArray(booking.seat_no) ? booking.seat_no.join(', ') : booking.seat_no,
+              route: `${booking.pickup} - ${booking.drop}`,
+              status: booking.status,
+              commission: commission,
+              bookingDate: booking.booked_date
+            };
+          })
+      );
+
+      // Merge and sort all agent bookings
+      const allAgentBookings = [...mappedAgentBookings, ...mappedGuestAgentBookings]
+        .filter(b => {
+          // Filter by selected agent, bus, date if set
+          if (selectedAgent && String(b.agentId) !== String(selectedAgent)) return false;
+          if (selectedBusId && String(b.bus_no) !== String(buses.find(bus => bus.id === parseInt(selectedBusId))?.bus_no)) return false;
+          if (selectedDate && b.bookedDate && new Date(b.bookedDate).toISOString().split('T')[0] !== selectedDate) return false;
+          return true;
+        })
+        .sort((a, b) => {
+          if (!a.bookedDate && !b.bookedDate) return 0;
+          if (!a.bookedDate) return 1;
+          if (!b.bookedDate) return -1;
+          return new Date(b.bookedDate) - new Date(a.bookedDate);
+        });
+
+      setBookings(allAgentBookings);
+      setIsLoading(bookingsLoading || guestBookingsLoading);
+      setCurrentPage(1); // Reset to first page on data/filter change
+    };
+
+    processBookings();
+  }, [allBookings, allGuestBookings, bookingsLoading, guestBookingsLoading, bookingsError, guestBookingsError, users, selectedBusId, selectedDate, selectedAgent, buses, agentCommissions]);
 
   // Handle bus selection
   const handleBusChange = (id) => {
@@ -215,7 +290,7 @@ const AgentReportPage = () => {
     if (!bookings.length) return { totalTickets: 0, totalCommission: 0 };
 
     const totalTickets = bookings.reduce((sum, booking) => sum + booking.ticketsReserved, 0);
-    const totalCommission = bookings.reduce((sum, booking) => sum + booking.commission, 0);
+    const totalCommission = bookings.reduce((sum, booking) => sum + parseFloat(booking.commission || 0), 0);
 
     return { totalTickets, totalCommission };
   };
@@ -290,7 +365,7 @@ const AgentReportPage = () => {
               </div>
               <div className="p-3 rounded-md bg-green-50">
                 <p className="text-sm font-medium text-green-700">Total Commission (Rs)</p>
-                <p className="text-2xl font-bold text-green-900">{totalCommission.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-green-900">{totalCommission.toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -308,8 +383,8 @@ const AgentReportPage = () => {
             summaryData={[
               { label: 'Total Bookings', value: bookings.length },
               { label: 'Total Tickets', value: totalTickets },
-              { label: 'Total Commission', value: `Rs ${totalCommission.toLocaleString()}` },
-              { label: 'Avg. Commission/Booking', value: `Rs ${bookings.length ? Math.round(totalCommission / bookings.length).toLocaleString() : 0}` }
+              { label: 'Total Commission', value: `Rs. ${totalCommission.toFixed(2)}` },
+              { label: 'Avg. Commission/Booking', value: `Rs. ${bookings.length ? (totalCommission / bookings.length).toFixed(2) : '0.00'}` }
             ]}
           />
 

@@ -36,6 +36,7 @@ class RolePermissionsSeeder extends Seeder
                 ['name' => 'Loyalty Report', 'actions' => ['view', 'print']],
             ]],
             ['name' => 'User Management', 'actions' => ['view', 'add', 'edit', 'delete']],
+            ['name' => 'Agent Commission', 'actions' => ['view', 'add' , 'edit']],
             ['name' => 'SMS Template', 'actions' => ['view', 'add', 'edit', 'delete']],
         ];
 

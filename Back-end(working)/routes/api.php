@@ -21,6 +21,7 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\BookingStatsController;
 use App\Http\Controllers\SriLankanLocationController;
 use App\Http\Controllers\DashboardStatsController;
+use App\Http\Controllers\AgentCommissionController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -112,6 +113,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/revenue/monthly', [DashboardStatsController::class, 'getMonthlyRevenue']);
     Route::get('/dashboard/revenue/daily', [DashboardStatsController::class, 'getDailyRevenue']);
     Route::get('/dashboard/revenue/yearly', [DashboardStatsController::class, 'getYearlyRevenue']);
+});
+
+// Agent Commission Management routes (protected by auth middleware)
+Route::middleware('auth:sanctum')->group(function () {
+    // Standard CRUD routes for agent commissions
+    Route::apiResource('agent-commissions', AgentCommissionController::class);
+    
+    // Additional commission management routes
+    Route::post('/agent-commissions/initialize', [AgentCommissionController::class, 'initializeAgentCommissions']);
+    Route::get('/agent-commissions/user/{userId}', [AgentCommissionController::class, 'getAgentCommission']);
+    Route::post('/agent-commissions/calculate', [AgentCommissionController::class, 'calculateCommission']);
 });
 
 // Fallback for unknown API routes to return JSON 404

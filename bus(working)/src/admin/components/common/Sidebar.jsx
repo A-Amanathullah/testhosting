@@ -23,7 +23,9 @@ import {
   DollarSign,
   CreditCard as LoyaltyCardIcon,
   BarChart,
+  ShieldUser ,
   UserCog,
+  
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -151,6 +153,12 @@ const SIDEBAR_ITEMS = [
         href: "/admin/loyalty/report",
       },
     ],
+  },
+  {
+    name: "Agent Commission",
+    icon: ShieldUser,
+    color: "#14B8A6",
+    href: "/admin/agent-commission",
   },
   {
     name: "User Management",

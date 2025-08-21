@@ -50,6 +50,7 @@ import Conductor from "./conductor/Conductor";
 import React, { useContext } from 'react';
 import { usePermissions } from './context/PermissionsContext';
 import { Navigate } from 'react-router-dom';
+import CommissionManagementPage from "./admin/pages/commission/CommissionManagementPage";
 
 function App() {
   const { user, loading } = useContext(AuthContext);
@@ -118,6 +119,7 @@ function App() {
                 <Route path="report/cancellation" element={<ProtectedRoute module="Cancellation Report" action="view"><CancellationReportPage /></ProtectedRoute>} />
                 <Route path="report/agent" element={<ProtectedRoute module="Agentwise Report" action="view"><AgentReportPage /></ProtectedRoute>} />
                 <Route path="report/revenue" element={<ProtectedRoute module="Revenue Report" action="view"><RevenueReportPage /></ProtectedRoute>} />
+                <Route path="agent-commission" element={<ProtectedRoute module="Agent Commission" action="view"><CommissionManagementPage /></ProtectedRoute>} />
                 <Route path="tracking" element={<ProtectedRoute module="Bus Tracking" action="view"><TrackingPage /></ProtectedRoute>} />
                 <Route path="loyalty/card" element={<ProtectedRoute module="Loyalty Card" action="view"><LoyaltyCardPage /></ProtectedRoute>} />
                 <Route path="loyalty/members" element={<ProtectedRoute module="Loyalty Members" action="view"><LoyaltyMembersPage /></ProtectedRoute>} />

@@ -18,6 +18,7 @@ class RoleSeeder extends Seeder
             ['name' => 'Agent', 'label' => 'Agent', 'created_at' => $now, 'updated_at' => $now],
             ['name' => 'Data Entry Operator', 'label' => 'Data Entry Operator', 'created_at' => $now, 'updated_at' => $now],
             ['name' => 'User', 'label' => 'User', 'created_at' => $now, 'updated_at' => $now],
+            ['name' => 'Conductor', 'label' => 'Conductor', 'created_at' => $now, 'updated_at' => $now],
         ]);
     }
 }
