@@ -37,7 +37,7 @@ const BusTripCard = ({ trip, buses, searchParams }) => {
   const endPoint = trip.actual_end_point || trip.end_point;
   const departureTime = trip.actual_departure_time || trip.departure_time;
   const arrivalTime = trip.actual_arrival_time || trip.arrival_time;
-  const journeyPrice = trip.journey_fare || trip.price;
+  const journeyPrice = trip.price || trip.journey_fare;
 
   // Format duration properly
   let journeyDuration = trip.duration;

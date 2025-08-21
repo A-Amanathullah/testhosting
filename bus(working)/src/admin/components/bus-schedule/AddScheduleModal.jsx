@@ -111,6 +111,18 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
         });
       }
     }
+
+    // Update the first schedule detail when departure date changes
+    if (name === 'departure_date' && value) {
+      setScheduleDetails((prev) => {
+        const updated = [...prev];
+        updated[0].date = value;
+        // Set arrival date to be one day after departure date
+        const arrivalDate = addDays(parseISO(value), 1);
+        updated[0].arrival_date = format(arrivalDate, 'yyyy-MM-dd');
+        return updated;
+      });
+    }
   };
 
   const handleScheduleDetailChange = (index, field, value) => {
@@ -119,31 +131,59 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
       ...updatedScheduleDetails[index],
       [field]: value
     };
+    
+    // Auto-set arrival date to be one day after departure date when date changes
+    if (field === 'date' && value) {
+      const arrivalDate = addDays(parseISO(value), 1);
+      updatedScheduleDetails[index].arrival_date = format(arrivalDate, 'yyyy-MM-dd');
+    }
+    
+    // If this is the first row and departure/arrival time or price is being set, update all other rows
+    if (index === 0 && (field === 'departure_time' || field === 'arrival_time' || field === 'price')) {
+      updatedScheduleDetails.forEach((detail, i) => {
+        if (i !== 0) { // Don't update the current row
+          updatedScheduleDetails[i][field] = value;
+        }
+      });
+    }
+    
     setScheduleDetails(updatedScheduleDetails);
   };
 
-  // Add a new schedule row (up to 7)
+  // Add a new schedule row (up to 30)
   const handleAddDay = () => {
-    if (scheduleDetails.length < 7) {
+    if (scheduleDetails.length < 30) {
       let nextDate = '';
       let nextArrivalDate = '';
+      let defaultDepartureTime = '';
+      let defaultArrivalTime = '';
+      
       if (formData.departure_date) {
         // Try to auto-increment date if possible
         const lastDate = scheduleDetails[scheduleDetails.length - 1].date || formData.departure_date;
         const next = addDays(parseISO(lastDate), 1);
         nextDate = format(next, 'yyyy-MM-dd');
-        nextArrivalDate = nextDate;
+        // Set arrival date to be one day after departure date
+        const arrivalNext = addDays(parseISO(nextDate), 1);
+        nextArrivalDate = format(arrivalNext, 'yyyy-MM-dd');
       }
+      
+      // Use the departure and arrival time and price from the first row if available
+      if (scheduleDetails.length > 0) {
+        defaultDepartureTime = scheduleDetails[0].departure_time || '';
+        defaultArrivalTime = scheduleDetails[0].arrival_time || '';
+      }
+      
       setScheduleDetails([
         ...scheduleDetails,
         {
           date: nextDate,
           start_point: formData.start_point || '',
           end_point: formData.end_point || '',
-          price: '',
-          departure_time: '',
+          price: scheduleDetails.length > 0 ? scheduleDetails[0].price : '',
+          departure_time: defaultDepartureTime,
           arrival_date: nextArrivalDate,
-          arrival_time: ''
+          arrival_time: defaultArrivalTime
         }
       ]);
     }
@@ -250,26 +290,26 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="flex flex-col w-full max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="flex flex-col w-full max-w-7xl max-h-[95vh] bg-white rounded-lg shadow-xl">
         {/* Fixed Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Add Bus Schedule</h2>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white rounded-t-lg">
+          <h2 className="text-2xl font-bold text-gray-900">Add Bus Schedule</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
+            className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100"
           >
-            <X size={24} />
+            <X size={28} />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-grow p-6 overflow-y-auto">
+        <div className="flex-grow p-8 overflow-y-auto bg-gray-50">
           <form id="scheduleForm" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2 mb-8 bg-white p-6 rounded-lg shadow-sm">
               {/* Bus Selection */}
               <div>
-                <label htmlFor="id" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="id" className="block text-sm font-semibold text-gray-700 mb-2">
                   Select Bus
                 </label>
                 <select
@@ -277,8 +317,8 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   name="id"
                   value={formData.id}
                   onChange={handleChange}
-                  className={`mt-1 block w-full px-3 py-2 border ${errors.id ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500`}
+                  className={`block w-full px-4 py-3 border ${errors.id ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
                 >
                   <option value="">-- Select Bus --</option>
                   {buses.map(bus => (
@@ -288,13 +328,13 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   ))}
                 </select>
                 {errors.id && (
-                  <p className="mt-1 text-sm text-red-600">{errors.id}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.id}</p>
                 )}
               </div>
 
               {/* Bus Route Selection */}
               <div>
-                <label htmlFor="bus_route_id" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="bus_route_id" className="block text-sm font-semibold text-gray-700 mb-2">
                   Select Route
                 </label>
                 <select
@@ -302,8 +342,8 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   name="bus_route_id"
                   value={formData.bus_route_id}
                   onChange={handleChange}
-                  className={`mt-1 block w-full px-3 py-2 border ${errors.bus_route_id ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500`}
+                  className={`block w-full px-4 py-3 border ${errors.bus_route_id ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
                 >
                   <option value="">-- Select Route --</option>
                   {busRoutes.map(route => (
@@ -313,12 +353,13 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   ))}
                 </select>
                 {errors.bus_route_id && (
-                  <p className="mt-1 text-sm text-red-600">{errors.bus_route_id}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.bus_route_id}</p>
                 )}
                 {selectedRoute && selectedRoute.stops && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-600">
-                      Route Stops: {selectedRoute.stops.map(stop => stop.location_name).join(' → ')}
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 mb-2">Route Stops:</p>
+                    <p className="text-sm text-blue-600">
+                      {selectedRoute.stops.map(stop => stop.location_name).join(' → ')}
                     </p>
                   </div>
                 )}
@@ -326,7 +367,7 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
 
               {/* Bus Number (Auto-filled) */}
               <div>
-                <label htmlFor="bus_no" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="bus_no" className="block text-sm font-semibold text-gray-700 mb-2">
                   Bus Number
                 </label>
                 <input
@@ -335,13 +376,13 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   name="bus_no"
                   value={formData.bus_no}
                   readOnly
-                  className="block w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none"
+                  className="block w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:outline-none text-base"
                 />
               </div>
 
-              {/* Driver Name (Editable) */}
+              {/* Driver Name */}
               <div>
-                <label htmlFor="driver_name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="driver_name" className="block text-sm font-semibold text-gray-700 mb-2">
                   Driver Name
                 </label>
                 <input
@@ -350,17 +391,18 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   name="driver_name"
                   value={formData.driver_name}
                   onChange={handleChange}
-                  className={`mt-1 block w-full px-3 py-2 border ${errors.driver_name ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500`}
+                  placeholder="Enter driver name"
+                  className={`block w-full px-4 py-3 border ${errors.driver_name ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
                 />
                 {errors.driver_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.driver_name}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.driver_name}</p>
                 )}
               </div>
 
-              {/* Driver Contact (Editable) */}
+              {/* Driver Contact */}
               <div>
-                <label htmlFor="driver_contact" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="driver_contact" className="block text-sm font-semibold text-gray-700 mb-2">
                   Driver Contact
                 </label>
                 <input
@@ -369,17 +411,18 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   name="driver_contact"
                   value={formData.driver_contact}
                   onChange={handleChange}
-                  className={`mt-1 block w-full px-3 py-2 border ${errors.driver_contact ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500`}
+                  placeholder="Enter driver contact number"
+                  className={`block w-full px-4 py-3 border ${errors.driver_contact ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
                 />
                 {errors.driver_contact && (
-                  <p className="mt-1 text-sm text-red-600">{errors.driver_contact}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.driver_contact}</p>
                 )}
               </div>
 
               {/* Conductor Name */}
               <div>
-                <label htmlFor="conductor_name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="conductor_name" className="block text-sm font-semibold text-gray-700 mb-2">
                   Conductor Name
                 </label>
                 <input
@@ -388,17 +431,18 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   name="conductor_name"
                   value={formData.conductor_name}
                   onChange={handleChange}
-                  className={`mt-1 block w-full px-3 py-2 border ${errors.conductor_name ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500`}
+                  placeholder="Enter conductor name"
+                  className={`block w-full px-4 py-3 border ${errors.conductor_name ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
                 />
                 {errors.conductor_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.conductor_name}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.conductor_name}</p>
                 )}
               </div>
 
               {/* Conductor Contact */}
               <div>
-                <label htmlFor="conductor_contact" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="conductor_contact" className="block text-sm font-semibold text-gray-700 mb-2">
                   Conductor Contact
                 </label>
                 <input
@@ -407,17 +451,18 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   name="conductor_contact"
                   value={formData.conductor_contact}
                   onChange={handleChange}
-                  className={`mt-1 block w-full px-3 py-2 border ${errors.conductor_contact ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500`}
+                  placeholder="Enter conductor contact number"
+                  className={`block w-full px-4 py-3 border ${errors.conductor_contact ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
                 />
                 {errors.conductor_contact && (
-                  <p className="mt-1 text-sm text-red-600">{errors.conductor_contact}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.conductor_contact}</p>
                 )}
               </div>
 
               {/* Initial Departure Date */}
               <div>
-                <label htmlFor="departure_date" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="departure_date" className="block text-sm font-semibold text-gray-700 mb-2">
                   Starting Date
                 </label>
                 <input
@@ -426,122 +471,149 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   name="departure_date"
                   value={formData.departure_date}
                   onChange={handleChange}
-                  className={`mt-1 block w-full px-3 py-2 border ${errors.departure_date ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500`}
+                  className={`block w-full px-4 py-3 border ${errors.departure_date ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
                 />
                 {errors.departure_date && (
-                  <p className="mt-1 text-sm text-red-600">{errors.departure_date}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.departure_date}</p>
                 )}
               </div>
             </div>
 
-            {/* 7-Day Schedule Details */}
+            {/* Schedule Details Section */}
             {formData.departure_date && (
               <div className="mt-6">
-                <h3 className="mb-4 text-lg font-medium text-gray-900">
-                  Schedule Details (up to 7 days)
+                <h3 className="mb-4 text-lg font-semibold text-gray-900">
+                  Schedule Details (up to 30 days)
                 </h3>
-                <div className="mb-2 flex gap-2">
+                <div className="mb-4 flex items-center gap-4">
                   <button
                     type="button"
-                    className="px-3 py-1 text-sm bg-primary/80 text-white rounded hover:bg-primary disabled:opacity-50"
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     onClick={handleAddDay}
-                    disabled={scheduleDetails.length >= 7}
+                    disabled={scheduleDetails.length >= 30}
                   >
                     + Add Day
                   </button>
-                  <span className="text-sm text-gray-500">
-                    {scheduleDetails.length} / 7 days
+                  <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-lg">
+                    {scheduleDetails.length} / 30 days
                   </span>
+                  <div className="text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">
+                    💡 Times & prices from first row auto-apply to new days
+                  </div>
                 </div>
+                
+                <div className="mb-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <p className="text-sm text-amber-800">
+                    <strong>Note:</strong> Arrival dates auto-set to +1 day from departure date. 
+                    Departure/arrival times and prices from the first row will automatically apply to new rows (editable).
+                  </p>
+                </div>
+                
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        <th className="px-3 py-4 text-sm font-semibold tracking-wider text-left text-gray-700 uppercase">
                           Date
                         </th>
-                        <th className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        <th className="px-3 py-4 text-sm font-semibold tracking-wider text-left text-gray-700 uppercase">
                           From Location
                         </th>
-                        <th className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        <th className="px-3 py-4 text-sm font-semibold tracking-wider text-left text-gray-700 uppercase">
                           To Location
                         </th>
-                        <th className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        <th className="px-3 py-4 text-sm font-semibold tracking-wider text-left text-gray-700 uppercase">
                           Departure Time
+                          <span className="text-xs font-normal text-blue-600 block normal-case">
+                            (1st row syncs all)
+                          </span>
                         </th>
-                        <th className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        <th className="px-3 py-4 text-sm font-semibold tracking-wider text-left text-gray-700 uppercase">
                           Arrival Date
+                          <span className="text-xs font-normal text-green-600 block normal-case">
+                            (auto +1 day)
+                          </span>
                         </th>
-                        <th className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        <th className="px-3 py-4 text-sm font-semibold tracking-wider text-left text-gray-700 uppercase">
                           Arrival Time
+                          <span className="text-xs font-normal text-blue-600 block normal-case">
+                            (1st row syncs all)
+                          </span>
                         </th>
-                        <th className="px-2 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                          Price
+                        <th className="px-3 py-4 text-sm font-semibold tracking-wider text-left text-gray-700 uppercase">
+                          Price (₹)
+                          <span className="text-xs font-normal text-blue-600 block normal-case">
+                            (1st row syncs all)
+                          </span>
                         </th>
-                        <th className="px-2 py-3"></th>
+                        <th className="px-3 py-4 text-sm font-semibold tracking-wider text-left text-gray-700 uppercase">
+                          Action
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {scheduleDetails.map((detail, index) => (
                         <tr key={index}>
-                          <td className="px-2 py-2 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
                             <input
                               type="date"
                               value={detail.date}
                               onChange={(e) =>
                                 handleScheduleDetailChange(index, 'date', e.target.value)
                               }
-                              className={`w-full px-2 py-1 border ${errors.scheduleDetails?.[index]?.date ? 'border-red-300' : 'border-gray-300'
-                                } rounded-md text-sm`}
+                              className={`w-full px-3 py-2 border ${errors.scheduleDetails?.[index]?.date ? 'border-red-300' : 'border-gray-300'
+                                } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             />
                             {errors.scheduleDetails?.[index]?.date && (
-                              <p className="text-xs text-red-600">{errors.scheduleDetails[index].date}</p>
+                              <p className="text-xs text-red-600 mt-1">{errors.scheduleDetails[index].date}</p>
                             )}
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-nowrap">
                             <input
                               type="text"
                               value={detail.start_point}
                               onChange={(e) =>
                                 handleScheduleDetailChange(index, 'start_point', e.target.value)
                               }
-                              className={`w-full px-2 py-1 border ${errors.scheduleDetails?.[index]?.start_point ? 'border-red-300' : 'border-gray-300'
-                                } rounded-md text-sm`}
+                              placeholder="From location"
+                              className={`w-full px-3 py-2 border ${errors.scheduleDetails?.[index]?.start_point ? 'border-red-300' : 'border-gray-300'
+                                } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             />
                             {errors.scheduleDetails?.[index]?.start_point && (
-                              <p className="text-xs text-red-600">{errors.scheduleDetails[index].start_point}</p>
+                              <p className="text-xs text-red-600 mt-1">{errors.scheduleDetails[index].start_point}</p>
                             )}
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-nowrap">
                             <input
                               type="text"
                               value={detail.end_point}
                               onChange={(e) =>
                                 handleScheduleDetailChange(index, 'end_point', e.target.value)
                               }
-                              className={`w-full px-2 py-1 border ${errors.scheduleDetails?.[index]?.end_point ? 'border-red-300' : 'border-gray-300'
-                                } rounded-md text-sm`}
+                              placeholder="To location"
+                              className={`w-full px-3 py-2 border ${errors.scheduleDetails?.[index]?.end_point ? 'border-red-300' : 'border-gray-300'
+                                } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             />
                             {errors.scheduleDetails?.[index]?.end_point && (
-                              <p className="text-xs text-red-600">{errors.scheduleDetails[index].end_point}</p>
+                              <p className="text-xs text-red-600 mt-1">{errors.scheduleDetails[index].end_point}</p>
                             )}
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-nowrap">
                             <input
                               type="time"
                               value={detail.departure_time}
                               onChange={(e) =>
                                 handleScheduleDetailChange(index, 'departure_time', e.target.value)
                               }
-                              className={`w-full px-2 py-1 border ${errors.scheduleDetails?.[index]?.departure_time ? 'border-red-300' : 'border-gray-300'
-                                } rounded-md text-sm`}
+                              className={`w-full px-3 py-2 border ${errors.scheduleDetails?.[index]?.departure_time ? 'border-red-300' : 'border-gray-300'
+                                } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             />
                             {errors.scheduleDetails?.[index]?.departure_time && (
-                              <p className="text-xs text-red-600">{errors.scheduleDetails[index].departure_time}</p>
+                              <p className="text-xs text-red-600 mt-1">{errors.scheduleDetails[index].departure_time}</p>
                             )}
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-nowrap">
                             <input
                               type="date"
                               id="arrival_date"
@@ -549,14 +621,14 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                               onChange={(e) =>
                                 handleScheduleDetailChange(index, 'arrival_date', e.target.value)
                               }
-                              className={`w-full px-2 py-1 border ${errors.scheduleDetails?.[index]?.arrival_date ? 'border-red-300' : 'border-gray-300'
-                                } rounded-md text-sm`}
+                              className={`w-full px-3 py-2 border ${errors.scheduleDetails?.[index]?.arrival_date ? 'border-red-300' : 'border-gray-300'
+                                } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             />
                             {errors.scheduleDetails?.[index]?.arrival_date && (
-                              <p className="text-xs text-red-600">{errors.scheduleDetails[index].arrival_date}</p>
+                              <p className="text-xs text-red-600 mt-1">{errors.scheduleDetails[index].arrival_date}</p>
                             )}
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-nowrap">
                             <input
                               type="time"
                               id="arrival_time"
@@ -564,14 +636,14 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                               onChange={(e) =>
                                 handleScheduleDetailChange(index, 'arrival_time', e.target.value)
                               }
-                              className={`w-full px-2 py-1 border ${errors.scheduleDetails?.[index]?.arrival_time ? 'border-red-300' : 'border-gray-300'
-                                } rounded-md text-sm`}
+                              className={`w-full px-3 py-2 border ${errors.scheduleDetails?.[index]?.arrival_time ? 'border-red-300' : 'border-gray-300'
+                                } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             />
                             {errors.scheduleDetails?.[index]?.arrival_time && (
-                              <p className="text-xs text-red-600">{errors.scheduleDetails[index].arrival_time}</p>
+                              <p className="text-xs text-red-600 mt-1">{errors.scheduleDetails[index].arrival_time}</p>
                             )}
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-nowrap">
                             <input
                               type="number"
                               min="0"
@@ -579,17 +651,18 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                               onChange={(e) =>
                                 handleScheduleDetailChange(index, 'price', e.target.value)
                               }
-                              className={`w-full px-2 py-1 border ${errors.scheduleDetails?.[index]?.price ? 'border-red-300' : 'border-gray-300'
-                                } rounded-md text-sm`}
+                              placeholder="Price"
+                              className={`w-full px-3 py-2 border ${errors.scheduleDetails?.[index]?.price ? 'border-red-300' : 'border-gray-300'
+                                } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             />
                             {errors.scheduleDetails?.[index]?.price && (
-                              <p className="text-xs text-red-600">{errors.scheduleDetails[index].price}</p>
+                              <p className="text-xs text-red-600 mt-1">{errors.scheduleDetails[index].price}</p>
                             )}
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-nowrap">
                             <button
                               type="button"
-                              className="text-red-500 hover:text-red-700 text-xs"
+                              className="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded hover:bg-red-50"
                               onClick={() => handleRemoveDay(index)}
                               disabled={scheduleDetails.length === 1}
                               title="Remove this day"
@@ -606,17 +679,17 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end mt-6 space-x-4">
+            <div className="flex justify-end mt-8 space-x-4 pt-6 border-t border-gray-200">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                className="px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-primary/80 border border-transparent rounded-md hover:bg-primary"
+                className="px-6 py-3 text-sm font-medium text-white bg-red-800 border border-transparent rounded-lg hover:bg-red-900 transition-colors"
               >
                 Save Schedule
               </button>
