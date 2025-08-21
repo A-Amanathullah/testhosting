@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { format, addDays, parseISO } from 'date-fns';
 import { getAllBusRoutes } from '../../../services/busRouteService';
+import { fetchUsersByRole } from '../../../services/userService';
 
 const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
   const initialFormData = {
@@ -9,6 +10,7 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
     bus_no: '',
     driver_name: '',
     driver_contact: '',
+    conductor_id: '',
     conductor_name: '',
     conductor_contact: '',
     departure_date: '',
@@ -18,6 +20,7 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
   const [formData, setFormData] = useState(initialFormData);
   const [busRoutes, setBusRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
+  const [conductors, setConductors] = useState([]);
   // Start with 1 schedule detail row
   const [scheduleDetails, setScheduleDetails] = useState([
     {
@@ -32,7 +35,7 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
   ]);
   const [errors, setErrors] = useState({});
 
-  // Fetch bus routes on component mount
+  // Fetch bus routes and conductors on component mount
   useEffect(() => {
     const fetchBusRoutes = async () => {
       try {
@@ -43,8 +46,18 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
       }
     };
     
+    const fetchConductors = async () => {
+      try {
+        const conductorUsers = await fetchUsersByRole('conductor');
+        setConductors(conductorUsers);
+      } catch (error) {
+        console.error('Failed to fetch conductors:', error);
+      }
+    };
+    
     if (isOpen) {
       fetchBusRoutes();
+      fetchConductors();
     }
   }, [isOpen]);
 
@@ -88,6 +101,25 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
           if (selectedBus.end_point) updated[0].end_point = selectedBus.end_point;
           return updated;
         });
+      }
+    }
+
+    if (name === 'conductor_id') {
+      const conductor = conductors.find(c => c.id === parseInt(value));
+      if (conductor) {
+        setFormData(prev => ({
+          ...prev,
+          conductor_id: value,
+          conductor_name: `${conductor.first_name} ${conductor.last_name}`.trim() || conductor.name,
+          conductor_contact: conductor.phone_no || ''
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          conductor_id: '',
+          conductor_name: '',
+          conductor_contact: ''
+        }));
       }
     }
 
@@ -202,8 +234,7 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
     if (!formData.id) newErrors.id = 'Please select a bus';
     if (!formData.bus_route_id) newErrors.bus_route_id = 'Please select a bus route';
     if (!formData.departure_date) newErrors.departure_date = 'Please select a departure date';
-    if (!formData.conductor_name) newErrors.conductor_name = 'Please enter conductor name';
-    if (!formData.conductor_contact) newErrors.conductor_contact = 'Please enter conductor contact';
+    if (!formData.conductor_id) newErrors.conductor_id = 'Please select a conductor';
     if (!formData.driver_name) newErrors.driver_name = 'Please enter driver name';
     if (!formData.driver_contact) newErrors.driver_contact = 'Please enter driver contact';
 
@@ -420,7 +451,34 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                 )}
               </div>
 
-              {/* Conductor Name */}
+              {/* Conductor Selection */}
+              <div>
+                <label htmlFor="conductor_id" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Conductor
+                </label>
+                <select
+                  id="conductor_id"
+                  name="conductor_id"
+                  value={formData.conductor_id}
+                  onChange={handleChange}
+                  className={`block w-full px-4 py-3 border ${errors.conductor_id ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
+                >
+                  <option value="">-- Select Conductor --</option>
+                  {conductors.map(conductor => (
+                    <option key={conductor.id} value={conductor.id}>
+                      {conductor.first_name && conductor.last_name 
+                        ? `${conductor.first_name} ${conductor.last_name}` 
+                        : conductor.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.conductor_id && (
+                  <p className="mt-2 text-sm text-red-600">{errors.conductor_id}</p>
+                )}
+              </div>
+
+              {/* Conductor Name (Auto-filled, read-only) */}
               <div>
                 <label htmlFor="conductor_name" className="block text-sm font-semibold text-gray-700 mb-2">
                   Conductor Name
@@ -430,17 +488,13 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   id="conductor_name"
                   name="conductor_name"
                   value={formData.conductor_name}
-                  onChange={handleChange}
-                  placeholder="Enter conductor name"
-                  className={`block w-full px-4 py-3 border ${errors.conductor_name ? 'border-red-300' : 'border-gray-300'
-                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
+                  readOnly
+                  placeholder="Select conductor to auto-fill"
+                  className="block w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:outline-none text-base"
                 />
-                {errors.conductor_name && (
-                  <p className="mt-2 text-sm text-red-600">{errors.conductor_name}</p>
-                )}
               </div>
 
-              {/* Conductor Contact */}
+              {/* Conductor Contact (Auto-filled, read-only) */}
               <div>
                 <label htmlFor="conductor_contact" className="block text-sm font-semibold text-gray-700 mb-2">
                   Conductor Contact
@@ -450,14 +504,10 @@ const AddScheduleModal = ({ isOpen, onClose, onSave, buses }) => {
                   id="conductor_contact"
                   name="conductor_contact"
                   value={formData.conductor_contact}
-                  onChange={handleChange}
-                  placeholder="Enter conductor contact number"
-                  className={`block w-full px-4 py-3 border ${errors.conductor_contact ? 'border-red-300' : 'border-gray-300'
-                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base`}
+                  readOnly
+                  placeholder="Select conductor to auto-fill"
+                  className="block w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:outline-none text-base"
                 />
-                {errors.conductor_contact && (
-                  <p className="mt-2 text-sm text-red-600">{errors.conductor_contact}</p>
-                )}
               </div>
 
               {/* Initial Departure Date */}

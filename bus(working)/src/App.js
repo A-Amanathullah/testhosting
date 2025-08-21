@@ -46,7 +46,7 @@ import Contact from './pages/Contact';
 import PrivacyPolicy from './pages/Policies/PrivacyPolicy';
 import TermsConditions from './pages/Policies/TermsConditions';
 import TicketPolicy from './pages/Policies/TicketPolicy';
-import Conductor from "./conductor/Conductor";
+import Conductor from "./conductor/Pages/Conductor";
 import React, { useContext } from 'react';
 import { usePermissions } from './context/PermissionsContext';
 import { Navigate } from 'react-router-dom';

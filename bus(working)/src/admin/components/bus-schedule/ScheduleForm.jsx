@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ScheduleForm = ({ formData, onChange, buses, busRoutes = [], errors = {} }) => {
+const ScheduleForm = ({ formData, onChange, buses, busRoutes = [], conductors = [], errors = {} }) => {
   return (
     <div className="space-y-4">
       <div>
@@ -87,20 +87,29 @@ const ScheduleForm = ({ formData, onChange, buses, busRoutes = [], errors = {} }
       </div>
       
       <div className="grid grid-cols-2 gap-4">
+        {/* Conductor Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Conductor Name</label>
-          <input 
-            type="text" 
-            name="conductor_name"
-            value={formData.conductor_name}
+          <label className="block text-sm font-medium text-gray-700">Select Conductor</label>
+          <select
+            name="conductor_id"
+            value={formData.conductor_id || ''}
             onChange={onChange}
-            className={`block w-full px-3 py-2 mt-1 border ${
-              errors.conductor_name ? 'border-red-300' : 'border-gray-300'
+            className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border ${
+              errors.conductor_id ? 'border-red-300' : 'border-gray-300'
             } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
             required
-          />
-          {errors.conductor_name && (
-            <p className="mt-1 text-sm text-red-600">{errors.conductor_name}</p>
+          >
+            <option value="">Select a conductor</option>
+            {conductors.map((conductor) => (
+              <option key={conductor.id} value={conductor.id}>
+                {conductor.first_name && conductor.last_name 
+                  ? `${conductor.first_name} ${conductor.last_name}` 
+                  : conductor.name}
+              </option>
+            ))}
+          </select>
+          {errors.conductor_id && (
+            <p className="mt-1 text-sm text-red-600">{errors.conductor_id}</p>
           )}
         </div>
         
@@ -110,17 +119,19 @@ const ScheduleForm = ({ formData, onChange, buses, busRoutes = [], errors = {} }
             type="tel" 
             name="conductor_contact"
             value={formData.conductor_contact}
-            onChange={onChange}
-            className={`block w-full px-3 py-2 mt-1 border ${
-              errors.conductor_contact ? 'border-red-300' : 'border-gray-300'
-            } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-            required
+            readOnly
+            placeholder="Select conductor to auto-fill"
+            className="block w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none"
           />
-          {errors.conductor_contact && (
-            <p className="mt-1 text-sm text-red-600">{errors.conductor_contact}</p>
-          )}
         </div>
       </div>
+      
+      {/* Conductor Name (Auto-filled, hidden field) */}
+      <input 
+        type="hidden" 
+        name="conductor_name"
+        value={formData.conductor_name}
+      />
       
       <div className="grid grid-cols-2 gap-4">
         <div>

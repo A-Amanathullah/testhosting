@@ -94,3 +94,22 @@ export const deleteUser = async (id) => {
     throw error; // Re-throw for component-level handling
   }
 };
+
+// Fetch users by role (e.g., 'Conductor', 'Driver', etc.)
+export const fetchUsersByRole = async (role) => {
+  try {
+    const response = await axios.get(`${API_URL}/users`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    
+    // Filter users by role
+    const users = response.data;
+    return users.filter(user => 
+      user.role && user.role.toLowerCase() === role.toLowerCase()
+    );
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || "Failed to fetch users by role.";
+    console.error(`Fetch users by role error (Role: ${role}):`, errorMessage, error);
+    throw error;
+  }
+};
