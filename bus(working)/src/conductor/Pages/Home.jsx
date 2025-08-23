@@ -5,17 +5,18 @@ import ConductorNavbar from "../components/ConductorNavbar";
 
 const Home = () => {
   return (
-    <div>
-      <div className="min-h-screen bg-gray-50">
-        {/* Navigation Bar */}
-        <ConductorNavbar />
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Bar */}
+      <ConductorNavbar />
 
+      {/* Main Content */}
+      <div className="py-8" style={{ backgroundColor: '#f9fafb', minHeight: '500px' }}>
         {/* Quick Actions Section */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Today's Trips Quick Link */}
             <Link to="/conductor/today-trips">
-              <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6 border border-gray-200">
+              <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6 border border-gray-200" style={{ minHeight: '120px' }}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Today's Trips</h3>
@@ -30,7 +31,7 @@ const Home = () => {
 
             {/* All Trips Quick Link */}
             <Link to="/conductor/trips">
-              <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6 border border-gray-200">
+              <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6 border border-gray-200" style={{ minHeight: '120px' }}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">All Trips</h3>
@@ -45,7 +46,7 @@ const Home = () => {
 
             {/* Routes Quick Link */}
             <Link to="/conductor/routes">
-              <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6 border border-gray-200">
+              <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6 border border-gray-200" style={{ minHeight: '120px' }}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Routes</h3>

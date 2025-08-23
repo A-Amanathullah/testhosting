@@ -7,7 +7,7 @@ const ConductorNavbar = () => {
 
   const navItems = [
     {
-      path: "/conductor/home",
+      path: "/conductor",
       label: "Home",
       icon: <User className="w-5 h-5" />
     },

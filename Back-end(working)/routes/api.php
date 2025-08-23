@@ -58,8 +58,6 @@ Route::get('/directions', [GoogleMapsController::class, 'getDirections']);
 Route::patch('/bookings/update-status', [BookingController::class, 'updateStatus']);
 Route::apiResource('bookings', BookingController::class);
 // Route::apiResource('staffs', StaffController::class);
-Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle']);
-Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 Route::post('/user-details', [AuthController::class, 'storeUserDetails'])->middleware('auth:sanctum');
 Route::apiResource('sms-templates', SmsTemplateController::class);
 Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');

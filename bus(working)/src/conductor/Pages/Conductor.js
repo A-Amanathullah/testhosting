@@ -1,5 +1,5 @@
 import PrivateRoute from "../../context/PrivateRoute";
-import Home from "../components/ConductorNavbar";
+import Home from "./Home";
 
 
 const Conductor = () => {
