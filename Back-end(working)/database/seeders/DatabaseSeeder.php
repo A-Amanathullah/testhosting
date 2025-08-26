@@ -27,7 +27,7 @@ class DatabaseSeeder extends Seeder
             AgentCommissionSeeder::class,
 
             // Bus and transportation data - note the sequence is important!
-            BusRegSeeder::class,         // Must run before any trip seeders
+            // BusRegSeeder::class,         // Must run before any trip seeders
             BusRouteSeeder::class,       // Must run before trip seeders
             // SampleBusTripSeeder::class,  // Sample bus trips for testing
             

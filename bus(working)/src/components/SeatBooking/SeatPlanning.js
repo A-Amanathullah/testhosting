@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { RiSteering2Fill } from "react-icons/ri";
 import ConfirmBooking from "./ConfirmBooking";
@@ -74,6 +74,300 @@ const SeatPlanning = ( ) => {
     const [isBookingReturnTrip, setIsBookingReturnTrip] = useState(false); // Flag to track if user is booking return trip
     const [showCombinedConfirmModal, setShowCombinedConfirmModal] = useState(false);
     const [secondTripBooking, setSecondTripBooking] = useState(null); // Store second trip booking data
+
+    // Real-time abandonment detection
+    const cleanupIntervalRef = useRef(null);
+
+    // Add processing booking to localStorage when created
+    const trackProcessingBooking = useCallback((bookingId, type = 'regular') => {
+        const trackingData = {
+            bookingId,
+            type, // 'regular' or 'guest'
+            timestamp: Date.now(),
+            token: user?.token || null
+        };
+        
+        const existingTracking = JSON.parse(localStorage.getItem('processingBookings') || '[]');
+        existingTracking.push(trackingData);
+        localStorage.setItem('processingBookings', JSON.stringify(existingTracking));
+        
+        console.log('Added booking to tracking:', trackingData);
+    }, [user?.token]);
+
+    // Remove tracking when booking is completed or cancelled
+    const removeBookingTracking = useCallback((bookingId) => {
+        const existingTracking = JSON.parse(localStorage.getItem('processingBookings') || '[]');
+        const updatedTracking = existingTracking.filter(item => item.bookingId !== bookingId);
+        localStorage.setItem('processingBookings', JSON.stringify(updatedTracking));
+        
+        console.log('Removed booking from tracking:', bookingId);
+    }, []);
+
+    // Cleanup old tracked bookings on page load
+    const cleanupTrackedBookings = useCallback(async () => {
+        const trackedBookings = JSON.parse(localStorage.getItem('processingBookings') || '[]');
+        
+        if (trackedBookings.length === 0) {
+            return;
+        }
+
+        console.log('Found tracked bookings to cleanup:', trackedBookings);
+        
+        const bookingsToRemove = [];
+
+        for (const booking of trackedBookings) {
+            // Clean up bookings older than 30 seconds (this catches abandoned bookings)
+            const age = Date.now() - booking.timestamp;
+            if (age > 30000) { // 30 seconds
+                console.log('Cleaning up old booking:', booking);
+                
+                try {
+                    if (booking.type === 'regular') {
+                        await deleteBooking(booking.bookingId, booking.token);
+                    } else {
+                        await deleteGuestBooking(booking.bookingId);
+                    }
+                    console.log('Successfully cleaned up booking:', booking.bookingId);
+                } catch (err) {
+                    console.error('Failed to cleanup booking:', booking.bookingId, err);
+                }
+                
+                bookingsToRemove.push(booking.bookingId);
+            }
+        }
+
+        // Remove cleaned up bookings from tracking
+        if (bookingsToRemove.length > 0) {
+            const updatedTracking = trackedBookings.filter(
+                booking => !bookingsToRemove.includes(booking.bookingId)
+            );
+            localStorage.setItem('processingBookings', JSON.stringify(updatedTracking));
+            console.log('Removed cleaned up bookings from tracking');
+        }
+    }, []);
+
+    // Clean up any orphaned bookings from previous sessions when component loads
+    const cleanupOrphanedBookings = useCallback(async () => {
+        console.log("=== CHECKING FOR ORPHANED BOOKINGS ===");
+        
+        try {
+            const trackedBookings = JSON.parse(localStorage.getItem('processingBookings') || '[]');
+            
+            if (trackedBookings.length > 0) {
+                console.log("Found tracked bookings from previous sessions:", trackedBookings);
+                
+                // Clean up ALL tracked bookings since they're from previous sessions
+                const bookingsToRemove = [];
+                
+                for (const booking of trackedBookings) {
+                    console.log('Cleaning up orphaned booking:', booking);
+                    
+                    try {
+                        if (booking.type === 'regular') {
+                            await deleteBooking(booking.bookingId, booking.token);
+                        } else {
+                            await deleteGuestBooking(booking.bookingId);
+                        }
+                        console.log('Successfully cleaned up orphaned booking:', booking.bookingId);
+                        bookingsToRemove.push(booking.bookingId);
+                    } catch (err) {
+                        console.error('Failed to cleanup orphaned booking:', booking.bookingId, err);
+                        // Still remove from tracking even if delete fails
+                        bookingsToRemove.push(booking.bookingId);
+                    }
+                }
+
+                // Remove all cleaned up bookings from tracking
+                if (bookingsToRemove.length > 0) {
+                    localStorage.setItem('processingBookings', JSON.stringify([])); // Clear all
+                    console.log('Cleared all orphaned bookings from tracking');
+                    
+                    // Trigger a refresh to update the seat display
+                    setRefreshTrigger(prev => prev + 1);
+                }
+            }
+        } catch (err) {
+            console.error("Error during orphaned booking cleanup:", err);
+        }
+    }, []);
+
+    // Run cleanup on component mount and check for orphaned bookings
+    useEffect(() => {
+        // First clean up old tracked bookings (30+ seconds old)
+        cleanupTrackedBookings();
+        
+        // Then immediately clean up any orphaned bookings from previous sessions
+        cleanupOrphanedBookings();
+    }, [cleanupTrackedBookings, cleanupOrphanedBookings]);
+
+    // Real-time cleanup system - monitors and deletes abandoned bookings immediately
+    const immediateCleanupAbandonedBookings = useCallback(async () => {
+        console.log("=== REAL-TIME CLEANUP CHECK ===");
+        
+        try {
+            // Clean up current session's processing bookings if user navigated away
+            const currentProcessingBookingId = processingBookingId;
+            const currentGuestProcessingBookingId = guestProcessingBookingId;
+            
+            if (currentProcessingBookingId || currentGuestProcessingBookingId) {
+                // Check if user is still actively on this page
+                const isPageActive = !document.hidden && document.hasFocus();
+                const lastActivityTime = sessionStorage.getItem('lastSeatActivity');
+                const timeSinceActivity = Date.now() - parseInt(lastActivityTime || '0');
+                
+                // If user hasn't been active for 10 seconds OR page isn't focused, cleanup
+                if (!isPageActive || timeSinceActivity > 10000) {
+                    console.log("User appears to have abandoned booking - cleaning up");
+                    
+                    if (currentProcessingBookingId) {
+                        try {
+                            await deleteBooking(currentProcessingBookingId, user?.token);
+                            console.log("Real-time cleanup: Processing booking deleted");
+                            removeBookingTracking(currentProcessingBookingId);
+                            setProcessingBookingId(null);
+                            setBookingId(null);
+                        } catch (err) {
+                            console.error("Failed to cleanup processing booking:", err);
+                        }
+                    }
+                    
+                    if (currentGuestProcessingBookingId) {
+                        try {
+                            await deleteGuestBooking(currentGuestProcessingBookingId);
+                            console.log("Real-time cleanup: Guest booking deleted");
+                            removeBookingTracking(currentGuestProcessingBookingId);
+                            setGuestProcessingBookingId(null);
+                            setRefreshTrigger(prev => prev + 1);
+                        } catch (err) {
+                            console.error("Failed to cleanup guest booking:", err);
+                        }
+                    }
+                    
+                    setSelectedSeats([]);
+                }
+            }
+            
+        } catch (err) {
+            console.error("Error during real-time cleanup:", err);
+        }
+    }, [processingBookingId, guestProcessingBookingId, user?.token, removeBookingTracking]);
+
+    // Immediate cleanup when page is about to be unloaded
+    const handlePageUnload = useCallback(() => {
+        console.log("=== PAGE UNLOAD - IMMEDIATE CLEANUP ===");
+        
+        // Use navigator.sendBeacon for reliable cleanup during page unload
+        if (processingBookingId || guestProcessingBookingId) {
+            const cleanupData = {
+                processingBookingId,
+                guestProcessingBookingId,
+                token: user?.token
+            };
+            
+            // Store in localStorage as backup
+            const existingTracking = JSON.parse(localStorage.getItem('processingBookings') || '[]');
+            if (processingBookingId) {
+                existingTracking.push({
+                    bookingId: processingBookingId,
+                    type: 'regular',
+                    token: user?.token,
+                    timestamp: Date.now()
+                });
+            }
+            if (guestProcessingBookingId) {
+                existingTracking.push({
+                    bookingId: guestProcessingBookingId,
+                    type: 'guest',
+                    timestamp: Date.now()
+                });
+            }
+            localStorage.setItem('processingBookings', JSON.stringify(existingTracking));
+            
+            // Try to send beacon for immediate cleanup (works during navigation)
+            try {
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/cleanup-abandoned-bookings', JSON.stringify(cleanupData));
+                }
+            } catch (err) {
+                console.log("Beacon failed, will cleanup on next page load");
+            }
+        }
+    }, [processingBookingId, guestProcessingBookingId, user?.token]);
+
+    // Track user activity
+    const trackUserActivity = useCallback(() => {
+        sessionStorage.setItem('lastSeatActivity', Date.now().toString());
+    }, []);
+
+    // Start real-time monitoring when processing bookings exist
+    const startRealTimeMonitoring = useCallback(() => {
+        // Clear any existing intervals
+        if (cleanupIntervalRef.current) {
+            clearInterval(cleanupIntervalRef.current);
+        }
+        
+        console.log("Starting real-time abandonment monitoring");
+        
+        // Initialize activity tracking
+        sessionStorage.setItem('lastSeatActivity', Date.now().toString());
+        
+        // Check every 3 seconds for abandoned bookings
+        cleanupIntervalRef.current = setInterval(() => {
+            immediateCleanupAbandonedBookings();
+        }, 3000); // Check every 3 seconds for faster response
+        
+        // Track activity on mouse movements and clicks
+        const trackActivity = () => trackUserActivity();
+        document.addEventListener('mousemove', trackActivity);
+        document.addEventListener('click', trackActivity);
+        document.addEventListener('keydown', trackActivity);
+        document.addEventListener('scroll', trackActivity);
+        
+        // Add page unload listeners for immediate cleanup
+        window.addEventListener('beforeunload', handlePageUnload);
+        window.addEventListener('pagehide', handlePageUnload);
+        window.addEventListener('unload', handlePageUnload);
+        
+        // Store cleanup function for later
+        cleanupIntervalRef.activityCleanup = () => {
+            document.removeEventListener('mousemove', trackActivity);
+            document.removeEventListener('click', trackActivity);
+            document.removeEventListener('keydown', trackActivity);
+            document.removeEventListener('scroll', trackActivity);
+            window.removeEventListener('beforeunload', handlePageUnload);
+            window.removeEventListener('pagehide', handlePageUnload);
+            window.removeEventListener('unload', handlePageUnload);
+        };
+        
+    }, [immediateCleanupAbandonedBookings, trackUserActivity, handlePageUnload]);
+
+    // Stop monitoring when no processing bookings
+    const stopRealTimeMonitoring = useCallback(() => {
+        console.log("Stopping real-time abandonment monitoring");
+        
+        if (cleanupIntervalRef.current) {
+            clearInterval(cleanupIntervalRef.current);
+            cleanupIntervalRef.current = null;
+        }
+        
+        if (cleanupIntervalRef.activityCleanup) {
+            cleanupIntervalRef.activityCleanup();
+        }
+    }, []);
+
+    // Monitor processing booking state and start/stop real-time monitoring
+    useEffect(() => {
+        if (processingBookingId || guestProcessingBookingId) {
+            startRealTimeMonitoring();
+        } else {
+            stopRealTimeMonitoring();
+        }
+        
+        // Cleanup on component unmount
+        return () => {
+            stopRealTimeMonitoring();
+        };
+    }, [processingBookingId, guestProcessingBookingId, startRealTimeMonitoring, stopRealTimeMonitoring]);
 
     // // Debug: Log bookings, frozenSeats, bus_id, and date to verify correct data per bus
     // console.log('bus_id:', bus_id, 'date:', date, 'bookings:', bookings, 'frozenSeats:', frozenSeats);
@@ -473,6 +767,12 @@ const SeatPlanning = ( ) => {
             console.log("Temporary booking created:", response.data);
             setGuestProcessingBookingId(response?.data?.id);
             console.log("Set guestProcessingBookingId to:", response?.data?.id);
+            
+            // Track this guest processing booking for cleanup
+            if (response?.data?.id) {
+                trackProcessingBooking(response.data.id, 'guest');
+            }
+            
             setRefreshTrigger(prev => prev + 1); // Trigger refresh to show processing seats
             setShowGuestForm(true);
         } catch (err) {
@@ -652,6 +952,11 @@ const SeatPlanning = ( ) => {
             setProcessingBookingId(response?.data?.id);
             setBookingId(response?.data?.id);
             
+            // Track this processing booking for cleanup
+            if (response?.data?.id) {
+                trackProcessingBooking(response.data.id, 'regular');
+            }
+            
             // If this is the second leg of a round trip, handle based on user type from first leg
             if (isSecondLeg && firstTripBookingData) {
                 console.log("=== SECOND LEG BOOKING ===");
@@ -806,6 +1111,10 @@ const SeatPlanning = ( ) => {
             try {
                 // Delete the booking from backend
                 await deleteBooking(processingBookingId, user?.token);
+                
+                // Remove from tracking
+                removeBookingTracking(processingBookingId);
+                
                 setProcessingBookingId(null);
                 setBookingId(null);
                 toast.info("Booking cancelled successfully.");
@@ -852,6 +1161,10 @@ const SeatPlanning = ( ) => {
             try {
                 // Use deleteGuestBooking service instead of direct axios call
                 await deleteGuestBooking(guestProcessingBookingId);
+                
+                // Remove from tracking
+                removeBookingTracking(guestProcessingBookingId);
+                
                 setRefreshTrigger(prev => prev + 1); // Refresh to remove processing seats
                 toast.info("Booking cancelled successfully.");
             } catch (err) {
@@ -863,6 +1176,153 @@ const SeatPlanning = ( ) => {
         setShowGuestForm(false);
         setSelectedSeats([]); // Clear selected seats when cancelling
     };
+
+    // Page Abandonment Detection Functions - Multiple approaches for reliability
+    
+    // Function to cleanup abandoned bookings using multiple methods
+    const cleanupAbandonedBookings = useCallback(async () => {
+        console.log("=== CLEANING UP ABANDONED BOOKINGS IMMEDIATELY ===");
+        
+        try {
+            // Method 1: Try regular async API calls first (works when page is still active)
+            if (processingBookingId) {
+                console.log("Cleaning up processing booking:", processingBookingId);
+                try {
+                    await deleteBooking(processingBookingId, user?.token);
+                    console.log("Processing booking cleaned up successfully");
+                } catch (err) {
+                    console.error("Failed to cleanup processing booking:", err);
+                }
+                setProcessingBookingId(null);
+                setBookingId(null);
+            }
+            
+            if (guestProcessingBookingId) {
+                console.log("Cleaning up guest processing booking:", guestProcessingBookingId);
+                try {
+                    await deleteGuestBooking(guestProcessingBookingId);
+                    console.log("Guest processing booking cleaned up successfully");
+                } catch (err) {
+                    console.error("Failed to cleanup guest booking:", err);
+                }
+                setGuestProcessingBookingId(null);
+                setRefreshTrigger(prev => prev + 1);
+            }
+            
+            // Clear selected seats
+            setSelectedSeats([]);
+            
+        } catch (err) {
+            console.error("Error during immediate cleanup:", err);
+        }
+    }, [processingBookingId, guestProcessingBookingId, user?.token]);
+
+    // Function to use Beacon API as fallback during page unload
+    const beaconCleanup = useCallback(() => {
+        console.log("=== BEACON CLEANUP FOR PAGE UNLOAD ===");
+        
+        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+        
+        try {
+            // Use sendBeacon for page unload scenarios
+            if (processingBookingId) {
+                console.log("Sending beacon for processing booking:", processingBookingId);
+                const beaconData = new FormData();
+                beaconData.append('_method', 'DELETE');
+                if (user?.token) {
+                    beaconData.append('token', user.token);
+                }
+                
+                const beaconUrl = `${API_URL}/bookings/${processingBookingId}`;
+                const success = navigator.sendBeacon(beaconUrl, beaconData);
+                console.log("Processing booking beacon sent:", success);
+            }
+            
+            if (guestProcessingBookingId) {
+                console.log("Sending beacon for guest booking:", guestProcessingBookingId);
+                const beaconData = new FormData();
+                beaconData.append('_method', 'DELETE');
+                
+                const beaconUrl = `${API_URL}/guest-bookings/${guestProcessingBookingId}`;
+                const success = navigator.sendBeacon(beaconUrl, beaconData);
+                console.log("Guest booking beacon sent:", success);
+            }
+            
+        } catch (err) {
+            console.error("Error during beacon cleanup:", err);
+        }
+    }, [processingBookingId, guestProcessingBookingId, user?.token]);
+
+    // useEffect hooks for immediate page abandonment cleanup
+    
+    // 1. Page visibility change detection - immediate cleanup when hidden
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            const isNowVisible = !document.hidden;
+            
+            console.log("Page visibility changed:", isNowVisible ? 'visible' : 'hidden');
+            
+            if (!isNowVisible && (processingBookingId || guestProcessingBookingId)) {
+                // Page became hidden and we have processing bookings - cleanup immediately
+                console.log("Page hidden with processing bookings - cleaning up immediately");
+                cleanupAbandonedBookings();
+            }
+        };
+        
+        // Add event listener
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // Cleanup
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [processingBookingId, guestProcessingBookingId, cleanupAbandonedBookings]);
+    
+    // 2. Multiple unload event detection for better coverage
+    useEffect(() => {
+        const handlePageUnload = () => {
+            // Use beacon API for unload scenarios (more reliable)
+            if (processingBookingId || guestProcessingBookingId) {
+                console.log("Page unload - using beacon cleanup");
+                beaconCleanup();
+            }
+        };
+
+        const handleBeforeUnload = () => {
+            // Try regular cleanup first, then beacon as fallback
+            if (processingBookingId || guestProcessingBookingId) {
+                console.log("Before unload - trying regular cleanup then beacon");
+                cleanupAbandonedBookings().catch(() => {
+                    console.log("Regular cleanup failed, using beacon");
+                    beaconCleanup();
+                });
+            }
+        };
+
+        const handlePageHide = (event) => {
+            // pagehide is more reliable - use beacon if persisted is false
+            if (processingBookingId || guestProcessingBookingId) {
+                console.log("Page hide - using beacon cleanup, persisted:", event.persisted);
+                if (!event.persisted) {
+                    beaconCleanup();
+                } else {
+                    cleanupAbandonedBookings();
+                }
+            }
+        };
+        
+        // Add multiple event listeners for better coverage
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('unload', handlePageUnload);
+        window.addEventListener('pagehide', handlePageHide);
+        
+        // Cleanup
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('unload', handlePageUnload);
+            window.removeEventListener('pagehide', handlePageHide);
+        };
+    }, [processingBookingId, guestProcessingBookingId, cleanupAbandonedBookings, beaconCleanup]);
 
     const handlePayment = async (paymentStatus) => {
         if (paymentStatus === "Paid") {
