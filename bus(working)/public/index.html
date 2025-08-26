@@ -1,14 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-
     <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- <meta name="theme-color" content="#000000" /> -->
-    <meta
-      name="description"
-      content="Web site created using create-react-app"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <!-- SEO Meta Tags -->
+    <title>RS Express - Online Bus Booking Sri Lanka | Comfortable Bus Travel</title>
+    <meta name="description" content="Book bus tickets online with RS Express - Sri Lanka's trusted bus service. Comfortable seats, reliable routes across the island, instant booking confirmation and secure payments." />
+    <meta name="keywords" content="rs express, bus booking sri lanka, online bus tickets, sri lankan transport, bus service, travel sri lanka, intercity bus, comfort bus" />
+    <meta name="author" content="RS Express" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph Meta Tags for Social Media -->
+    <meta property="og:title" content="RS Express - Online Bus Booking Sri Lanka" />
+    <meta property="og:description" content="Book comfortable bus tickets online across Sri Lanka. Reliable service, instant confirmation." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rsexpress.lk/" />
+    <meta property="og:site_name" content="RS Express" />
+    <meta property="og:locale" content="en_LK" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RS Express - Online Bus Booking Sri Lanka" />
+    <meta name="twitter:description" content="Book comfortable bus tickets online across Sri Lanka" />
+    
+    <!-- Additional Meta Tags -->
+    <meta name="theme-color" content="#2563eb" />
+    <link rel="canonical" href="https://rsexpress.lk/" />
+    
+    <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Zen+Dots&display=swap" rel="stylesheet">
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
 
@@ -26,10 +46,55 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>RS EXPRESS</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TransportationCompany",
+      "name": "RS Express",
+      "url": "https://rsexpress.lk",
+      "description": "Online bus booking service in Sri Lanka offering comfortable and reliable transportation across the island",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "LK",
+        "addressLocality": "Sri Lanka"
+      },
+      "serviceArea": {
+        "@type": "Country",
+        "name": "Sri Lanka"
+      },
+      "services": [
+        {
+          "@type": "Service",
+          "name": "Online Bus Booking",
+          "description": "Book bus tickets online with instant confirmation"
+        },
+        {
+          "@type": "Service", 
+          "name": "Intercity Bus Service",
+          "description": "Comfortable bus travel between cities in Sri Lanka"
+        }
+      ],
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Bus Routes",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Trip",
+              "name": "Bus Travel Services"
+            }
+          }
+        ]
+      }
+    }
+    </script>
+    
     <div id="root"></div>
     <!--
       This HTML file is a template.
