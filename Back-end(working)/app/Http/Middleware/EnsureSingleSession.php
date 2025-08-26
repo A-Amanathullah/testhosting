@@ -22,7 +22,7 @@ class EnsureSingleSession
             $token = $request->bearerToken();
             if ($token !== $user->current_token) {
                 // Token mismatch, force logout
-                return response()->json(['message' => 'Session expired. You have been logged out.'], 401);
+                return response('Session expired. You have been logged out.', 401);
             }
         }
         return $next($request);

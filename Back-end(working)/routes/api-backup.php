@@ -29,6 +29,7 @@ Route::post('/signup', [AuthController::class, 'register']);
 Route::post('/google-login', [AuthController::class, 'googleLogin']);
 
 // Public API routes (no authentication required)
+Route::get('/users', [AuthController::class, 'index']);
 Route::post('/admin/create-user', [AdminController::class, 'createUser']);
 Route::apiResource('bus-trips', BusTripController::class);
 Route::post('/sri-lankan-locations/{id}/verify', [SriLankanLocationController::class, 'verify']);
@@ -97,7 +98,6 @@ Route::get('/agent-commissions/user/{userId}', [AgentCommissionController::class
 // Routes that require authentication
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'me']);
-    Route::get('/users', [AuthController::class, 'index']); // Moved here - requires admin access
     Route::post('/user-details', [AuthController::class, 'storeUserDetails']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::delete('/user/{id}', [AuthController::class, 'destroyUser']);
