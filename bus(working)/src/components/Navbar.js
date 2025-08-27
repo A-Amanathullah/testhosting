@@ -6,6 +6,7 @@ import { FaHome, FaUser } from "react-icons/fa";
 import { BsFillGrid1X2Fill } from "react-icons/bs";
 import { IoIosPersonAdd } from "react-icons/io";
 import { TiThMenu } from "react-icons/ti";
+import { MdDirectionsBus } from "react-icons/md";
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from "react";
 import { useContext, useEffect, useCallback } from "react";
@@ -28,6 +29,14 @@ function Navbar() {
                             <BsFillGrid1X2Fill className="p-0.5" />
                         </button>
                     </Link>
+                    {/* Conductor Dashboard Icon - Only show for Conductor role */}
+                    {user?.role === 'Conductor' && (
+                        <Link to="/conductor" onClick={handleMenuClick}>
+                            <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mr-1" title="Conductor Dashboard">
+                                <MdDirectionsBus className="p-0.5" />
+                            </button>
+                        </Link>
+                    )}
                     <Link to="/passengerdash" onClick={handleMenuClick}>
                         <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200" title="Passenger Dashboard">
                             <FaUser className="p-0.5" />
@@ -37,11 +46,21 @@ function Navbar() {
             );
         } else if (user) {
             return (
-                <Link to="/passengerdash" onClick={handleMenuClick}>
-                    <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200">
-                        <BsFillGrid1X2Fill className="p-0.5" />
-                    </button>
-                </Link>
+                <div className="flex items-center">
+                    {/* Conductor Dashboard Icon - Only show for Conductor role */}
+                    {user?.role === 'Conductor' && (
+                        <Link to="/conductor" onClick={handleMenuClick}>
+                            <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200 mr-1" title="Conductor Dashboard">
+                                <MdDirectionsBus className="p-0.5" />
+                            </button>
+                        </Link>
+                    )}
+                    <Link to="/passengerdash" onClick={handleMenuClick}>
+                        <button className="text-xl hover:bg-primary hover:text-white rounded-full p-2 duration-200">
+                            <BsFillGrid1X2Fill className="p-0.5" />
+                        </button>
+                    </Link>
+                </div>
             );
         } else {
             return null;
@@ -54,8 +73,9 @@ function Navbar() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Check if current path is admin panel
+    // Check if current path is admin panel or conductor panel
     const isOnAdminPanel = location.pathname.startsWith('/admin');
+    const isOnConductorPanel = location.pathname.startsWith('/conductor');
 
     // Helper function to check if user has any admin permissions
     const hasAnyAdminPermissions = useCallback(() => {
@@ -76,7 +96,19 @@ function Navbar() {
     };
 
     // Close mobile menu on navigation
-    const handleMenuClick = () => setOpen(false);
+    const handleMenuClick = () => {
+        setOpen(false);
+    };
+
+    // Handle main mobile menu toggle
+    const handleMainMenuToggle = () => {
+        // Close conductor sidebar if open (only on conductor pages)
+        if (isOnConductorPanel) {
+            // We don't have direct access to conductor sidebar state here
+            // But the sidebar will close when its overlay is clicked
+        }
+        setOpen(!open);
+    };
 
     return (
         <div className="w-full bg-white sticky top-0 z-50">
@@ -134,9 +166,12 @@ function Navbar() {
                         )}
                     </div>
 
-                    {/* mobile hamburger btn section */}
-                    <div className="md:hidden" onClick={() => setOpen(!open)}>
-                        <TiThMenu className="text-3xl" />
+                    {/* Mobile buttons container */}
+                    <div className="flex items-center lg:hidden">
+                        {/* mobile hamburger btn */}
+                        <div onClick={handleMainMenuToggle}>
+                            <TiThMenu className="text-3xl" />
+                        </div>
                     </div>
                 </div>
             </nav>

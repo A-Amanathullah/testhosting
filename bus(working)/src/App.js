@@ -51,6 +51,8 @@ import React, { useContext } from 'react';
 import { usePermissions } from './context/PermissionsContext';
 import { Navigate } from 'react-router-dom';
 import CommissionManagementPage from "./admin/pages/commission/CommissionManagementPage";
+import NotFound from "./pages/NotFound";
+import { ConductorSidebarProvider } from './context/ConductorSidebarContext';
 
 function App() {
   const { user, loading } = useContext(AuthContext);
@@ -76,31 +78,37 @@ function App() {
   return (
     <Routes>
       {/* Conductor route - standalone without navbar */}
-      <Route path="/conductor" element={<Conductor />} />
+      
       
       {/* All other routes with navbar and permissions */}
       <Route 
         path="/*" 
         element={
           <PermissionsProvider role={user?.role}>
-            <Navbar />
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/about-us" element={<AboutUs />} />
-              <Route path="/gallery" element={<Gallery />} />
-              <Route path="/career" element={<Career />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms-conditions" element={<TermsConditions />} />
-              <Route path="/ticket-policy" element={<TicketPolicy />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/busList" element={<BusList />} />
-              <Route path="/busSearch" element={<BusCard />} />
-              <Route path="/bus-search" element={<EnhancedBusSearch />} />
-              <Route path="/seatPlan" element={<SeatBooking />} />
-              <Route path="/passengerdash" element={<PrivateRoute><PassengerDashboard /></PrivateRoute>} />
-              <Route path="/complete-profile" element={<PrivateRoute><CompleteProfile /></PrivateRoute>} />
+            <ConductorSidebarProvider>
+              <Navbar />
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/about-us" element={<AboutUs />} />
+                <Route path="/gallery" element={<Gallery />} />
+                <Route path="/career" element={<Career />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-conditions" element={<TermsConditions />} />
+                <Route path="/ticket-policy" element={<TicketPolicy />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/busList" element={<BusList />} />
+                <Route path="/busSearch" element={<BusCard />} />
+                <Route path="/bus-search" element={<EnhancedBusSearch />} />
+                <Route path="/seatPlan" element={<SeatBooking />} />
+                <Route path="/passengerdash" element={<PrivateRoute><PassengerDashboard /></PrivateRoute>} />
+                <Route path="/complete-profile" element={<PrivateRoute><CompleteProfile /></PrivateRoute>} />
+
+                {/* conductor pages */}
+                <Route path="/conductor" element={<Conductor />} />
+
+                {/* admin panel */}
               <Route path="/admin" element={<PrivateRoute><AdminRoutes /></PrivateRoute>}>
                 <Route index element={<AutoRedirectDashboard />} />
                 <Route path="bus-schedule" element={<ProtectedRoute module="Bus Schedule" action="view"><BusSchedulePage /></ProtectedRoute>} />
@@ -131,7 +139,11 @@ function App() {
               <Route path="/agent" element={<AgentPanel />} />
               <Route path="/staff-dashboard" element={<StaffDashboard />} />
               <Route path="/not-authorized" element={<NotAuthorized />} />
+              
+              {/* 404 Not Found - Catch all unknown routes */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
+            </ConductorSidebarProvider>
           </PermissionsProvider>
         } 
       />

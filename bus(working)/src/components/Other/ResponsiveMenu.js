@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Link } from "react-router-dom";
 import { IoMdClose } from "react-icons/io";
 import { FaUser, FaEnvelope, FaIdBadge } from "react-icons/fa";
+import { MdDirectionsBus } from "react-icons/md";
 
 function ResponsiveMenu({ open, onMenuClick, user, navAdmin, handleLogout }) {
   return (
@@ -52,6 +53,15 @@ function ResponsiveMenu({ open, onMenuClick, user, navAdmin, handleLogout }) {
                       Contact
                     </Link>
                   </li>
+                  {/* Conductor Dashboard Link - Only show for Conductor role */}
+                  {user?.role === 'Conductor' && (
+                    <li onClick={onMenuClick} className="transform transition hover:translate-x-2">
+                      <Link to="/conductor" className="flex items-center text-lg font-medium text-gray-800 hover:text-primary px-2 py-2 border-b border-gray-100">
+                        <MdDirectionsBus className="mr-2 text-primary" />
+                        Conductor Dashboard
+                      </Link>
+                    </li>
+                  )}
                 </ul>
               </nav>
               
