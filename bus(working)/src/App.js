@@ -46,7 +46,7 @@ import Contact from './pages/Contact';
 import PrivacyPolicy from './pages/Policies/PrivacyPolicy';
 import TermsConditions from './pages/Policies/TermsConditions';
 import TicketPolicy from './pages/Policies/TicketPolicy';
-import Conductor from "./conductor/Pages/Conductor";
+import ConductorRoutes from "./conductor/Pages/ConductorRoutes";
 import React, { useContext } from 'react';
 import { usePermissions } from './context/PermissionsContext';
 import { Navigate } from 'react-router-dom';
@@ -106,7 +106,7 @@ function App() {
                 <Route path="/complete-profile" element={<PrivateRoute><CompleteProfile /></PrivateRoute>} />
 
                 {/* conductor pages */}
-                <Route path="/conductor" element={<Conductor />} />
+                <Route path="/conductor/*" element={<ConductorRoutes />} />
 
                 {/* admin panel */}
               <Route path="/admin" element={<PrivateRoute><AdminRoutes /></PrivateRoute>}>

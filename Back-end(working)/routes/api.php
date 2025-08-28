@@ -101,6 +101,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user-details', [AuthController::class, 'storeUserDetails']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::delete('/user/{id}', [AuthController::class, 'destroyUser']);
+    
+    // Conductor specific routes
+    Route::get('/conductor/trips', [BusTripController::class, 'getConductorTrips']);
 });
 
 // Fallback for unknown API routes to return JSON 404

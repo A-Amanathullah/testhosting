@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use App\Models\BusRegister;
 use App\Models\Booking;
 use App\Models\GuestBooking;
+use App\Models\UserDetail;
 
 class BusTripController extends Controller
 {
@@ -209,6 +210,72 @@ class BusTripController extends Controller
         $trip->delete();
 
         return response()->json(['message' => 'Schedule deleted successfully.']);
+    }
+
+    /**
+     * Get trips assigned to logged-in conductor
+     */
+    public function getConductorTrips(Request $request)
+    {
+        $user = $request->user();
+        $userDetail = UserDetail::where('user_id', $user->id)->first();
+        
+        if (!$userDetail) {
+            return response()->json(['error' => 'User details not found'], 404);
+        }
+        
+        // Multiple name matching strategies
+        $fullName = trim($userDetail->first_name . ' ' . $userDetail->last_name);
+        $userName = $user->name;
+        $firstName = $userDetail->first_name;
+        $lastName = $userDetail->last_name;
+        
+        // Fetch trips using multiple matching strategies
+        $trips = BusTrip::where(function ($query) use ($fullName, $userName, $firstName, $lastName) {
+            $query->where('conductor_name', $fullName)
+                  ->orWhere('conductor_name', $userName)
+                  ->orWhere('conductor_name', 'LIKE', "%{$firstName}%")
+                  ->orWhere('conductor_name', 'LIKE', "%{$lastName}%");
+        })
+        ->with('busRoute.routeStops')
+        ->orderBy('departure_date', 'desc')
+        ->orderBy('departure_time', 'desc')
+        ->get();
+
+        // Transform trips to include calculated seat information
+        $trips->transform(function ($trip) {
+            $bus = BusRegister::find($trip->bus_id);
+            $total_seats = $bus ? $bus->total_seats : 0;
+            
+            $regular_bookings = Booking::where('bus_id', $trip->bus_id)
+                ->where('departure_date', $trip->departure_date)
+                ->whereIn('status', ['confirmed', 'freezed'])
+                ->sum('reserved_tickets');
+            
+            $guest_bookings = GuestBooking::where('bus_id', $trip->bus_id)
+                ->where('departure_date', $trip->departure_date)
+                ->whereIn('status', ['Confirmed', 'Processing'])
+                ->sum('reserved_tickets');
+            
+            $booked_seats = $regular_bookings + $guest_bookings;
+            $trip->available_seats = $total_seats - $booked_seats;
+            $trip->booked_seats = $booked_seats;
+            $trip->total_seats = $total_seats;
+            
+            return $trip;
+        });
+        
+        return response()->json([
+            'trips' => $trips,
+            'conductor_name' => $fullName,
+            'debug_info' => [
+                'user_name' => $userName,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'full_name' => $fullName,
+                'trips_count' => $trips->count()
+            ]
+        ]);
     }
 
     /**
