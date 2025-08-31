@@ -1,0 +1,22 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow sensitive admin pages from being crawled
+Disallow: /admin/
+Disallow: /agent/
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /signup
+
+# Allow important public pages
+Allow: /
+Allow: /search
+Allow: /routes
+Allow: /booking
+
+# Sitemap location
+Sitemap: https://rsexpress.lk/sitemap.xml
+
+# Crawl delay (1 second between requests)
+Crawl-delay: 1
