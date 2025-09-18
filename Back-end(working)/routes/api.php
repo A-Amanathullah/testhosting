@@ -104,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Conductor specific routes
     Route::get('/conductor/trips', [BusTripController::class, 'getConductorTrips']);
+    Route::get('/conductor/trip/{tripId}', [BusTripController::class, 'getConductorTripDetails']);
 });
 
 // Fallback for unknown API routes to return JSON 404

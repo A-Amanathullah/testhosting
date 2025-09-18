@@ -44,3 +44,20 @@ export const getConductorTodayTrips = async () => {
     throw error;
   }
 };
+
+/**
+ * Get detailed information about a specific trip
+ */
+export const getConductorTripDetails = async (tripId) => {
+  try {
+    const response = await axios.get(`${API_URL}/conductor/trip/${tripId}`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trip details:', error);
+    throw error;
+  }
+};

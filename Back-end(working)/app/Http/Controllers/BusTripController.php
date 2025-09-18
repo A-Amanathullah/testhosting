@@ -279,6 +279,183 @@ class BusTripController extends Controller
     }
 
     /**
+     * Get detailed information about a specific trip including bookings and seat layout
+     */
+    public function getConductorTripDetails(Request $request, $tripId)
+    {
+        $user = $request->user();
+        $userDetail = UserDetail::where('user_id', $user->id)->first();
+        
+        if (!$userDetail) {
+            return response()->json(['error' => 'User details not found'], 404);
+        }
+        
+        // Find the trip
+        $trip = BusTrip::with('busRoute.routeStops')->find($tripId);
+        
+        if (!$trip) {
+            return response()->json(['error' => 'Trip not found'], 404);
+        }
+        
+        // Verify this trip belongs to the conductor
+        $fullName = trim($userDetail->first_name . ' ' . $userDetail->last_name);
+        $userName = $user->name;
+        $firstName = $userDetail->first_name;
+        $lastName = $userDetail->last_name;
+        
+        $isAuthorized = $trip->conductor_name === $fullName ||
+                       $trip->conductor_name === $userName ||
+                       strpos($trip->conductor_name, $firstName) !== false ||
+                       strpos($trip->conductor_name, $lastName) !== false;
+        
+        if (!$isAuthorized) {
+            return response()->json(['error' => 'Unauthorized to view this trip'], 403);
+        }
+        
+        // Get bus information
+        $bus = BusRegister::find($trip->bus_id);
+        $total_seats = $bus ? $bus->total_seats : 0;
+        
+        // Get all bookings for this trip (both regular and guest bookings)
+        $regularBookings = Booking::where('bus_id', $trip->bus_id)
+            ->where('departure_date', $trip->departure_date)
+            ->with('user')
+            ->get();
+            
+        $guestBookings = GuestBooking::where('bus_id', $trip->bus_id)
+            ->where('departure_date', $trip->departure_date)
+            ->get();
+        
+        // Process regular bookings
+        $processedBookings = [];
+        foreach ($regularBookings as $booking) {
+            $user = $booking->user;
+            $userDetail = UserDetail::where('user_id', $user->id)->first();
+            
+            for ($i = 0; $i < $booking->reserved_tickets; $i++) {
+                $processedBookings[] = [
+                    'id' => $booking->id . '_' . $i,
+                    'type' => 'regular',
+                    'passenger_name' => $userDetail ? trim($userDetail->first_name . ' ' . $userDetail->last_name) : $user->name,
+                    'phone' => $userDetail ? $userDetail->phone : 'N/A',
+                    'email' => $user->email,
+                    'amount' => $trip->price,
+                    'status' => $booking->status,
+                    'booking_date' => $booking->created_at,
+                    'seat_number' => null, // We'll assign seat numbers later
+                    'booking_reference' => $booking->id
+                ];
+            }
+        }
+        
+        // Process guest bookings
+        foreach ($guestBookings as $guestBooking) {
+            for ($i = 0; $i < $guestBooking->reserved_tickets; $i++) {
+                $processedBookings[] = [
+                    'id' => 'guest_' . $guestBooking->id . '_' . $i,
+                    'type' => 'guest',
+                    'passenger_name' => $guestBooking->passenger_name,
+                    'phone' => $guestBooking->phone,
+                    'email' => $guestBooking->email,
+                    'amount' => $trip->price,
+                    'status' => strtolower($guestBooking->status),
+                    'booking_date' => $guestBooking->created_at,
+                    'seat_number' => null, // We'll assign seat numbers later
+                    'booking_reference' => 'G' . $guestBooking->id
+                ];
+            }
+        }
+        
+        // Calculate seat statistics
+        $confirmed_count = 0;
+        $pending_count = 0;
+        $frozen_count = 0;
+        
+        foreach ($processedBookings as $booking) {
+            switch ($booking['status']) {
+                case 'confirmed':
+                    $confirmed_count++;
+                    break;
+                case 'processing':
+                case 'pending':
+                    $pending_count++;
+                    break;
+                case 'freezed':
+                case 'frozen':
+                    $frozen_count++;
+                    break;
+            }
+        }
+        
+        $available_seats = $total_seats - count($processedBookings);
+        
+        // Generate seat layout
+        $seatLayout = [];
+        $bookingIndex = 0;
+        
+        for ($i = 1; $i <= $total_seats; $i++) {
+            $seat = [
+                'number' => $i,
+                'status' => 'available',
+                'passenger' => null,
+                'booking_id' => null
+            ];
+            
+            if ($bookingIndex < count($processedBookings)) {
+                $booking = $processedBookings[$bookingIndex];
+                $seat['status'] = $booking['status'] === 'confirmed' ? 'booked' : 
+                                ($booking['status'] === 'freezed' ? 'frozen' : 'pending');
+                $seat['passenger'] = $booking['passenger_name'];
+                $seat['booking_id'] = $booking['id'];
+                
+                // Update booking with seat number
+                $processedBookings[$bookingIndex]['seat_number'] = $i;
+                $bookingIndex++;
+            }
+            
+            $seatLayout[] = $seat;
+        }
+        
+        // Prepare response data
+        $tripData = [
+            'id' => $trip->id,
+            'bus_no' => $trip->bus_no,
+            'route' => $trip->start_point . ' → ' . $trip->end_point,
+            'start_point' => $trip->start_point,
+            'end_point' => $trip->end_point,
+            'departure_date' => $trip->departure_date,
+            'departure_time' => $trip->departure_time,
+            'arrival_date' => $trip->arrival_date,
+            'arrival_time' => $trip->arrival_time,
+            'duration' => $trip->duration,
+            'price' => $trip->price,
+            'driver_name' => $trip->driver_name,
+            'driver_contact' => $trip->driver_contact,
+            'conductor_name' => $trip->conductor_name,
+            'conductor_contact' => $trip->conductor_contact,
+            'total_seats' => $total_seats,
+            'booked_seats' => $confirmed_count,
+            'pending_seats' => $pending_count,
+            'frozen_seats' => $frozen_count,
+            'available_seats' => $available_seats,
+            'seat_layout' => $seatLayout,
+            'bookings' => $processedBookings,
+            'bus_details' => [
+                'make' => $bus->brand ?? 'N/A',
+                'model' => $bus->model ?? 'N/A',
+                'registration' => $trip->bus_no,
+                'capacity' => $total_seats,
+                'amenities' => $bus->features ? explode(',', $bus->features) : ['Standard Seating']
+            ]
+        ];
+        
+        return response()->json([
+            'success' => true,
+            'trip' => $tripData
+        ]);
+    }
+
+    /**
      * Search bus trips based on route stops
      */
     public function searchByRoute(Request $request)
