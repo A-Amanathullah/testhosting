@@ -120,7 +120,7 @@ function Navbar() {
                     </div>
                     {/* menu items - hide when on admin panel */}
                     {!isOnAdminPanel &&
-                        <div className="hidden md:block cursor-pointer">
+                        <div className="hidden lg:block cursor-pointer">
                             <ul className="flex items-center gap-6">
                                 <li className="inline-block py-1 px-3 hover:text-primary font-semibold">
                                     <Link to="/">Home</Link>
@@ -153,12 +153,12 @@ function Navbar() {
                         ) : (
                             <div className="flex items-center gap-5">
                                 <Link to="/login" onClick={handleMenuClick}>
-                                    <button className="hover:bg-primary text-primary font-semibold hover:text-white rounded-md border-2 border-primary px-3 py-1 duration-200 hidden md:block text-base">
+                                    <button className="hover:bg-primary text-primary font-semibold hover:text-white rounded-md border-2 border-primary px-3 py-1 duration-200 hidden lg:block text-base">
                                         Login
                                     </button>
                                 </Link>
                                 <Link to="/signup" onClick={handleMenuClick}>
-                                    <button className="hover:bg-primary text-primary font-semibold hover:text-white rounded-md border-2 border-primary px-2 py-1 duration-200 hidden md:block text-xl">
+                                    <button className="hover:bg-primary text-primary font-semibold hover:text-white rounded-md border-2 border-primary px-2 py-1 duration-200 hidden lg:block text-xl">
                                         <IoIosPersonAdd />
                                     </button>
                                 </Link>
