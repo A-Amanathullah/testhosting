@@ -83,8 +83,8 @@ Route::get('/dashboard/revenue/daily', [DashboardStatsController::class, 'getDai
 Route::get('/dashboard/revenue/monthly', [DashboardStatsController::class, 'getMonthlyRevenue']);
 Route::get('/dashboard/revenue/yearly', [DashboardStatsController::class, 'getYearlyRevenue']);
 Route::get('/dashboard/stats/all', [DashboardStatsController::class, 'getAllStats']);
-Route::get('/dashboard/stats/bookings', [DashboardStatsController::class, 'getTodayBookingStats']);
-Route::get('/dashboard/stats/cancellations', [DashboardStatsController::class, 'getTodayCancellationStats']);
+Route::get('/dashboard/stats/bookings', [DashboardStatsController::class, 'getTodayBookings']);
+Route::get('/dashboard/stats/cancellations', [DashboardStatsController::class, 'getTodayCancellations']);
 Route::get('/dashboard/stats/agents', [DashboardStatsController::class, 'getAgentBookingStats']);
 Route::get('/dashboard/stats/staff', [DashboardStatsController::class, 'getStaffStats']);
 
